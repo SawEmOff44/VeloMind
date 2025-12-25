@@ -1,0 +1,210 @@
+import express from 'express';
+import multer from 'multer';
+import xml2js from 'xml2js';
+import { query } from '../db.js';
+import { authenticateToken } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 // 10MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/gpx+xml' || 
+        file.mimetype === 'text/xml' ||
+        file.mimetype === 'application/xml' ||
+        file.originalname.endsWith('.gpx')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only GPX files are allowed'));
+    }
+  }
+});
+
+// Parse GPX XML
+async function parseGPX(xmlData) {
+  const parser = new xml2js.Parser();
+  const result = await parser.parseStringPromise(xmlData);
+  
+  const points = [];
+  let trackPoints = [];
+  
+  // Try to find track points in various GPX structures
+  if (result.gpx?.trk?.[0]?.trkseg?.[0]?.trkpt) {
+    trackPoints = result.gpx.trk[0].trkseg[0].trkpt;
+  } else if (result.gpx?.rte?.[0]?.rtept) {
+    trackPoints = result.gpx.rte[0].rtept;
+  }
+  
+  let cumulativeDistance = 0;
+  let prevLat = null;
+  let prevLon = null;
+  
+  for (const pt of trackPoints) {
+    const lat = parseFloat(pt.$.lat);
+    const lon = parseFloat(pt.$.lon);
+    const ele = pt.ele ? parseFloat(pt.ele[0]) : null;
+    
+    // Calculate distance from previous point
+    if (prevLat !== null && prevLon !== null) {
+      const distance = haversineDistance(prevLat, prevLon, lat, lon);
+      cumulativeDistance += distance;
+    }
+    
+    points.push({
+      latitude: lat,
+      longitude: lon,
+      elevation: ele,
+      distance: cumulativeDistance
+    });
+    
+    prevLat = lat;
+    prevLon = lon;
+  }
+  
+  // Calculate elevation gain
+  let elevationGain = 0;
+  for (let i = 1; i < points.length; i++) {
+    if (points[i].elevation && points[i - 1].elevation) {
+      const gain = points[i].elevation - points[i - 1].elevation;
+      if (gain > 0) {
+        elevationGain += gain;
+      }
+    }
+  }
+  
+  return {
+    points,
+    totalDistance: cumulativeDistance,
+    totalElevationGain: elevationGain,
+    pointCount: points.length
+  };
+}
+
+// Haversine distance formula
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  
+  return R * c;
+}
+
+// Upload GPX file
+router.post('/upload', authenticateToken, upload.single('gpx'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    const { name } = req.body;
+    const gpxData = req.file.buffer.toString('utf-8');
+    
+    // Parse GPX
+    const parsed = await parseGPX(gpxData);
+    
+    // Save to database
+    const result = await query(
+      `INSERT INTO routes (user_id, name, gpx_data, total_distance, total_elevation_gain, point_count)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, total_distance, total_elevation_gain, point_count, created_at`,
+      [
+        req.user.id,
+        name || req.file.originalname,
+        gpxData,
+        parsed.totalDistance,
+        parsed.totalElevationGain,
+        parsed.pointCount
+      ]
+    );
+    
+    res.json({
+      route: result.rows[0],
+      parsed: {
+        totalDistance: parsed.totalDistance,
+        totalElevationGain: parsed.totalElevationGain,
+        pointCount: parsed.pointCount
+      }
+    });
+  } catch (error) {
+    console.error('GPX upload error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get route by ID
+router.get('/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT * FROM routes WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Route not found' });
+    }
+    
+    const route = result.rows[0];
+    
+    // Parse GPX to get points
+    const parsed = await parseGPX(route.gpx_data);
+    
+    res.json({
+      ...route,
+      points: parsed.points
+    });
+  } catch (error) {
+    console.error('Get route error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all routes for user
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT id, name, total_distance, total_elevation_gain, point_count, created_at
+       FROM routes
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    
+    res.json({ routes: result.rows });
+  } catch (error) {
+    console.error('Get routes error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete route
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await query(
+      'DELETE FROM routes WHERE id = $1 AND user_id = $2 RETURNING id',
+      [req.params.id, req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Route not found' });
+    }
+    
+    res.json({ message: 'Route deleted successfully' });
+  } catch (error) {
+    console.error('Delete route error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+export default router;
