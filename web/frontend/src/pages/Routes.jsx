@@ -15,7 +15,7 @@ export default function Routes() {
   const loadRoutes = async () => {
     try {
       const response = await getRoutes()
-      setRoutes(response.data)
+      setRoutes(response.data.routes || [])
     } catch (error) {
       console.error('Failed to load routes:', error)
     } finally {

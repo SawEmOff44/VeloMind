@@ -23,7 +23,7 @@ export default function Parameters() {
   const loadParameters = async () => {
     try {
       const response = await getParameters()
-      setParameters(response.data)
+      setParameters(response.data.parameters || [])
     } catch (error) {
       console.error('Failed to load parameters:', error)
     } finally {
