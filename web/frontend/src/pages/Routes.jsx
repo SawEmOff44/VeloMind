@@ -145,8 +145,8 @@ export default function Routes() {
             {routes.map((route) => (
               <li key={route.id} className="px-6 py-4 hover:bg-gray-50">
                 <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">
+                  <Link to={`/routes/${route.id}`} className="flex-1">
+                    <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600">
                       {route.name}
                     </h3>
                     <p className="text-sm text-gray-500">
@@ -154,10 +154,10 @@ export default function Routes() {
                       {route.total_elevation_gain > 0 && ` ${Math.round(route.total_elevation_gain)}m elevation gain • `}
                       Uploaded {format(new Date(route.created_at), 'PP')}
                     </p>
-                  </div>
+                  </Link>
                   <button
                     onClick={() => handleDelete(route.id)}
-                    className="text-red-600 hover:text-red-900"
+                    className="ml-4 text-red-600 hover:text-red-900"
                   >
                     Delete
                   </button>
