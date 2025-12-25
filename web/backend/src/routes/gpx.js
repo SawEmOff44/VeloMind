@@ -14,13 +14,26 @@ const upload = multer({
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 // 10MB
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/gpx+xml' || 
-        file.mimetype === 'text/xml' ||
-        file.mimetype === 'application/xml' ||
-        file.originalname.endsWith('.gpx')) {
+    const allowedExtensions = ['.gpx', '.fit', '.tcx', '.kml'];
+    const allowedMimeTypes = [
+      'application/gpx+xml',
+      'text/xml',
+      'application/xml',
+      'application/vnd.ant.fit',
+      'application/octet-stream',
+      'application/vnd.garmin.tcx+xml',
+      'application/vnd.google-earth.kml+xml'
+    ];
+    
+    const hasAllowedExtension = allowedExtensions.some(ext => 
+      file.originalname.toLowerCase().endsWith(ext)
+    );
+    const hasAllowedMimeType = allowedMimeTypes.includes(file.mimetype);
+    
+    if (hasAllowedExtension || hasAllowedMimeType) {
       cb(null, true);
     } else {
-      cb(new Error('Only GPX files are allowed'));
+      cb(new Error('Only GPX, FIT, TCX, and KML files are allowed'));
     }
   }
 });

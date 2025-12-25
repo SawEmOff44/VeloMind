@@ -27,18 +27,26 @@ export default function Routes() {
     if (!files || files.length === 0) return
     
     const file = files[0]
-    if (!file.name.endsWith('.gpx')) {
-      alert('Please upload a GPX file')
+    const allowedExtensions = ['.gpx', '.fit', '.tcx', '.kml']
+    const hasValidExtension = allowedExtensions.some(ext => 
+      file.name.toLowerCase().endsWith(ext)
+    )
+    
+    if (!hasValidExtension) {
+      alert('Please upload a GPX, FIT, TCX, or KML file')
       return
     }
     
+    // Remove file extension from name
+    const fileName = file.name.replace(/\.(gpx|fit|tcx|kml)$/i, '')
+    
     setUploading(true)
     try {
-      await uploadGPX(file, file.name.replace('.gpx', ''))
+      await uploadGPX(file, fileName)
       await loadRoutes()
     } catch (error) {
-      console.error('Failed to upload GPX:', error)
-      alert('Failed to upload GPX file')
+      console.error('Failed to upload route:', error)
+      alert('Failed to upload route file')
     } finally {
       setUploading(false)
     }
@@ -109,18 +117,18 @@ export default function Routes() {
         <div className="mt-4">
           <label htmlFor="file-upload" className="cursor-pointer">
             <span className="text-primary-600 hover:text-primary-500">
-              {uploading ? 'Uploading...' : 'Upload a GPX file'}
+              {uploading ? 'Uploading...' : 'Upload a route file'}
             </span>
             <input
               id="file-upload"
               type="file"
               className="sr-only"
-              accept=".gpx"
+              accept=".gpx,.fit,.tcx,.kml"
               onChange={(e) => handleFileChange(e.target.files)}
               disabled={uploading}
             />
           </label>
-          <p className="text-xs text-gray-500 mt-2">or drag and drop</p>
+          <p className="text-xs text-gray-500 mt-2">GPX, FIT, TCX, or KML • drag and drop</p>
         </div>
       </div>
       
