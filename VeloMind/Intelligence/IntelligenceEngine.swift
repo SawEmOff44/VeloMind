@@ -23,7 +23,7 @@ class IntelligenceEngine: ObservableObject {
     private var speedHistory: [SpeedDataPoint] = []
     
     // Reference to rider parameters
-    private var riderParameters: RiderParameters
+    private(set) var riderParameters: RiderParameters
     
     init(riderParameters: RiderParameters) {
         self.riderParameters = riderParameters
