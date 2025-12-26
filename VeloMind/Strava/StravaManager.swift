@@ -139,8 +139,8 @@ class StravaManager: ObservableObject {
         do {
             let data = try await makeAuthenticatedRequest(endpoint: "/athlete")
             let decoder = JSONDecoder()
-            athlete = try decoder.decode(StravaAthlete.self, from: data)
-            logger.info("Fetched athlete: \(athlete?.firstname ?? "Unknown")")
+            self.athlete = try decoder.decode(StravaAthlete.self, from: data)
+            logger.info("Fetched athlete: \(self.athlete?.firstname ?? "Unknown")")
         } catch {
             logger.error("Failed to fetch athlete: \(error.localizedDescription)")
         }
@@ -157,9 +157,9 @@ class StravaManager: ObservableObject {
             
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            recentActivities = try decoder.decode([StravaActivity].self, from: data)
+            self.recentActivities = try decoder.decode([StravaActivity].self, from: data)
             
-            logger.info("Fetched \(recentActivities.count) activities")
+            logger.info("Fetched \(self.recentActivities.count) activities")
         } catch {
             logger.error("Failed to fetch activities: \(error.localizedDescription)")
         }

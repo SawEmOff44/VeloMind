@@ -5,37 +5,35 @@ struct RouteView: View {
     @State private var isImporting = false
     
     var body: some View {
-        NavigationStack {
-            List {
-                if let route = coordinator.routeManager.currentRoute {
-                    Section("Active Route") {
-                        RouteCard(route: route)
-                    }
-                } else {
-                    ContentUnavailableView(
-                        "No Route Loaded",
-                        systemImage: "map",
-                        description: Text("Import a GPX file to get started")
-                    )
+        List {
+            if let route = coordinator.routeManager.currentRoute {
+                Section("Active Route") {
+                    RouteCard(route: route)
+                }
+            } else {
+                ContentUnavailableView(
+                    "No Route Loaded",
+                    systemImage: "map",
+                    description: Text("Import a GPX file to get started")
+                )
+            }
+        }
+        .navigationTitle("Routes")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: {
+                    isImporting = true
+                }) {
+                    Label("Import GPX", systemImage: "square.and.arrow.down")
                 }
             }
-            .navigationTitle("Routes")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: {
-                        isImporting = true
-                    }) {
-                        Label("Import GPX", systemImage: "square.and.arrow.down")
-                    }
-                }
-            }
-            .fileImporter(
-                isPresented: $isImporting,
-                allowedContentTypes: [.xml],
-                allowsMultipleSelection: false
-            ) { result in
-                handleGPXImport(result)
-            }
+        }
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: [.xml],
+            allowsMultipleSelection: false
+        ) { result in
+            handleGPXImport(result)
         }
     }
     
@@ -69,9 +67,11 @@ struct RouteCard: View {
                 .font(.headline)
             
             HStack {
-                Label("\(String(format: "%.1f", route.totalDistance / 1000)) km", systemImage: "map")
+                let miles = route.totalDistance * 0.000621371
+                let feet = route.totalElevationGain * 3.28084
+                Label(String(format: "%.2f mi", miles), systemImage: "map")
                 Spacer()
-                Label("\(String(format: "%.0f", route.totalElevationGain)) m", systemImage: "arrow.up.forward")
+                Label(String(format: "%.0f ft", feet), systemImage: "arrow.up.forward")
             }
             .font(.subheadline)
             .foregroundColor(.secondary)

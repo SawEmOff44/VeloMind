@@ -157,8 +157,8 @@ class FitnessManager: ObservableObject {
         }
         
         if best20MinPower > 0 {
-            ftpEstimate = best20MinPower * 0.95
-            logger.info("Estimated FTP: \(Int(ftpEstimate))W")
+            self.ftpEstimate = best20MinPower * 0.95
+            logger.info("Estimated FTP: \(Int(self.ftpEstimate))W")
         }
     }
     

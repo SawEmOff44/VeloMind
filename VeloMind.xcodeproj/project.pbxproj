@@ -5,7 +5,513 @@
 	};
 	objectVersion = 56;
 	objects = {
-		minimumIOSVersion = 17.0;
+
+/* Begin PBXBuildFile section */
+		0A000001 /* VeloMindApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000101 /* VeloMindApp.swift */; };
+		0A000002 /* RideCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000102 /* RideCoordinator.swift */; };
+		0A000003 /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000103 /* BLEManager.swift */; };
+		0A000004 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000104 /* LocationManager.swift */; };
+		0A000005 /* RiderParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000105 /* RiderParameters.swift */; };
+		0A000006 /* RideSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000106 /* RideSession.swift */; };
+		0A000007 /* Route.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000107 /* Route.swift */; };
+		0A000008 /* SensorData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000108 /* SensorData.swift */; };
+		0A000009 /* StravaModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000109 /* StravaModels.swift */; };
+		0A00000A /* WindData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010A /* WindData.swift */; };
+		0A00000B /* ExportManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010B /* ExportManager.swift */; };
+		0A00000C /* PersistenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010C /* PersistenceManager.swift */; };
+		0A00000D /* CalibrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010D /* CalibrationManager.swift */; };
+		0A00000E /* PowerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010E /* PowerEngine.swift */; };
+		0A00000F /* GPXParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010F /* GPXParser.swift */; };
+		0A000010 /* RouteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000110 /* RouteManager.swift */; };
+		0A000011 /* FitnessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000111 /* FitnessManager.swift */; };
+		0A000012 /* StravaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000112 /* StravaManager.swift */; };
+		0A000013 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000113 /* ContentView.swift */; };
+		0A000014 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000114 /* HistoryView.swift */; };
+		0A000015 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000115 /* RideView.swift */; };
+		0A000016 /* RouteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000116 /* RouteView.swift */; };
+		0A000017 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000117 /* SettingsView.swift */; };
+		0A000018 /* WeatherManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000118 /* WeatherManager.swift */; };
+		0A000019 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000119 /* User.swift */; };
+		0A00001A /* AuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011A /* AuthenticationManager.swift */; };
+		0A00001B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011B /* LoginView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0A000100 /* VeloMind.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VeloMind.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A000101 /* VeloMindApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VeloMindApp.swift; sourceTree = "<group>"; };
+		0A000102 /* RideCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideCoordinator.swift; sourceTree = "<group>"; };
+		0A000103 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEManager.swift; sourceTree = "<group>"; };
+		0A000104 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
+		0A000105 /* RiderParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiderParameters.swift; sourceTree = "<group>"; };
+		0A000106 /* RideSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideSession.swift; sourceTree = "<group>"; };
+		0A000107 /* Route.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Route.swift; sourceTree = "<group>"; };
+		0A000108 /* SensorData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorData.swift; sourceTree = "<group>"; };
+		0A000109 /* StravaModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaModels.swift; sourceTree = "<group>"; };
+		0A00010A /* WindData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindData.swift; sourceTree = "<group>"; };
+		0A00010B /* ExportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportManager.swift; sourceTree = "<group>"; };
+		0A00010C /* PersistenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceManager.swift; sourceTree = "<group>"; };
+		0A00010D /* CalibrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationManager.swift; sourceTree = "<group>"; };
+		0A00010E /* PowerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerEngine.swift; sourceTree = "<group>"; };
+		0A00010F /* GPXParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPXParser.swift; sourceTree = "<group>"; };
+		0A000110 /* RouteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteManager.swift; sourceTree = "<group>"; };
+		0A000111 /* FitnessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessManager.swift; sourceTree = "<group>"; };
+		0A000112 /* StravaManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaManager.swift; sourceTree = "<group>"; };
+		0A000113 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		0A000114 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		0A000115 /* RideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideView.swift; sourceTree = "<group>"; };
+		0A000116 /* RouteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteView.swift; sourceTree = "<group>"; };
+		0A000117 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		0A000118 /* WeatherManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherManager.swift; sourceTree = "<group>"; };
+		0A000119 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		0A00011A /* AuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
+		0A00011B /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		0A00011C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0A000200 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0A000300 = {
+			isa = PBXGroup;
+			children = (
+				0A000301 /* VeloMind */,
+				0A000302 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		0A000301 /* VeloMind */ = {
+			isa = PBXGroup;
+			children = (
+				0A000101 /* VeloMindApp.swift */,
+				0A000102 /* RideCoordinator.swift */,
+				0A00011C /* Info.plist */,
+				0A000319 /* Authentication */,
+				0A000310 /* BLE */,
+				0A000311 /* Location */,
+				0A000312 /* Models */,
+				0A000313 /* Persistence */,
+				0A000314 /* PowerEngine */,
+				0A000315 /* Routes */,
+				0A000316 /* Strava */,
+				0A000317 /* UI */,
+				0A000318 /* Weather */,
+			);
+			path = VeloMind;
+			sourceTree = "<group>";
+		};
+		0A000302 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0A000100 /* VeloMind.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0A000310 /* BLE */ = {
+			isa = PBXGroup;
+			children = (
+				0A000103 /* BLEManager.swift */,
+			);
+			path = BLE;
+			sourceTree = "<group>";
+		};
+		0A000311 /* Location */ = {
+			isa = PBXGroup;
+			children = (
+				0A000104 /* LocationManager.swift */,
+			);
+			path = Location;
+			sourceTree = "<group>";
+		};
+		0A000312 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				0A000105 /* RiderParameters.swift */,
+				0A000106 /* RideSession.swift */,
+				0A000107 /* Route.swift */,
+				0A000108 /* SensorData.swift */,
+				0A000109 /* StravaModels.swift */,
+				0A00010A /* WindData.swift */,
+				0A000119 /* User.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		0A000313 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				0A00010B /* ExportManager.swift */,
+				0A00010C /* PersistenceManager.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		0A000314 /* PowerEngine */ = {
+			isa = PBXGroup;
+			children = (
+				0A00010D /* CalibrationManager.swift */,
+				0A00010E /* PowerEngine.swift */,
+			);
+			path = PowerEngine;
+			sourceTree = "<group>";
+		};
+		0A000315 /* Routes */ = {
+			isa = PBXGroup;
+			children = (
+				0A00010F /* GPXParser.swift */,
+				0A000110 /* RouteManager.swift */,
+			);
+			path = Routes;
+			sourceTree = "<group>";
+		};
+		0A000316 /* Strava */ = {
+			isa = PBXGroup;
+			children = (
+				0A000111 /* FitnessManager.swift */,
+				0A000112 /* StravaManager.swift */,
+			);
+			path = Strava;
+			sourceTree = "<group>";
+		};
+		0A000317 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				0A000113 /* ContentView.swift */,
+				0A000114 /* HistoryView.swift */,
+				0A00011B /* LoginView.swift */,
+				0A000115 /* RideView.swift */,
+				0A000116 /* RouteView.swift */,
+				0A000117 /* SettingsView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		0A000318 /* Weather */ = {
+			isa = PBXGroup;
+			children = (
+				0A000118 /* WeatherManager.swift */,
+			);
+			path = Weather;
+			sourceTree = "<group>";
+		};
+		0A000319 /* Authentication */ = {
+			isa = PBXGroup;
+			children = (
+				0A00011A /* AuthenticationManager.swift */,
+			);
+			path = Authentication;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0A000400 /* VeloMind */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0A000500 /* Build configuration list for PBXNativeTarget "VeloMind" */;
+			buildPhases = (
+				0A000401 /* Sources */,
+				0A000200 /* Frameworks */,
+				0A000402 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VeloMind;
+			productName = VeloMind;
+			productReference = 0A000100 /* VeloMind.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0A000600 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					0A000400 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 0A000601 /* Build configuration list for PBXProject "VeloMind" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 0A000300;
+			productRefGroup = 0A000302 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0A000400 /* VeloMind */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0A000402 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0A000401 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0A000001 /* VeloMindApp.swift in Sources */,
+				0A000002 /* RideCoordinator.swift in Sources */,
+				0A000003 /* BLEManager.swift in Sources */,
+				0A000004 /* LocationManager.swift in Sources */,
+				0A000005 /* RiderParameters.swift in Sources */,
+				0A000006 /* RideSession.swift in Sources */,
+				0A000007 /* Route.swift in Sources */,
+				0A000008 /* SensorData.swift in Sources */,
+				0A000009 /* StravaModels.swift in Sources */,
+				0A00000A /* WindData.swift in Sources */,
+				0A00000B /* ExportManager.swift in Sources */,
+				0A00000C /* PersistenceManager.swift in Sources */,
+				0A00000D /* CalibrationManager.swift in Sources */,
+				0A00000E /* PowerEngine.swift in Sources */,
+				0A00000F /* GPXParser.swift in Sources */,
+				0A000010 /* RouteManager.swift in Sources */,
+				0A000011 /* FitnessManager.swift in Sources */,
+				0A000012 /* StravaManager.swift in Sources */,
+				0A000013 /* ContentView.swift in Sources */,
+				0A000014 /* HistoryView.swift in Sources */,
+				0A000015 /* RideView.swift in Sources */,
+				0A000016 /* RouteView.swift in Sources */,
+				0A000017 /* SettingsView.swift in Sources */,
+				0A000018 /* WeatherManager.swift in Sources */,
+				0A000019 /* User.swift in Sources */,
+				0A00001A /* AuthenticationManager.swift in Sources */,
+				0A00001B /* LoginView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0A000501 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9K5ZUAM9MP;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VeloMind/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.velomind.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		0A000502 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9K5ZUAM9MP;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VeloMind/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.velomind.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		0A000602 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		0A000603 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0A000500 /* Build configuration list for PBXNativeTarget "VeloMind" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A000501 /* Debug */,
+				0A000502 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0A000601 /* Build configuration list for PBXProject "VeloMind" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0A000602 /* Debug */,
+				0A000603 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
 	};
-	rootObject = VeloMindProject;
+	rootObject = 0A000600 /* Project object */;
 }

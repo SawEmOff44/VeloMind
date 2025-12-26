@@ -154,20 +154,20 @@ class PowerEngine: ObservableObject {
         
         let vAir = speed + headwind
         let angleRad = atan(grade)
-        let pRoll = riderParameters.crr * riderParameters.mass * g * speed * cos(angleRad)
-        let pGrav = riderParameters.mass * g * grade * speed
+        let pRoll = self.riderParameters.crr * self.riderParameters.mass * g * speed * cos(angleRad)
+        let pGrav = self.riderParameters.mass * g * grade * speed
         
         // Power attributable to aero drag
-        let pAero = measuredPower * (1 - riderParameters.drivetrainLoss) - pRoll - pGrav
+        let pAero = measuredPower * (1 - self.riderParameters.drivetrainLoss) - pRoll - pGrav
         
         if vAir > 0 && pAero > 0 {
             // Solve for CdA
             let newCdA = (2 * pAero) / (airDensity * pow(vAir, 3))
             
             // Smooth the update (moving average)
-            riderParameters.cda = 0.8 * riderParameters.cda + 0.2 * newCdA
+            self.riderParameters.cda = 0.8 * self.riderParameters.cda + 0.2 * newCdA
             
-            logger.info("Calibrated CdA: \(riderParameters.cda, privacy: .public)")
+            logger.info("Calibrated CdA: \(self.riderParameters.cda, privacy: .public)")
         }
     }
     

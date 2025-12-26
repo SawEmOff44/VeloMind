@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var coordinator: RideCoordinator
+    @EnvironmentObject var authManager: AuthenticationManager
     @State private var mass: Double = 85
     @State private var cda: Double = 0.32
     @State private var crr: Double = 0.0045
@@ -10,35 +11,59 @@ struct SettingsView: View {
     let positions = ["Hoods", "Drops"]
     
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Rider Parameters") {
+        Form {
+            Section("Account") {
+                if let user = authManager.currentUser {
                     HStack {
-                        Text("Total Mass (kg)")
+                        Text("Name")
                         Spacer()
-                        TextField("Mass", value: $mass, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
+                        Text(user.name)
+                            .foregroundColor(.secondary)
                     }
                     
                     HStack {
-                        Text("CdA (m²)")
+                        Text("Email")
                         Spacer()
-                        TextField("CdA", value: $cda, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
+                        Text(user.email)
+                            .foregroundColor(.secondary)
                     }
-                    
-                    HStack {
-                        Text("Crr")
-                        Spacer()
-                        TextField("Crr", value: $crr, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                    }
+                }
+                
+                Button(role: .destructive, action: {
+                    authManager.logout()
+                }) {
+                    Text("Sign Out")
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            
+            Section("Rider Parameters") {
+                HStack {
+                    Text("Total Mass (lbs)")
+                    Spacer()
+                    TextField("Mass", value: $mass, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                }
+                
+                HStack {
+                    Text("CdA (m²)")
+                    Spacer()
+                    TextField("CdA", value: $cda, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                }
+                
+                HStack {
+                    Text("Crr")
+                    Spacer()
+                    TextField("Crr", value: $crr, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                }
                     
                     Picker("Position", selection: $selectedPosition) {
                         ForEach(positions, id: \.self) { position in
@@ -106,11 +131,9 @@ struct SettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Settings")
             .onAppear {
                 loadParameters()
             }
-        }
     }
     
     private func loadParameters() {

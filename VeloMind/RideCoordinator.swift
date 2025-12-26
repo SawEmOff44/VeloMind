@@ -13,6 +13,7 @@ class RideCoordinator: ObservableObject {
     let calibrationManager = CalibrationManager()
     let stravaManager = StravaManager()
     let fitnessManager = FitnessManager()
+    let persistenceManager = PersistenceManager()
     
     // Ride state
     @Published var isRiding = false

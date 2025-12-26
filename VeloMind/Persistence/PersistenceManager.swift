@@ -6,10 +6,24 @@ import os.log
 class PersistenceManager: ObservableObject {
     private let logger = Logger(subsystem: "com.velomind.app", category: "Persistence")
     
-    private let rideSessions = "rideSessions"
-    private let routes = "routes"
-    private let calibrationSessions = "calibrationSessions"
-    private let userPreferences = "userPreferences"
+    private var userId: String?
+    
+    private var rideSessions: String {
+        "rideSessions_\(userId ?? "default")"
+    }
+    private var routes: String {
+        "routes_\(userId ?? "default")"
+    }
+    private var calibrationSessions: String {
+        "calibrationSessions_\(userId ?? "default")"
+    }
+    private var userPreferences: String {
+        "userPreferences_\(userId ?? "default")"
+    }
+    
+    func setCurrentUser(_ userId: String?) {
+        self.userId = userId
+    }
     
     // MARK: - Ride Sessions
     

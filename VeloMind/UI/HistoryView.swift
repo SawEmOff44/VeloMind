@@ -4,8 +4,7 @@ struct HistoryView: View {
     @EnvironmentObject var coordinator: RideCoordinator
     
     var body: some View {
-        NavigationStack {
-            List {
+        List {
                 if coordinator.stravaManager.isAuthenticated {
                     Section("Strava Activities") {
                         ForEach(coordinator.stravaManager.recentActivities) { activity in
@@ -30,11 +29,9 @@ struct HistoryView: View {
                     }
                     .buttonStyle(.borderedProminent)
                 }
-            }
-            .navigationTitle("History")
-            .refreshable {
-                await coordinator.stravaManager.fetchRecentActivities()
-            }
+        }
+        .refreshable {
+            await coordinator.stravaManager.fetchRecentActivities()
         }
     }
 }
