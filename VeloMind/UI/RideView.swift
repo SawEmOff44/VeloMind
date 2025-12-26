@@ -4,20 +4,11 @@ struct RideView: View {
     @EnvironmentObject var coordinator: RideCoordinator
     
     var body: some View {
-        ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .edgesIgnoringSafeArea(.all)
-            
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Intelligence Alerts (top priority)
-                    IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
-                        .padding(.horizontal)
+        ScrollView {
+            VStack(spacing: 20) {
+                // Intelligence Alerts (top priority)
+                IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
+                    .padding(.horizontal)
                     
                     // Primary metrics
                     VStack(spacing: 14) {
@@ -102,21 +93,20 @@ struct RideView: View {
                     IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
                         .padding(.horizontal)
                     
-                    Spacer(minLength: 30)
-                    
                     // Ride controls - Fixed at bottom
                     RideControlButtons(coordinator: coordinator)
                         .padding(.horizontal)
-                        .padding(.bottom, 100)
+                        .padding(.bottom, 20)
                 }
-                .padding(.top, 10)
-            }
         }
-    }
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let hours = Int(duration) / 3600
-        let minutes = (Int(duration) % 3600) / 60
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
         let seconds = Int(duration) % 60
         
         if hours > 0 {
