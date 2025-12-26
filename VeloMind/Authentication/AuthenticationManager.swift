@@ -10,6 +10,10 @@ class AuthenticationManager: ObservableObject {
     private let userDefaultsKey = "velomind.currentUser"
     private let tokenKey = "velomind.authToken"
     
+    var currentToken: String? {
+        UserDefaults.standard.string(forKey: tokenKey)
+    }
+    
     init() {
         loadSavedUser()
     }

@@ -38,6 +38,102 @@ const upload = multer({
   }
 });
 
+// Get all routes for user (for iOS sync)
+router.get('/list', authenticateToken, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT id, user_id, name, total_distance, total_elevation_gain, 
+              point_count, created_at, updated_at
+       FROM routes
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    
+    res.json({ routes: result.rows });
+  } catch (error) {
+    console.error('Error fetching routes:', error);
+    res.status(500).json({ error: 'Failed to fetch routes' });
+  }
+});
+
+// Download GPX file (for iOS sync)
+router.get('/download/:id', authenticateToken, async (req, res) => {
+  try {
+    const routeResult = await query(
+      'SELECT * FROM routes WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    
+    if (routeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Route not found' });
+    }
+    
+    const route = routeResult.rows[0];
+    
+    // Get route points
+    const pointsResult = await query(
+      `SELECT latitude, longitude, elevation, distance
+       FROM route_points
+       WHERE route_id = $1
+       ORDER BY point_index ASC`,
+      [req.params.id]
+    );
+    
+    // Generate GPX XML
+    const gpxData = generateGPX(route.name, pointsResult.rows);
+    
+    res.set('Content-Type', 'application/gpx+xml');
+    res.set('Content-Disposition', `attachment; filename="${route.name}.gpx"`);
+    res.send(gpxData);
+  } catch (error) {
+    console.error('Error downloading route:', error);
+    res.status(500).json({ error: 'Failed to download route' });
+  }
+});
+
+// Generate GPX XML from route points
+function generateGPX(name, points) {
+  let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="VeloMind" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>${escapeXml(name)}</name>
+  </metadata>
+  <trk>
+    <name>${escapeXml(name)}</name>
+    <trkseg>
+`;
+  
+  for (const point of points) {
+    gpx += `      <trkpt lat="${point.latitude}" lon="${point.longitude}">
+`;
+    if (point.elevation !== null) {
+      gpx += `        <ele>${point.elevation}</ele>
+`;
+    }
+    gpx += `      </trkpt>
+`;
+  }
+  
+  gpx += `    </trkseg>
+  </trk>
+</gpx>`;
+  
+  return gpx;
+}
+
+function escapeXml(unsafe) {
+  return unsafe.replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+    }
+  });
+}
+
 // Parse GPX XML
 async function parseGPX(xmlData) {
   const parser = new xml2js.Parser();

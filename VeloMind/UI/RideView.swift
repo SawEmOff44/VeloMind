@@ -98,6 +98,12 @@ struct RideView: View {
                     IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
                         .padding(.horizontal, 12)
                     
+                    // Learning Mode Indicator
+                    if coordinator.learningEngine.learnedParameters.hasUsefulLearning {
+                        LearningActiveIndicator(learningEngine: coordinator.learningEngine)
+                            .padding(.horizontal, 12)
+                    }
+                    
                     // Message Dialog Box - Full width
                     MessageDialogBox()
                         .padding(.top, 4)
@@ -129,10 +135,44 @@ struct RideView: View {
 // MARK: - Navigation Alert Box
 
 struct NavigationAlertBox: View {
-    @State private var direction: String = "straight"  // left, straight, right
-    @State private var distance: String = "0.2 mi"
+    @EnvironmentObject var coordinator: RideCoordinator
     @State private var pulseAnimation: Bool = false
     @State private var arrowScale: CGFloat = 1.0
+    
+    var body: some View {
+        if let turn = coordinator.routeManager.nextTurn {
+            let distanceToTurn = turn.distance - (coordinator.routeManager.currentMatchResult?.distanceAlongRoute ?? 0)
+            let distanceMiles = distanceToTurn * 0.000621371
+            let distanceDisplay = distanceMiles < 0.1 ? 
+                String(format: "%.0f ft", distanceToTurn * 3.28084) :
+                String(format: "%.1f mi", distanceMiles)
+            
+            NavigationAlertContent(
+                direction: turn.type,
+                distance: distanceDisplay,
+                pulseAnimation: $pulseAnimation,
+                arrowScale: $arrowScale
+            )
+        } else if coordinator.routeManager.currentRoute != nil {
+            // On route but no turns ahead
+            NavigationAlertContent(
+                direction: .straight,
+                distance: "Continue",
+                pulseAnimation: $pulseAnimation,
+                arrowScale: $arrowScale
+            )
+        } else {
+            // No route loaded - placeholder
+            NoRouteContent()
+        }
+    }
+}
+
+struct NavigationAlertContent: View {
+    let direction: TurnType
+    let distance: String
+    @Binding var pulseAnimation: Bool
+    @Binding var arrowScale: CGFloat
     
     var body: some View {
         HStack(spacing: 20) {
@@ -158,7 +198,7 @@ struct NavigationAlertBox: View {
                     )
                 
                 // Arrow icon
-                Image(systemName: directionIcon)
+                Image(systemName: direction.icon)
                     .font(.system(size: 48, weight: .bold))
                     .foregroundColor(arrowColor)
                     .shadow(color: arrowColor.opacity(0.5), radius: 8, x: 0, y: 0)
@@ -184,7 +224,7 @@ struct NavigationAlertBox: View {
                     )
                     .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
                 
-                Text(directionText)
+                Text(direction.description)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white.opacity(0.9))
                     .tracking(0.5)
@@ -238,28 +278,45 @@ struct NavigationAlertBox: View {
         }
     }
     
-    private var directionIcon: String {
-        switch direction {
-        case "left": return "arrow.turn.up.left"
-        case "right": return "arrow.turn.up.right"
-        default: return "arrow.up"
-        }
-    }
-    
-    private var directionText: String {
-        switch direction {
-        case "left": return "Turn Left"
-        case "right": return "Turn Right"
-        default: return "Continue Straight"
-        }
-    }
-    
     private var arrowColor: Color {
         switch direction {
-        case "left": return .yellow
-        case "right": return .orange
-        default: return .cyan
+        case .straight: return .cyan
+        case .slightLeft, .left, .sharpLeft: return .yellow
+        case .slightRight, .right, .sharpRight: return .orange
         }
+    }
+}
+
+struct NoRouteContent: View {
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "map")
+                .font(.system(size: 40))
+                .foregroundColor(.gray.opacity(0.5))
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("No Route Loaded")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.7))
+                
+                Text("Load a route in Settings for navigation")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.gray.opacity(0.15))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal, 12)
     }
 }
 
@@ -712,6 +769,59 @@ struct AlertBanner: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(severity.color, lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Learning Active Indicator
+
+struct LearningActiveIndicator: View {
+    @ObservedObject var learningEngine: LearningEngine
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "brain.head.profile")
+                .foregroundColor(.cyan)
+                .font(.caption)
+            
+            Text("Using learned parameters")
+                .font(.caption2)
+                .foregroundColor(.gray)
+            
+            Spacer()
+            
+            HStack(spacing: 4) {
+                if learningEngine.learnedParameters.cdaLearningStatus == .highConfidence {
+                    Text("CdA")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.cyan.opacity(0.2))
+                        .cornerRadius(4)
+                }
+                
+                if learningEngine.learnedParameters.fatigueLearningStatus == .highConfidence {
+                    Text("Fatigue")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.green.opacity(0.2))
+                        .cornerRadius(4)
+                }
+                
+                if learningEngine.learnedParameters.heatLearningStatus == .highConfidence {
+                    Text("Heat")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.2))
+                        .cornerRadius(4)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(8)
     }
 }
 

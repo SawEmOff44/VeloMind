@@ -1,105 +1,188 @@
 import { Link } from 'react-router-dom'
+import { 
+  BoltIcon, 
+  ChartBarIcon, 
+  MapIcon,
+  CloudIcon,
+  CpuChipIcon,
+  BeakerIcon,
+  FireIcon,
+  BrainIcon
+} from '@heroicons/react/24/outline'
 
 export default function Landing() {
   return (
-    <div className="bg-white">
+    <div className="bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 min-h-screen">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-blue-50 to-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
+      <div className="relative overflow-hidden">
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-cyan-600/10 to-purple-600/20 animate-pulse" />
+        
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 sm:py-40">
           <div className="text-center">
-            <div className="mb-8">
-              <span className="text-6xl sm:text-8xl">🚴</span>
+            {/* Icon with glow effect */}
+            <div className="mb-8 relative inline-block">
+              <div className="absolute inset-0 bg-cyan-500/50 blur-3xl rounded-full animate-pulse" />
+              <span className="relative text-7xl sm:text-9xl filter drop-shadow-2xl">🚴</span>
             </div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-6xl md:text-7xl">
-              Power Your Ride with{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">
+            
+            <h1 className="text-5xl font-black tracking-tight text-white sm:text-7xl md:text-8xl mb-6">
+              Train Smarter with{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 animate-gradient">
                 VeloMind
               </span>
             </h1>
-            <p className="mt-8 text-lg sm:text-xl leading-8 text-gray-600 max-w-3xl mx-auto">
-              Transform your cycling experience with real-time power estimation, 
-              advanced route matching, and comprehensive performance analytics—all without expensive power meters.
+            
+            <p className="mt-8 text-xl sm:text-2xl leading-relaxed text-gray-300 max-w-4xl mx-auto font-light">
+              Real-time intelligence for cyclists. Physics-based power estimation, 
+              AI learning, and professional analytics—
+              <span className="text-cyan-400 font-semibold"> no power meter required</span>.
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6">
               <Link
                 to="/register"
-                className="w-full sm:w-auto rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                className="group relative w-full sm:w-auto rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-10 py-5 text-xl font-bold text-white shadow-2xl hover:shadow-cyan-500/50 transform hover:scale-105 transition-all duration-300"
               >
-                Get Started Free
+                <span className="relative z-10">Start Training Free</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
               </Link>
+              
               <Link
                 to="/login"
-                className="w-full sm:w-auto rounded-lg border-2 border-gray-300 px-8 py-4 text-lg font-semibold text-gray-900 hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+                className="w-full sm:w-auto rounded-xl border-2 border-cyan-500/50 bg-gray-800/50 backdrop-blur-sm px-10 py-5 text-xl font-bold text-white hover:border-cyan-400 hover:bg-gray-700/50 transition-all duration-300"
               >
                 Sign In
               </Link>
             </div>
-            <p className="mt-6 text-sm text-gray-500">
-              No credit card required • Free forever
-            </p>
+            
+            <div className="mt-8 flex items-center justify-center gap-8 text-gray-400">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium">No credit card</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium">Free forever</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium">iOS & Web</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Features Section */}
-      <div className="py-20 sm:py-32">
+      <div className="py-24 sm:py-32 bg-gray-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 mb-4">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-6">
               Everything You Need to Train Smarter
             </h2>
-            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-              Professional-grade cycling analytics without the professional price tag
+            <p className="text-xl sm:text-2xl text-gray-400 max-w-3xl mx-auto">
+              Professional-grade cycling intelligence in your pocket
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Feature 1 */}
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 mx-auto mb-6">
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Feature 1 - Real-Time Power */}
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 border border-gray-700 hover:border-cyan-500/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <BoltIcon className="h-9 w-9 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Real-Time Power Estimation</h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                Get accurate power metrics without expensive power meters. Uses physics-based calculations with speed, elevation, and environmental data.
+              <h3 className="text-xl font-bold text-white mb-3 text-center">Real-Time Power</h3>
+              <p className="text-gray-400 text-center leading-relaxed">
+                Physics-based power estimation without expensive meters. Know your watts every second.
               </p>
             </div>
 
-            {/* Feature 2 */}
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-green-500 to-green-600 mx-auto mb-6">
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
+            {/* Feature 2 - AI Learning */}
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 border border-gray-700 hover:border-purple-500/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <BrainIcon className="h-9 w-9 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Advanced Analytics</h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                Power curves, zone distribution, training load tracking, and fitness metrics. Analyze your performance like a pro.
+              <h3 className="text-xl font-bold text-white mb-3 text-center">AI Learning</h3>
+              <p className="text-gray-400 text-center leading-relaxed">
+                Learns your aerodynamics, fatigue patterns, and heat sensitivity over time.
               </p>
             </div>
 
-            {/* Feature 3 */}
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 mx-auto mb-6">
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
+            {/* Feature 3 - Smart Navigation */}
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-green-500/20 transition-all duration-300 border border-gray-700 hover:border-green-500/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <MapIcon className="h-9 w-9 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Smart Route Matching</h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                Upload GPX routes and get real-time guidance. Know exactly where you are and what's coming next.
+              <h3 className="text-xl font-bold text-white mb-3 text-center">Smart Navigation</h3>
+              <p className="text-gray-400 text-center leading-relaxed">
+                Turn-by-turn guidance with climb previews and wind-aware speed predictions.
               </p>
             </div>
 
-            {/* Feature 4 */}
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 mx-auto mb-6">
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
+            {/* Feature 4 - Intelligence Alerts */}
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300 border border-gray-700 hover:border-orange-500/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <FireIcon className="h-9 w-9 text-white" />
               </div>
+              <h3 className="text-xl font-bold text-white mb-3 text-center">Intelligence Alerts</h3>
+              <p className="text-gray-400 text-center leading-relaxed">
+                Overcooking warnings, pacing advice, nutrition timing, and fatigue detection.
+              </p>
+            </div>
+
+            {/* Feature 5 - Environmental Awareness */}
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 border border-gray-700 hover:border-blue-500/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <CloudIcon className="h-9 w-9 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3 text-center">Environmental Load</h3>
+              <p className="text-gray-400 text-center leading-relaxed">
+                Real-time calculation of heat, humidity, and wind impact on your performance.
+              </p>
+            </div>
+
+            {/* Feature 6 - Advanced Analytics */}
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300 border border-gray-700 hover:border-indigo-500/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <ChartBarIcon className="h-9 w-9 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3 text-center">Pro Analytics</h3>
+              <p className="text-gray-400 text-center leading-relaxed">
+                Power curves, zone distribution, TSS tracking, and fitness metrics.
+              </p>
+            </div>
+
+            {/* Feature 7 - Effort Budget */}
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 border border-gray-700 hover:border-yellow-500/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <BeakerIcon className="h-9 w-9 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3 text-center">Effort Budget</h3>
+              <p className="text-gray-400 text-center leading-relaxed">
+                Visual gauge showing remaining energy. Know when to push and when to preserve.
+              </p>
+            </div>
+
+            {/* Feature 8 - Strava Integration */}
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-red-500/20 transition-all duration-300 border border-gray-700 hover:border-red-500/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <CpuChipIcon className="h-9 w-9 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3 text-center">Strava Sync</h3>
+              <p className="text-gray-400 text-center leading-relaxed">
+                Import activities and analyze your entire training history with fitness trends.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Custom Parameters</h3>
               <p className="text-gray-600 text-center leading-relaxed">
                 Fine-tune calculations with your weight, bike setup, and riding position. Multiple profiles for different bikes.

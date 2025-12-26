@@ -24,6 +24,7 @@ class IntelligenceEngine: ObservableObject {
     
     // Reference to rider parameters
     private(set) var riderParameters: RiderParameters
+    weak var learningEngine: LearningEngine?
     
     init(riderParameters: RiderParameters) {
         self.riderParameters = riderParameters
@@ -102,11 +103,14 @@ class IntelligenceEngine: ObservableObject {
     private func calculateEnvironmentalLoad(temperature: Double?, humidity: Double?, windSpeed: Double?) {
         var loadFactor = 0.0
         
+        // Use learned heat coefficient if available
+        let heatCoefficient = learningEngine?.getEffectiveHeatCoefficient() ?? 0.2
+        
         // Temperature impact (>75°F / 24°C starts adding load)
         if let temp = temperature {
             let tempF = temp * 9/5 + 32
             if tempF > 75 {
-                loadFactor += (tempF - 75) * 0.2  // 0.2% per degree F above 75
+                loadFactor += (tempF - 75) * heatCoefficient
             }
         }
         
@@ -208,8 +212,15 @@ class IntelligenceEngine: ObservableObject {
         let hours = rideDuration / 3600.0
         totalTSS = hours * pow(intensityFactor, 2) * 100
         
-        // Budget: assume 200 TSS is "full" ride capacity
-        effortBudgetRemaining = max(0, 100 - (totalTSS / 200.0 * 100))
+        // Apply learned fatigue rate if available
+        if let fatigueRate = learningEngine?.getEffectiveFatigueRate() {
+            // Adjust budget based on learned fatigue curve
+            let fatigueMultiplier = exp(-fatigueRate * intensityFactor * hours)
+            effortBudgetRemaining = max(0, 100 * fatigueMultiplier)
+        } else {
+            // Budget: assume 200 TSS is "full" ride capacity
+            effortBudgetRemaining = max(0, 100 - (totalTSS / 200.0 * 100))
+        }
     }
     
     // MARK: - Wind-Aware Speed Prediction

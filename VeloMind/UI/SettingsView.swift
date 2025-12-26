@@ -45,6 +45,32 @@ struct SettingsView: View {
                 }
             }
             
+            // Learning Mode Section
+            Section {
+                LearningModeView(learningEngine: coordinator.learningEngine)
+            } header: {
+                HStack {
+                    Image(systemName: "brain.head.profile")
+                    Text("Learning Mode")
+                }
+            } footer: {
+                Text("VeloMind learns your unique riding characteristics to provide more accurate predictions over time.")
+                    .font(.caption)
+            }
+            
+            // Routes Section
+            Section {
+                RoutesSyncView(coordinator: coordinator)
+            } header: {
+                HStack {
+                    Image(systemName: "map")
+                    Text("Routes & Navigation")
+                }
+            } footer: {
+                Text("Sync routes from web app for turn-by-turn navigation during rides.")
+                    .font(.caption)
+            }
+            
             // FTP & Fitness Section
             Section("Fitness Profile") {
                 HStack {
@@ -411,6 +437,263 @@ struct SensorSettingsView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Routes Sync View
+
+struct RoutesSyncView: View {
+    @ObservedObject var coordinator: RideCoordinator
+    @State private var syncing = false
+    @State private var syncError: String?
+    @State private var lastSyncDate: Date?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let route = coordinator.routeManager.currentRoute {
+                HStack {
+                    Image(systemName: "map.fill")
+                        .foregroundColor(.green)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Current Route")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(route.name)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    Spacer()
+                    Text("\(route.totalDistance / 1000, specifier: "%.1f") km")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                HStack {
+                    Image(systemName: "map")
+                        .foregroundColor(.gray)
+                    Text("No route loaded")
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Button {
+                syncRoutes()
+            } label: {
+                HStack {
+                    Image(systemName: syncing ? "arrow.triangle.2.circlepath" : "arrow.down.circle.fill")
+                    Text(syncing ? "Syncing..." : "Sync Routes from Web")
+                }
+            }
+            .disabled(syncing)
+            .buttonStyle(.bordered)
+            
+            if let error = syncError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+            
+            if let lastSync = lastSyncDate {
+                Text("Last synced: \(formatDate(lastSync))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private func syncRoutes() {
+        syncing = true
+        syncError = nil
+        
+        Task {
+            do {
+                // Get auth token from authentication manager if available
+                if let token = coordinator.authManager?.currentToken {
+                    await RouteSyncService.shared.setAuthToken(token)
+                }
+                
+                try await RouteSyncService.shared.syncRoutes(to: coordinator.routeManager)
+                
+                await MainActor.run {
+                    lastSyncDate = Date()
+                    syncing = false
+                }
+            } catch {
+                await MainActor.run {
+                    syncError = error.localizedDescription
+                    syncing = false
+                }
+            }
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// MARK: - Learning Mode View
+
+struct LearningModeView: View {
+    @ObservedObject var learningEngine: LearningEngine
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Overall Progress
+            HStack {
+                Text("Overall Learning Progress")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Spacer()
+                Text("\(Int(learningEngine.learnedParameters.overallProgress))%")
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.cyan)
+            }
+            
+            ProgressView(value: learningEngine.learnedParameters.overallProgress, total: 100)
+                .tint(.cyan)
+            
+            Divider()
+            
+            // CdA Learning
+            LearningMetricRow(
+                icon: "wind",
+                title: "Aerodynamics (CdA)",
+                learnedValue: learningEngine.learnedParameters.learnedCdA.map { String(format: "%.3f m²", $0) },
+                defaultValue: "Default: 0.320 m²",
+                status: learningEngine.learnedParameters.cdaLearningStatus,
+                rideCount: learningEngine.learnedParameters.cdaRideCount,
+                confidence: learningEngine.learnedParameters.cdaConfidence
+            )
+            
+            // Fatigue Learning
+            LearningMetricRow(
+                icon: "bolt.fill",
+                title: "Fatigue Rate",
+                learnedValue: learningEngine.learnedParameters.learnedFatigueRate.map { 
+                    let comparison = $0 > 0.15 ? "faster than average" : "slower than average"
+                    return "\(Int(abs($0 - 0.15) / 0.15 * 100))% \(comparison)"
+                },
+                defaultValue: "Using standard model",
+                status: learningEngine.learnedParameters.fatigueLearningStatus,
+                rideCount: learningEngine.learnedParameters.fatigueRideCount,
+                confidence: learningEngine.learnedParameters.fatigueConfidence
+            )
+            
+            // Heat Sensitivity Learning
+            LearningMetricRow(
+                icon: "thermometer.sun.fill",
+                title: "Heat Sensitivity",
+                learnedValue: learningEngine.learnedParameters.learnedHeatCoefficient.map { 
+                    String(format: "+%.1f%% per °F (above 65°F)", $0)
+                },
+                defaultValue: "Default: +0.2% per °F",
+                status: learningEngine.learnedParameters.heatLearningStatus,
+                rideCount: learningEngine.learnedParameters.heatRideCount,
+                confidence: learningEngine.learnedParameters.heatConfidence
+            )
+            
+            // FTP Estimation
+            if let estimatedFTP = learningEngine.learnedParameters.estimatedFTP {
+                Divider()
+                HStack {
+                    Image(systemName: "figure.outdoor.cycle")
+                        .foregroundColor(.orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Estimated FTP")
+                            .font(.subheadline)
+                        Text("\(Int(estimatedFTP))W")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(.orange)
+                    }
+                    Spacer()
+                    Text("\(learningEngine.learnedParameters.ftpSampleCount) samples")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // Last Updated
+            if learningEngine.learnedParameters.cdaRideCount > 0 {
+                Divider()
+                HStack {
+                    Image(systemName: "clock")
+                        .foregroundColor(.gray)
+                    Text("Last updated: \(formatDate(learningEngine.learnedParameters.lastUpdated))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+struct LearningMetricRow: View {
+    let icon: String
+    let title: String
+    let learnedValue: String?
+    let defaultValue: String
+    let status: LearnedParameters.LearningStatus
+    let rideCount: Int
+    let confidence: Double
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(statusColor)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                if let learned = learnedValue {
+                    Text(learned)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(statusColor)
+                } else {
+                    Text(defaultValue)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack(spacing: 4) {
+                    ForEach(0..<5) { index in
+                        Image(systemName: index < status.stars ? "star.fill" : "star")
+                            .font(.caption2)
+                            .foregroundColor(index < status.stars ? .yellow : .gray)
+                    }
+                    
+                    Text("• \(rideCount) rides")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+        }
+    }
+    
+    private var statusColor: Color {
+        switch status {
+        case .collecting: return .gray
+        case .lowConfidence: return .orange
+        case .mediumConfidence: return .yellow
+        case .highConfidence: return .green
         }
     }
 }

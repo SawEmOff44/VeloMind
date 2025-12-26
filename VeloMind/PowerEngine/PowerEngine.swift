@@ -11,6 +11,7 @@ class PowerEngine: ObservableObject {
     @Published var normalizedPower: Double = 0.0     // NP (intensity metric)
     
     var riderParameters = RiderParameters.default
+    weak var learningEngine: LearningEngine?
     
     private let logger = Logger(subsystem: "com.velomind.app", category: "Power")
     
@@ -35,12 +36,15 @@ class PowerEngine: ObservableObject {
         // Adjust air density for altitude
         let rho = adjustedAirDensity(altitude: altitude)
         
+        // Use learned CdA if available, otherwise use default
+        let effectiveCdA = learningEngine?.getEffectiveCdA() ?? riderParameters.cda
+        
         // Apparent wind speed (rider speed + headwind)
         let vAir = speed + headwind
         
         // 1. Aerodynamic drag power
         // P_aero = 0.5 * rho * CdA * v_air^3
-        let pAero = 0.5 * rho * riderParameters.cda * pow(vAir, 3)
+        let pAero = 0.5 * rho * effectiveCdA * pow(vAir, 3)
         
         // 2. Rolling resistance power
         // P_roll = Crr * m * g * v * cos(arctan(grade))

@@ -18,6 +18,8 @@ class RideCoordinator: ObservableObject {
     // Intelligence & Fitness
     let intelligenceEngine: IntelligenceEngine
     let fitnessProfileManager: FitnessProfileManager
+    let learningEngine: LearningEngine
+    var authManager: AuthenticationManager?
     
     // Ride state
     @Published var isRiding = false
@@ -31,13 +33,36 @@ class RideCoordinator: ObservableObject {
     init() {
         // Initialize intelligence components
         let riderParams = persistenceManager.loadRiderParameters() ?? RiderParameters.default
+        
+        // Load learned parameters
+        let learnedParams = Task {
+            await SegmentStore.shared.loadLearnedParameters() ?? LearnedParameters()
+        }
+        
+        self.learningEngine = LearningEngine(
+            riderParameters: riderParams,
+            learnedParameters: LearnedParameters()  // Will be updated async
+        )
         self.intelligenceEngine = IntelligenceEngine(riderParameters: riderParams)
         self.fitnessProfileManager = FitnessProfileManager(
             persistenceManager: persistenceManager,
             stravaManager: stravaManager
         )
         
+        // Link learning engine to other components
+        self.powerEngine.learningEngine = learningEngine
+        self.intelligenceEngine.learningEngine = learningEngine
+        
         setupDelegates()
+        
+        // Load learned parameters async
+        Task {
+            if let params = await SegmentStore.shared.loadLearnedParameters() {
+                await MainActor.run {
+                    self.learningEngine.learnedParameters = params
+                }
+            }
+        }
     }
     
     private func setupDelegates() {
@@ -60,12 +85,24 @@ class RideCoordinator: ObservableObject {
         // Start intelligence engine
         intelligenceEngine.startRide()
         
+        // Start learning engine
+        learningEngine.startRide()
+        
         // Start update loop
         startUpdateLoop()
     }
     
     func stopRide() {
         isRiding = false
+        
+        // End learning session and save ride data
+        learningEngine.endRide(
+            totalDistance: rideDistance,
+            avgPower: powerEngine.averagePower,
+            normalizedPower: powerEngine.normalizedPower,
+            avgSpeed: rideDistance / max(rideDuration, 1),
+            maxPower: powerEngine.powerHistory.map { $0.totalPower }.max() ?? 0
+        )
         
         // Stop services
         stopUpdateLoop()
@@ -152,6 +189,17 @@ class RideCoordinator: ObservableObject {
             rideDuration: rideDuration,
             rideDistance: rideDistance,
             routeAhead: routeManager.currentRoute
+        )
+        
+        // Update learning engine with ride data
+        learningEngine.updateRide(
+            power: powerResult.totalPower,
+            speed: speed,
+            grade: grade,
+            windSpeed: headwind,
+            temperature: weatherManager.currentTemperature ?? 20.0,
+            humidity: weatherManager.currentHumidity ?? 50.0,
+            heartRate: bleManager.currentHeartRate > 0 ? Double(bleManager.currentHeartRate) : nil
         )
         
         // Update climb preview if available

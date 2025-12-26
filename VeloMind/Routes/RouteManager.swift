@@ -9,11 +9,34 @@ class RouteManager: ObservableObject {
     @Published var currentMatchResult: RouteMatchResult?
     @Published var isOnRoute = true
     @Published var distanceRemaining: Double = 0
+    @Published var nextTurn: TurnInstruction?
     
     private let logger = Logger(subsystem: "com.velomind.app", category: "Route")
     private var processedPoints: [RoutePoint] = []
+    private var turns: [TurnInstruction] = []
+    private var routeIdMap: [String: URL] = [:]
     
     // MARK: - Route Loading
+    
+    func hasRoute(withId id: String) -> Bool {
+        return routeIdMap[id] != nil
+    }
+    
+    func loadGPX(from url: URL, routeId: String? = nil) {
+        Task {
+            do {
+                let data = try Data(contentsOf: url)
+                let name = url.deletingPathExtension().lastPathComponent
+                try await loadRoute(from: data, name: name)
+                
+                if let id = routeId {
+                    routeIdMap[id] = url
+                }
+            } catch {
+                logger.error("Failed to load GPX: \(error.localizedDescription)")
+            }
+        }
+    }
     
     func loadRoute(from data: Data, name: String) async throws {
         let parser = GPXParser()
@@ -34,7 +57,11 @@ class RouteManager: ObservableObject {
         
         currentRoute = route
         processedPoints = processed
-        logger.info("Loaded route '\(name)' with \(processed.count) points, \(route.totalDistance / 1000, privacy: .public) km")
+        
+        // Detect turns for navigation
+        turns = detectTurns(in: processed)
+        
+        logger.info("Loaded route '\(name)' with \(processed.count) points, \(route.totalDistance / 1000, privacy: .public) km, \(self.turns.count) turns")
     }
     
     // MARK: - Route Matching
@@ -87,7 +114,96 @@ class RouteManager: ObservableObject {
         isOnRoute = onRoute
         distanceRemaining = (currentRoute?.totalDistance ?? 0) - nearest.distance
         
+        // Update next turn instruction
+        updateNextTurn(from: closestIndex)
+        
         return result
+    }
+    
+    // MARK: - Turn Detection and Navigation
+    
+    private func detectTurns(in points: [RoutePoint]) -> [TurnInstruction] {
+        var detectedTurns: [TurnInstruction] = []
+        
+        guard points.count > 10 else { return detectedTurns }
+        
+        // Scan through route looking for significant bearing changes
+        let lookAhead = 5  // points to look ahead for bearing
+        
+        for i in stride(from: lookAhead, to: points.count - lookAhead, by: 3) {
+            let beforePoints = Array(points[max(0, i-lookAhead)...i])
+            let afterPoints = Array(points[i...min(points.count-1, i+lookAhead)])
+            
+            let bearingBefore = calculateBearing(between: beforePoints)
+            let bearingAfter = calculateBearing(between: afterPoints)
+            
+            var angleDiff = bearingAfter - bearingBefore
+            
+            // Normalize to -180 to 180
+            while angleDiff > 180 { angleDiff -= 360 }
+            while angleDiff < -180 { angleDiff += 360 }
+            
+            // Detect significant turns (>20 degrees)
+            if abs(angleDiff) > 20 {
+                let type = determineTurnType(angle: angleDiff)
+                let distance = points[i].distance
+                
+                detectedTurns.append(TurnInstruction(
+                    distance: distance,
+                    type: type,
+                    angle: abs(angleDiff),
+                    location: CLLocationCoordinate2D(
+                        latitude: points[i].latitude,
+                        longitude: points[i].longitude
+                    )
+                ))
+            }
+        }
+        
+        return detectedTurns
+    }
+    
+    private func calculateBearing(between points: [RoutePoint]) -> Double {
+        guard points.count >= 2 else { return 0 }
+        
+        let first = points.first!
+        let last = points.last!
+        
+        let lat1 = first.latitude * .pi / 180
+        let lon1 = first.longitude * .pi / 180
+        let lat2 = last.latitude * .pi / 180
+        let lon2 = last.longitude * .pi / 180
+        
+        let dLon = lon2 - lon1
+        
+        let y = sin(dLon) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        
+        let bearing = atan2(y, x) * 180 / .pi
+        return (bearing + 360).truncatingRemainder(dividingBy: 360)
+    }
+    
+    private func determineTurnType(angle: Double) -> TurnType {
+        let absAngle = abs(angle)
+        
+        if absAngle < 20 {
+            return .straight
+        } else if absAngle < 45 {
+            return angle > 0 ? .slightRight : .slightLeft
+        } else if absAngle < 135 {
+            return angle > 0 ? .right : .left
+        } else {
+            return angle > 0 ? .sharpRight : .sharpLeft
+        }
+    }
+    
+    private func updateNextTurn(from currentIndex: Int) {
+        // Find next turn within 500m
+        let currentDistance = currentRoute?.points[currentIndex].distance ?? 0
+        
+        nextTurn = turns.first { turn in
+            turn.distance > currentDistance && turn.distance - currentDistance <= 500
+        }
     }
     
     // MARK: - Private Methods
@@ -288,3 +404,46 @@ struct ClimbSegment {
     let maxGrade: Double          // decimal
 }
 
+// MARK: - Turn Navigation
+
+enum TurnType: String {
+    case straight = "straight"
+    case slightLeft = "slight_left"
+    case left = "left"
+    case sharpLeft = "sharp_left"
+    case slightRight = "slight_right"
+    case right = "right"
+    case sharpRight = "sharp_right"
+    
+    var icon: String {
+        switch self {
+        case .straight: return "arrow.up"
+        case .slightLeft: return "arrow.turn.up.left"
+        case .left: return "arrow.turn.up.left"
+        case .sharpLeft: return "arrow.uturn.left"
+        case .slightRight: return "arrow.turn.up.right"
+        case .right: return "arrow.turn.up.right"
+        case .sharpRight: return "arrow.uturn.right"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .straight: return "Continue Straight"
+        case .slightLeft: return "Slight Left"
+        case .left: return "Turn Left"
+        case .sharpLeft: return "Sharp Left"
+        case .slightRight: return "Slight Right"
+        case .right: return "Turn Right"
+        case .sharpRight: return "Sharp Right"
+        }
+    }
+}
+
+struct TurnInstruction: Identifiable {
+    let id = UUID()
+    let distance: Double  // meters along route
+    let type: TurnType
+    let angle: Double     // degrees
+    let location: CLLocationCoordinate2D
+}
