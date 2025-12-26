@@ -30,6 +30,7 @@
 		0A000015 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000115 /* RideView.swift */; };
 		0A000016 /* RouteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000116 /* RouteView.swift */; };
 		0A000017 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000117 /* SettingsView.swift */; };
+		0A00001C /* StravaAuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011D /* StravaAuthView.swift */; };
 		0A000018 /* WeatherManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000118 /* WeatherManager.swift */; };
 		0A000019 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000119 /* User.swift */; };
 		0A00001A /* AuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011A /* AuthenticationManager.swift */; };
@@ -63,6 +64,7 @@
 		0A000115 /* RideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideView.swift; sourceTree = "<group>"; };
 		0A000116 /* RouteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteView.swift; sourceTree = "<group>"; };
 		0A000117 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		0A00011D /* StravaAuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaAuthView.swift; sourceTree = "<group>"; };
 		0A000118 /* WeatherManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherManager.swift; sourceTree = "<group>"; };
 		0A000119 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		0A00011A /* AuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
@@ -195,6 +197,7 @@
 				0A000115 /* RideView.swift */,
 				0A000116 /* RouteView.swift */,
 				0A000117 /* SettingsView.swift */,
+				0A00011D /* StravaAuthView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -317,6 +320,7 @@
 				0A000015 /* RideView.swift in Sources */,
 				0A000016 /* RouteView.swift in Sources */,
 				0A000017 /* SettingsView.swift in Sources */,
+				0A00001C /* StravaAuthView.swift in Sources */,
 				0A000018 /* WeatherManager.swift in Sources */,
 				0A000019 /* User.swift in Sources */,
 				0A00001A /* AuthenticationManager.swift in Sources */,
