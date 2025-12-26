@@ -69,5 +69,16 @@
 			</dict>
 		</dict>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.velomind.strava</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>velomind</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
