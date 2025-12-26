@@ -7,7 +7,7 @@ import {
   CpuChipIcon,
   BeakerIcon,
   FireIcon,
-  BrainIcon
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 
 export default function Landing() {
@@ -107,7 +107,7 @@ export default function Landing() {
             {/* Feature 2 - AI Learning */}
             <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 border border-gray-700 hover:border-purple-500/50">
               <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
-                <BrainIcon className="h-9 w-9 text-white" />
+                <SparklesIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">AI Learning</h3>
               <p className="text-gray-400 text-center leading-relaxed">
