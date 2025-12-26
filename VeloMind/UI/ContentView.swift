@@ -2,39 +2,61 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var coordinator: RideCoordinator
-    @State private var selectedTab = 0
+    @State private var showMenu = false
     
     var body: some View {
-        TabView(selection: $selectedTab) {
+        NavigationStack {
             RideView()
-                .tabItem {
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: {
+                            showMenu = true
+                        }) {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                        }
+                    }
+                }
+                .sheet(isPresented: $showMenu) {
+                    MenuView()
+                }
+        }
+    }
+}
+
+struct MenuView: View {
+    @EnvironmentObject var coordinator: RideCoordinator
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                NavigationLink(destination: RideView()) {
                     Label("Ride", systemImage: "bicycle")
                 }
-                .tag(0)
-            
-            NavigationStack {
-                RouteView()
+                
+                NavigationLink(destination: RouteView()) {
+                    Label("Routes", systemImage: "map")
+                }
+                
+                NavigationLink(destination: HistoryView()) {
+                    Label("History", systemImage: "clock")
+                }
+                
+                NavigationLink(destination: SettingsView()) {
+                    Label("Settings", systemImage: "gear")
+                }
             }
-            .tabItem {
-                Label("Routes", systemImage: "map")
+            .navigationTitle("Menu")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
             }
-            .tag(1)
-            
-            NavigationStack {
-                HistoryView()
-            }
-            .tabItem {
-                Label("History", systemImage: "clock")
-            }
-            .tag(2)
-            
-            NavigationStack {
-                SettingsView()
-            }
-            .tabItem {
-                Label("Settings", systemImage: "gear")
-            }
-            .tag(3)
         }
     }
 }

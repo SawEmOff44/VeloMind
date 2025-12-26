@@ -4,14 +4,14 @@ struct RideView: View {
     @EnvironmentObject var coordinator: RideCoordinator
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Intelligence Alerts (top priority)
+        GeometryReader { geometry in
+            VStack(spacing: 12) {
+                // Intelligence Alerts
                 IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
-                    .padding(.horizontal)
+                    .padding(.horizontal, 12)
                     
-                    // Primary metrics
-                    VStack(spacing: 14) {
+                // Primary metrics
+                VStack(spacing: 10) {
                         // Power - Large display
                         MetricCard(
                             title: "POWER",
@@ -81,23 +81,20 @@ struct RideView: View {
                             )
                         }
                     }
-                    .padding(.horizontal)
-                    
-                    // Divider
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(height: 1)
-                        .padding(.horizontal, 32)
-                    
-                    // Intelligence Metrics
-                    IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
-                        .padding(.horizontal)
-                    
-                    // Ride controls - Fixed at bottom
-                    RideControlButtons(coordinator: coordinator)
-                        .padding(.horizontal)
-                        .padding(.bottom, 20)
-                }
+                .padding(.horizontal, 12)
+                
+                // Intelligence Metrics
+                IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
+                    .padding(.horizontal, 12)
+                
+                Spacer(minLength: 0)
+                
+                // Ride controls
+                RideControlButtons(coordinator: coordinator)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(
             LinearGradient(
