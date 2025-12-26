@@ -107,6 +107,11 @@ struct RideView: View {
             )
             .ignoresSafeArea()
         )
+    }
+    
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
         let seconds = Int(duration) % 60
         
         if hours > 0 {
