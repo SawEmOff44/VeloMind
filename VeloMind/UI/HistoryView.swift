@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @EnvironmentObject var coordinator: RideCoordinator
+    @State private var showStravaAuth = false
     
     var body: some View {
         List {
@@ -25,10 +26,14 @@ struct HistoryView: View {
                     )
                     
                     Button("Connect Strava") {
-                        // TODO: Implement Strava OAuth flow
+                        showStravaAuth = true
                     }
                     .buttonStyle(.borderedProminent)
                 }
+        }
+        .sheet(isPresented: $showStravaAuth) {
+            StravaAuthView()
+                .environmentObject(coordinator.stravaManager)
         }
         .refreshable {
             await coordinator.stravaManager.fetchRecentActivities()

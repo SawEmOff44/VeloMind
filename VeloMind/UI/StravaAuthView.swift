@@ -17,9 +17,10 @@ struct StravaAuthView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 30) {
-                    // Strava Logo Area
-                    VStack(spacing: 16) {
+                ScrollView {
+                    VStack(spacing: 30) {
+                        // Strava Logo Area
+                        VStack(spacing: 16) {
                         Image(systemName: "figure.outdoor.cycle")
                             .font(.system(size: 80))
                             .foregroundColor(.white)
@@ -36,10 +37,8 @@ struct StravaAuthView: View {
                             .padding(.horizontal, 40)
                     }
                     
-                    Spacer()
-                    
                     // Benefits
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 18) {
                         BenefitRow(
                             icon: "arrow.triangle.2.circlepath",
                             text: "Auto-sync your power data"
@@ -58,8 +57,6 @@ struct StravaAuthView: View {
                         )
                     }
                     .padding(.horizontal, 40)
-                    
-                    Spacer()
                     
                     // Connect Button
                     Button(action: {
@@ -96,8 +93,10 @@ struct StravaAuthView: View {
                             .foregroundColor(.red)
                             .padding(.horizontal)
                     }
+                    }
+                    .padding(.top, 20)
+                    .padding(.bottom, 40)
                 }
-                .padding(.top, 60)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
