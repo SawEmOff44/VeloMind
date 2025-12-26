@@ -6,8 +6,11 @@ struct RideView: View {
     var body: some View {
         ZStack {
             // Background - full screen
+            Color.black
+                .ignoresSafeArea()
+            
             LinearGradient(
-                gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]),
+                gradient: Gradient(colors: [Color.clear, Color.gray.opacity(0.3)]),
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -18,6 +21,7 @@ struct RideView: View {
                     // Intelligence Alerts
                     IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
                         .padding(.horizontal, 12)
+                        .padding(.top, 8)
                     
                     // Primary metrics
                     VStack(spacing: 8) {
@@ -93,13 +97,11 @@ struct RideView: View {
                     // Ride controls
                     RideControlButtons(coordinator: coordinator)
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
+                        .padding(.bottom, 20)
                 }
-                .padding(.top, 0)
-                .padding(.bottom, 10)
             }
         }
-        .ignoresSafeArea()
+        .edgesIgnoringSafeArea(.all)
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
