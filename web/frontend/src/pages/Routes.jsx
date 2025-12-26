@@ -212,9 +212,7 @@ export default function Routes() {
                 </Link>
               </div>
             </div>
-              </li>
             ))}
-          </ul>
         </div>
       )}
     </div>
