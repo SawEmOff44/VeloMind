@@ -7,6 +7,8 @@ import os.log
 class WeatherManager: ObservableObject {
     @Published var currentWind: WindData?
     @Published var currentWeather: WeatherData?
+    @Published var currentTemperature: Double?    // Celsius
+    @Published var currentHumidity: Double?       // Percentage (0-100)
     @Published var lastUpdateTime: Date?
     @Published var isOnline = true
     
@@ -100,6 +102,10 @@ class WeatherManager: ObservableObject {
                     pressure: pressure,
                     timestamp: Date()
                 )
+                
+                // Also update separate properties for easy access
+                currentTemperature = temperature
+                currentHumidity = humidity
             }
             
             lastFetchLocation = location

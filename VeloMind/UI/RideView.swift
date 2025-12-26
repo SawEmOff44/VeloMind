@@ -6,6 +6,9 @@ struct RideView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // Intelligence Alerts (top priority)
+                IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
+                
                 // Primary metrics
                 VStack(spacing: 12) {
                     // Power
@@ -70,6 +73,9 @@ struct RideView: View {
                         )
                     }
                 }
+                
+                // Intelligence Metrics
+                IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
                 
                 Spacer()
                 
@@ -209,3 +215,190 @@ struct SmallMetricCard: View {
     RideView()
         .environmentObject(RideCoordinator())
 }
+
+// MARK: - Intelligence Alert Views
+
+struct IntelligenceAlertsView: View {
+    @ObservedObject var engine: IntelligenceEngine
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // Overcooking Alert
+            if let alert = engine.overcookingAlert {
+                AlertBanner(
+                    message: alert.message,
+                    severity: alert.severity
+                )
+            }
+            
+            // Fatigue Alert
+            if let alert = engine.fatigueAlert {
+                AlertBanner(
+                    message: alert.message,
+                    severity: .medium
+                )
+            }
+            
+            // Pacing Recommendation
+            if let pacing = engine.pacingRecommendation {
+                AlertBanner(
+                    message: pacing.message,
+                    severity: .medium
+                )
+            }
+            
+            // Nutrition Alert
+            if let nutrition = engine.nutritionAlert {
+                AlertBanner(
+                    message: nutrition.message,
+                    severity: .medium,
+                    icon: "fork.knife"
+                )
+            }
+        }
+        .padding(.horizontal)
+    }
+}
+
+struct IntelligenceMetricsView: View {
+    @ObservedObject var engine: IntelligenceEngine
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // Environmental Load & Effort Budget
+            HStack(spacing: 12) {
+                // Environmental Load Index
+                VStack(spacing: 4) {
+                    Text("CONDITIONS")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .tracking(0.5)
+                    
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Image(systemName: "cloud.sun.fill")
+                            .foregroundColor(.orange)
+                        Text("+\(Int(engine.environmentalLoadIndex))%")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.orange)
+                    }
+                    
+                    Text("effort cost")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(10)
+                
+                // Effort Budget
+                VStack(spacing: 4) {
+                    Text("EFFORT BUDGET")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .tracking(0.5)
+                    
+                    ZStack {
+                        Circle()
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 6)
+                            .frame(width: 50, height: 50)
+                        
+                        Circle()
+                            .trim(from: 0, to: engine.effortBudgetRemaining / 100.0)
+                            .stroke(budgetColor(engine.effortBudgetRemaining), lineWidth: 6)
+                            .frame(width: 50, height: 50)
+                            .rotationEffect(.degrees(-90))
+                        
+                        Text("\(Int(engine.effortBudgetRemaining))%")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(budgetColor(engine.effortBudgetRemaining))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(10)
+            }
+            
+            // Wind-Aware Speed Prediction
+            if let predicted = engine.predictedSpeed {
+                HStack {
+                    Image(systemName: "wind")
+                        .foregroundColor(.cyan)
+                    
+                    Text("Predicted: ~\(String(format: "%.1f", predicted.speed)) mph (\(predicted.windCondition))")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color.cyan.opacity(0.2))
+                .cornerRadius(8)
+            }
+            
+            // Upcoming Climb Preview
+            if let climb = engine.upcomingClimb {
+                let distanceValue = climb.distance
+                let distanceDisplay = String(format: "%.1f", distanceValue)
+                let gradeDisplay = String(format: "%.1f", climb.grade)
+                let powerRange = "\(Int(climb.recommendedPower.lowerBound))–\(Int(climb.recommendedPower.upperBound))W"
+                
+                HStack {
+                    Image(systemName: "triangle.fill")
+                        .rotationEffect(.degrees(45))
+                        .foregroundColor(.red)
+                    
+                    Text("Upcoming: \(distanceDisplay) mi @ \(gradeDisplay)% — rec: \(powerRange)")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color.red.opacity(0.2))
+                .cornerRadius(8)
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    private func budgetColor(_ remaining: Double) -> Color {
+        if remaining > 60 {
+            return .green
+        } else if remaining > 30 {
+            return .yellow
+        } else {
+            return .red
+        }
+    }
+}
+
+struct AlertBanner: View {
+    let message: String
+    let severity: AlertSeverity
+    var icon: String = "exclamationmark.triangle.fill"
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundColor(severity.color)
+            
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.white)
+                .lineLimit(2)
+            
+            Spacer()
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .background(severity.color.opacity(0.25))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(severity.color, lineWidth: 1)
+        )
+    }
+}
+

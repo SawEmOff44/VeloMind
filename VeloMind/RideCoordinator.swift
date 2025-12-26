@@ -15,6 +15,10 @@ class RideCoordinator: ObservableObject {
     let fitnessManager = FitnessManager()
     let persistenceManager = PersistenceManager()
     
+    // Intelligence & Fitness
+    let intelligenceEngine: IntelligenceEngine
+    let fitnessProfileManager: FitnessProfileManager
+    
     // Ride state
     @Published var isRiding = false
     @Published var rideStartTime: Date?
@@ -25,6 +29,14 @@ class RideCoordinator: ObservableObject {
     private var updateTimer: Timer?
     
     init() {
+        // Initialize intelligence components
+        let riderParams = persistenceManager.loadRiderParameters()
+        self.intelligenceEngine = IntelligenceEngine(riderParameters: riderParams)
+        self.fitnessProfileManager = FitnessProfileManager(
+            persistenceManager: persistenceManager,
+            stravaManager: stravaManager
+        )
+        
         setupDelegates()
     }
     
@@ -44,6 +56,9 @@ class RideCoordinator: ObservableObject {
         locationManager.startTracking()
         bleManager.startScanning()
         powerEngine.resetMetrics()
+        
+        // Start intelligence engine
+        intelligenceEngine.startRide()
         
         // Start update loop
         startUpdateLoop()
@@ -116,6 +131,21 @@ class RideCoordinator: ObservableObject {
             grade: grade,
             headwind: headwind,
             altitude: location.altitude
+        )
+        
+        // Update intelligence engine with all current data
+        intelligenceEngine.update(
+            currentPower: powerResult.totalPower,
+            currentSpeed: speed,
+            currentCadence: bleManager.currentCadence,
+            heartRate: Double(bleManager.currentHeartRate),
+            grade: grade,
+            windSpeed: headwind,
+            temperature: weatherManager.currentTemperature,
+            humidity: weatherManager.currentHumidity,
+            rideDuration: rideDuration,
+            rideDistance: rideDistance,
+            routeAhead: routeManager.currentRoute
         )
         
         // Update distance

@@ -7,6 +7,10 @@ struct SettingsView: View {
     @State private var cda: Double = 0.32
     @State private var crr: Double = 0.0045
     @State private var selectedPosition = "Hoods"
+    @State private var ftp: String = ""
+    @State private var maxHR: String = ""
+    @State private var restingHR: String = ""
+    @State private var showFTPAlert = false
     
     let positions = ["Hoods", "Drops"]
     
@@ -35,6 +39,76 @@ struct SettingsView: View {
                     Text("Sign Out")
                         .frame(maxWidth: .infinity)
                 }
+            }
+            
+            // FTP & Fitness Section
+            Section("Fitness Profile") {
+                HStack {
+                    Text("FTP (watts)")
+                    Spacer()
+                    TextField("FTP", text: $ftp)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                }
+                
+                // Show estimated FTP if available
+                if let estimatedFTP = coordinator.fitnessProfileManager.currentProfile.estimatedFTP {
+                    HStack {
+                        Text("Estimated FTP")
+                        Spacer()
+                        Text("\(Int(estimatedFTP))W")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // FTP Update Suggestion
+                if coordinator.fitnessProfileManager.ftpNeedsUpdate,
+                   let suggestion = coordinator.fitnessProfileManager.ftpUpdateSuggestion {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(.orange)
+                            Text("FTP Update Suggested")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                        Text(suggestion)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                HStack {
+                    Text("Max Heart Rate (bpm)")
+                    Spacer()
+                    TextField("Max HR", text: $maxHR)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                }
+                
+                HStack {
+                    Text("Resting HR (bpm)")
+                    Spacer()
+                    TextField("Resting HR", text: $restingHR)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                }
+                
+                Button("Sync Strava Activities") {
+                    Task {
+                        await coordinator.fitnessProfileManager.importStravaActivities()
+                    }
+                }
+                .buttonStyle(.bordered)
+                
+                Button("Update Fitness Profile") {
+                    applyFitnessProfile()
+                }
+                .buttonStyle(.borderedProminent)
             }
             
             Section("Rider Parameters") {
@@ -149,6 +223,36 @@ struct SettingsView: View {
         coordinator.powerEngine.riderParameters.crr = crr
         
         // TODO: Save to persistence
+    }
+    
+    private func applyFitnessProfile() {
+        var profile = coordinator.fitnessProfileManager.currentProfile
+        
+        if let ftpValue = Double(ftp), ftpValue > 0 {
+            coordinator.fitnessProfileManager.updateFTP(ftpValue)
+        }
+        
+        if let maxHRValue = Int(maxHR), maxHRValue > 0 {
+            profile.maxHeartRate = maxHRValue
+        }
+        
+        if let restingHRValue = Int(restingHR), restingHRValue > 0 {
+            profile.restingHeartRate = restingHRValue
+        }
+        
+        // Update intelligence engine with new parameters
+        coordinator.intelligenceEngine.updateRiderParameters(profile)
+        
+        // Show confirmation
+        showFTPAlert = true
+    }
+}
+
+struct SettingsView_Previews: PreviewProvider {
+    static var previews: some View {
+        SettingsView()
+            .environmentObject(RideCoordinator())
+            .environmentObject(AuthenticationManager(persistenceManager: PersistenceManager()))
     }
 }
 

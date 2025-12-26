@@ -21,10 +21,6 @@
 		0A00000C /* PersistenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010C /* PersistenceManager.swift */; };
 		0A00000D /* CalibrationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010D /* CalibrationManager.swift */; };
 		0A00000E /* PowerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010E /* PowerEngine.swift */; };
-0Ab21ea17d4f63497fbe03a0b4 /* IntelligenceEngine.swift in Sources */,
-0Ae9bbfe704e9b4b30ae4e00da /* FitnessProfileManager.swift in Sources */,
-0Ab21ea17d4f63497fbe03a0b4 /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A10f9d9f8f5fd4e31b0a5e070 /* IntelligenceEngine.swift */; };
-0Ae9bbfe704e9b4b30ae4e00da /* FitnessProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0Ae01eb9df555243fbab643845 /* FitnessProfileManager.swift */; };
 		0A00000F /* GPXParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010F /* GPXParser.swift */; };
 		0A000010 /* RouteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000110 /* RouteManager.swift */; };
 		0A000011 /* FitnessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000111 /* FitnessManager.swift */; };
@@ -56,8 +52,6 @@
 		0A00010C /* PersistenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceManager.swift; sourceTree = "<group>"; };
 		0A00010D /* CalibrationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationManager.swift; sourceTree = "<group>"; };
 		0A00010E /* PowerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerEngine.swift; sourceTree = "<group>"; };
-0A10f9d9f8f5fd4e31b0a5e070 /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
-0Ae01eb9df555243fbab643845 /* FitnessProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessProfileManager.swift; sourceTree = "<group>"; };
 		0A00010F /* GPXParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPXParser.swift; sourceTree = "<group>"; };
 		0A000110 /* RouteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteManager.swift; sourceTree = "<group>"; };
 		0A000111 /* FitnessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessManager.swift; sourceTree = "<group>"; };
@@ -298,10 +292,6 @@
 				0A00000C /* PersistenceManager.swift in Sources */,
 				0A00000D /* CalibrationManager.swift in Sources */,
 				0A00000E /* PowerEngine.swift in Sources */,
-0Ab21ea17d4f63497fbe03a0b4 /* IntelligenceEngine.swift in Sources */,
-0Ae9bbfe704e9b4b30ae4e00da /* FitnessProfileManager.swift in Sources */,
-0Ab21ea17d4f63497fbe03a0b4 /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A10f9d9f8f5fd4e31b0a5e070 /* IntelligenceEngine.swift */; };
-0Ae9bbfe704e9b4b30ae4e00da /* FitnessProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0Ae01eb9df555243fbab643845 /* FitnessProfileManager.swift */; };
 				0A00000F /* GPXParser.swift in Sources */,
 				0A000010 /* RouteManager.swift in Sources */,
 				0A000011 /* FitnessManager.swift in Sources */,
