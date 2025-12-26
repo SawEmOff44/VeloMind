@@ -18,6 +18,12 @@
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIStatusBarHidden</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
