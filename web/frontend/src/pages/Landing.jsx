@@ -183,40 +183,6 @@ export default function Landing() {
           </div>
         </div>
       </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Custom Parameters</h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                Fine-tune calculations with your weight, bike setup, and riding position. Multiple profiles for different bikes.
-              </p>
-            </div>
-
-            {/* Feature 5 */}
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 mx-auto mb-6">
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Heart Rate Zones</h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                Connect Bluetooth heart rate monitors. Track intensity and optimize your training load.
-              </p>
-            </div>
-
-            {/* Feature 6 */}
-            <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 mx-auto mb-6">
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3 text-center">Strava Integration</h3>
-              <p className="text-gray-600 text-center leading-relaxed">
-                Sync your rides automatically. Import historical data and share achievements with your cycling community.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* How It Works */}
       <div className="bg-gradient-to-b from-gray-50 to-white py-20 sm:py-32">
