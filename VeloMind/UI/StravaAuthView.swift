@@ -8,19 +8,18 @@ struct StravaAuthView: View {
     @State private var errorMessage: String?
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                LinearGradient(
-                    gradient: Gradient(colors: [Color.orange.opacity(0.8), Color.red.opacity(0.6)]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 30) {
-                        // Strava Logo Area
-                        VStack(spacing: 16) {
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [Color.orange.opacity(0.8), Color.red.opacity(0.6)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 30) {
+                    // Strava Logo Area
+                    VStack(spacing: 16) {
                         Image(systemName: "figure.outdoor.cycle")
                             .font(.system(size: 80))
                             .foregroundColor(.white)
@@ -94,20 +93,16 @@ struct StravaAuthView: View {
                             .padding(.horizontal)
                     }
                     }
-                    .padding(.top, 20)
-                    .padding(.bottom, 40)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(.white)
-                }
+                .padding(.top, 60)
+                .padding(.bottom, 40)
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Done") {
+                    dismiss()
+                }
+                .foregroundColor(.white)
     }
     
     private func authenticateWithStrava() {
