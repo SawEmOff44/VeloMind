@@ -21,6 +21,7 @@ struct RideView: View {
                     // Navigation Box - Full width at top
                     NavigationAlertBox()
                         .frame(height: 80)
+                        .padding(.top, 50)
                     
                     // Intelligence Alerts
                     IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
