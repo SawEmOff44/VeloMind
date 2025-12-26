@@ -4,21 +4,22 @@ struct RideView: View {
     @EnvironmentObject var coordinator: RideCoordinator
     
     var body: some View {
-        ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Intelligence Alerts (top priority)
-                    IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
-                        .padding(.horizontal)
-                        .padding(.top, 10)
+        GeometryReader { geometry in
+            ZStack {
+                // Background gradient
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Intelligence Alerts (top priority)
+                        IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
+                            .padding(.horizontal)
+                            .padding(.top, 50)
                     
                     // Primary metrics
                     VStack(spacing: 14) {
@@ -108,10 +109,11 @@ struct RideView: View {
                     // Ride controls - Fixed at bottom
                     RideControlButtons(coordinator: coordinator)
                         .padding(.horizontal)
-                        .padding(.bottom, 20)
+                        .padding(.bottom, 100)
                 }
                 .padding(.top, 10)
             }
+        }
         }
     }
     

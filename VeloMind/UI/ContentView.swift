@@ -6,19 +6,15 @@ struct ContentView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack {
-                RideView()
-                    .navigationTitle("Ride")
-                    .navigationBarTitleDisplayMode(.inline)
-            }
-            .tabItem {
-                Label("Ride", systemImage: "bicycle")
-            }
-            .tag(0)
+            RideView()
+                .ignoresSafeArea(.all, edges: .top)
+                .tabItem {
+                    Label("Ride", systemImage: "bicycle")
+                }
+                .tag(0)
             
             NavigationStack {
                 RouteView()
-                    .navigationBarTitleDisplayMode(.inline)
             }
             .tabItem {
                 Label("Routes", systemImage: "map")
@@ -27,8 +23,6 @@ struct ContentView: View {
             
             NavigationStack {
                 HistoryView()
-                    .navigationTitle("History")
-                    .navigationBarTitleDisplayMode(.inline)
             }
             .tabItem {
                 Label("History", systemImage: "clock")
@@ -37,8 +31,6 @@ struct ContentView: View {
             
             NavigationStack {
                 SettingsView()
-                    .navigationTitle("Settings")
-                    .navigationBarTitleDisplayMode(.inline)
             }
             .tabItem {
                 Label("Settings", systemImage: "gear")
