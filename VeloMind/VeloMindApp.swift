@@ -11,6 +11,7 @@ struct VeloMindApp: App {
                 ContentView()
                     .environmentObject(authManager)
                     .environmentObject(rideCoordinator)
+                    .edgesIgnoringSafeArea(.all)
                     .onAppear {
                         if let userId = authManager.currentUser?.id.uuidString {
                             rideCoordinator.persistenceManager.setCurrentUser(userId)

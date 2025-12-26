@@ -5,23 +5,27 @@ struct ContentView: View {
     @State private var showMenu = false
     
     var body: some View {
-        NavigationStack {
+        ZStack(alignment: .topLeading) {
             RideView()
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button(action: {
-                            showMenu = true
-                        }) {
-                            Image(systemName: "line.3.horizontal")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                        }
-                    }
-                }
-                .sheet(isPresented: $showMenu) {
-                    MenuView()
-                }
+            
+            // Burger menu button
+            Button(action: {
+                showMenu = true
+            }) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                    .padding(16)
+                    .background(Color.black.opacity(0.5))
+                    .clipShape(Circle())
+            }
+            .padding(.top, 50)
+            .padding(.leading, 12)
         }
+        .sheet(isPresented: $showMenu) {
+            MenuView()
+        }
+        .edgesIgnoringSafeArea(.all)
     }
 }
 
