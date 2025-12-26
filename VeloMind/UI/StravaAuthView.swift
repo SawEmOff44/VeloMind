@@ -119,7 +119,7 @@ struct StravaAuthView: View {
             callbackURLScheme: "velomind"
         ) { callbackURL, error in
             if let error = error {
-                errorMessage = "Authentication failed: \\(error.localizedDescription)"
+                errorMessage = "Authentication failed: \(error.localizedDescription)"
                 return
             }
             
@@ -139,7 +139,6 @@ struct StravaAuthView: View {
             }
         }
         
-        session.presentationContextProvider = nil
         session.prefersEphemeralWebBrowserSession = false
         session.start()
     }

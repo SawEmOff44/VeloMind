@@ -5,7 +5,7 @@ struct ContentView: View {
     @State private var showMenu = false
     
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack(alignment: .bottomLeading) {
             RideView()
             
             // Burger menu button
@@ -19,7 +19,7 @@ struct ContentView: View {
                     .background(Color.black.opacity(0.5))
                     .clipShape(Circle())
             }
-            .padding(.top, 50)
+            .padding(.bottom, 40)
             .padding(.leading, 12)
         }
         .sheet(isPresented: $showMenu) {
