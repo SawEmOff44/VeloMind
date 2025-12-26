@@ -18,7 +18,6 @@ struct RideView: View {
                     // Intelligence Alerts (top priority)
                     IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
                         .padding(.horizontal)
-                        .padding(.top, 10)
                     
                     // Primary metrics
                     VStack(spacing: 14) {
@@ -108,11 +107,13 @@ struct RideView: View {
                     // Ride controls - Fixed at bottom
                     RideControlButtons(coordinator: coordinator)
                         .padding(.horizontal)
-                        .padding(.bottom, 50)
+                        .padding(.bottom, 90)
                 }
-                .padding(.top, 10)
+                .padding(.top, 60)
             }
+            .ignoresSafeArea(edges: .vertical)
         }
+        .ignoresSafeArea()
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
