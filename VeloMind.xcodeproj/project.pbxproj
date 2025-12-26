@@ -35,6 +35,7 @@
 		0A000019 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000119 /* User.swift */; };
 		0A00001A /* AuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011A /* AuthenticationManager.swift */; };
 		0A00001B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011B /* LoginView.swift */; };
+		0A00001E /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011E /* APIService.swift */; };
 		A9F5213F2EFE1F1C0018B014 /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */; };
 		A9F521402EFE1F1C0018B014 /* FitnessProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */; };
 /* End PBXBuildFile section */
@@ -70,6 +71,7 @@
 		0A00011A /* AuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
 		0A00011B /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		0A00011C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0A00011E /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessProfileManager.swift; sourceTree = "<group>"; };
 		A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -107,6 +109,7 @@
 				0A000313 /* Persistence */,
 				0A000314 /* PowerEngine */,
 				0A000315 /* Routes */,
+				0A00031A /* Services */,
 				0A000316 /* Strava */,
 				0A000317 /* UI */,
 				0A000318 /* Weather */,
@@ -218,6 +221,14 @@
 			path = Authentication;
 			sourceTree = "<group>";
 		};
+		0A00031A /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				0A00011E /* APIService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		A9F5213E2EFE1F1C0018B014 /* Intelligence */ = {
 			isa = PBXGroup;
 			children = (
@@ -325,6 +336,7 @@
 				0A000019 /* User.swift in Sources */,
 				0A00001A /* AuthenticationManager.swift in Sources */,
 				0A00001B /* LoginView.swift in Sources */,
+				0A00001E /* APIService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
