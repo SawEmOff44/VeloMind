@@ -161,7 +161,7 @@ class RideCoordinator: ObservableObject {
             
             // Estimate recommended power (1.0-1.1x FTP for moderate climbs)
             let powerMultiplier = 1.0 + (gradePercent / 100.0) // Rough estimate
-            let recommendedPower = Int(ftp * powerMultiplier)
+            let recommendedPower = ftp * powerMultiplier
             
             intelligenceEngine.upcomingClimb = ClimbPreview(
                 distance: distanceMiles,
@@ -189,6 +189,7 @@ class RideCoordinator: ObservableObject {
 }
 
 // MARK: - SensorDataDelegate
+@MainActor
 extension RideCoordinator: SensorDataDelegate {
     func didUpdateSpeed(_ speed: Double, timestamp: Date) {
         // Speed already published by BLEManager
