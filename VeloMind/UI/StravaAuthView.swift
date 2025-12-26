@@ -4,8 +4,8 @@ import AuthenticationServices
 struct StravaAuthView: View {
     @EnvironmentObject var stravaManager: StravaManager
     @Environment(\.dismiss) var dismiss
-    @State private var showingWebAuth = false
     @State private var errorMessage: String?
+    @State private var showWebAuth = false
     
     var body: some View {
         ZStack {
@@ -59,7 +59,7 @@ struct StravaAuthView: View {
                     
                     // Connect Button
                     Button(action: {
-                        authenticateWithStrava()
+                        showWebAuth = true
                     }) {
                         HStack {
                             Image(systemName: "link.circle.fill")
@@ -92,9 +92,21 @@ struct StravaAuthView: View {
                             .foregroundColor(.red)
                             .padding(.horizontal)
                     }
-                    }
+                }
                 .padding(.top, 60)
                 .padding(.bottom, 40)
+            }
+            
+            // Web Authentication Session
+            if showWebAuth, let authURL = stravaManager.getAuthorizationURL() {
+                WebAuthenticationView(
+                    url: authURL,
+                    callbackURLScheme: "velomind",
+                    onCompletion: { result in
+                        showWebAuth = false
+                        handleAuthResult(result)
+                    }
+                )
             }
         }
         .toolbar {
@@ -107,24 +119,10 @@ struct StravaAuthView: View {
         }
     }
     
-    private func authenticateWithStrava() {
-        guard let authURL = stravaManager.getAuthorizationURL() else {
-            errorMessage = "Failed to generate authorization URL"
-            return
-        }
-        
-        // Use ASWebAuthenticationSession for OAuth
-        let session = ASWebAuthenticationSession(
-            url: authURL,
-            callbackURLScheme: "velomind"
-        ) { callbackURL, error in
-            if let error = error {
-                errorMessage = "Authentication failed: \(error.localizedDescription)"
-                return
-            }
-            
-            guard let callbackURL = callbackURL,
-                  let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: true),
+    private func handleAuthResult(_ result: Result<URL, Error>) {
+        switch result {
+        case .success(let callbackURL):
+            guard let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: true),
                   let code = components.queryItems?.first(where: { $0.name == "code" })?.value else {
                 errorMessage = "Failed to extract authorization code"
                 return
@@ -137,10 +135,62 @@ struct StravaAuthView: View {
                     dismiss()
                 }
             }
+            
+        case .failure(let error):
+            // Don't show error if user cancelled
+            if (error as NSError).code != ASWebAuthenticationSessionError.canceledLogin.rawValue {
+                errorMessage = "Authentication failed: \(error.localizedDescription)"
+            }
+        }
+    }
+}
+
+// MARK: - Web Authentication View
+
+struct WebAuthenticationView: UIViewControllerRepresentable {
+    let url: URL
+    let callbackURLScheme: String
+    let onCompletion: (Result<URL, Error>) -> Void
+    
+    func makeUIViewController(context: Context) -> WebAuthenticationViewController {
+        let controller = WebAuthenticationViewController()
+        controller.url = url
+        controller.callbackURLScheme = callbackURLScheme
+        controller.onCompletion = onCompletion
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: WebAuthenticationViewController, context: Context) {
+        // No updates needed
+    }
+}
+
+class WebAuthenticationViewController: UIViewController, ASWebAuthenticationPresentationContextProviding {
+    var url: URL!
+    var callbackURLScheme: String!
+    var onCompletion: ((Result<URL, Error>) -> Void)?
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        let session = ASWebAuthenticationSession(
+            url: url,
+            callbackURLScheme: callbackURLScheme
+        ) { [weak self] callbackURL, error in
+            if let error = error {
+                self?.onCompletion?(.failure(error))
+            } else if let callbackURL = callbackURL {
+                self?.onCompletion?(.success(callbackURL))
+            }
         }
         
+        session.presentationContextProvider = self
         session.prefersEphemeralWebBrowserSession = false
         session.start()
+    }
+    
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        return view.window ?? ASPresentationAnchor()
     }
 }
 
