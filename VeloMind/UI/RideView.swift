@@ -18,9 +18,13 @@ struct RideView: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 8) {
+                    // Navigation Box - Full width at top
+                    NavigationAlertBox()
+                        .frame(height: 80)
+                    
                     // Intelligence Alerts
                     IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 8)
                     
                     // Primary metrics
                     VStack(spacing: 8) {
@@ -93,9 +97,14 @@ struct RideView: View {
                     IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
                         .padding(.horizontal, 12)
                     
+                    // Message Dialog Box - Full width
+                    MessageDialogBox()
+                        .padding(.top, 4)
+                    
                     // Ride controls
                     RideControlButtons(coordinator: coordinator)
                         .padding(.horizontal, 12)
+                        .padding(.bottom, 12)
                 }
                 .padding(.vertical, 0)
             }
@@ -112,6 +121,107 @@ struct RideView: View {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%02d:%02d", minutes, seconds)
+        }
+    }
+}
+
+// MARK: - Navigation Alert Box
+
+struct NavigationAlertBox: View {
+    @State private var direction: String = "straight"  // left, straight, right
+    @State private var distance: String = "0.2 mi"
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Direction Arrow
+            Image(systemName: directionIcon)
+                .font(.system(size: 42, weight: .bold))
+                .foregroundColor(.blue)
+                .frame(width: 65)
+            
+            // Distance Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text("IN \(distance)")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                Text(directionText)
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.gray.opacity(0.2))
+                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+        )
+        .padding(.horizontal, 12)
+    }
+    
+    private var directionIcon: String {
+        switch direction {
+        case "left": return "arrow.turn.up.left"
+        case "right": return "arrow.turn.up.right"
+        default: return "arrow.up"
+        }
+    }
+    
+    private var directionText: String {
+        switch direction {
+        case "left": return "Turn Left"
+        case "right": return "Turn Right"
+        default: return "Continue Straight"
+        }
+    }
+}
+
+// MARK: - Message Dialog Box
+
+struct MessageDialogBox: View {
+    @State private var message: String = ""
+    @State private var showMessage: Bool = false
+    
+    var body: some View {
+        if showMessage && !message.isEmpty {
+            HStack(spacing: 12) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.blue)
+                    .font(.title3)
+                
+                Text(message)
+                    .font(.body)
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation {
+                        showMessage = false
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.blue.opacity(0.2))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.blue.opacity(0.5), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+            )
+            .padding(.horizontal, 12)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        } else {
+            EmptyView()
         }
     }
 }
@@ -216,7 +326,7 @@ struct MetricCard: View {
     }
     
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             Text(title)
                 .font(size == .large ? .subheadline : .caption)
                 .foregroundColor(.gray)
@@ -225,20 +335,20 @@ struct MetricCard: View {
             
             HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text(value)
-                    .font(size == .large ? .system(size: 64, weight: .bold, design: .rounded) : .system(size: 32, weight: .bold, design: .rounded))
+                    .font(size == .large ? .system(size: 72, weight: .bold, design: .rounded) : .system(size: 38, weight: .bold, design: .rounded))
                     .foregroundColor(color)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                 
                 Text(unit)
-                    .font(size == .large ? .title2 : .body)
+                    .font(size == .large ? .title : .title3)
                     .foregroundColor(.gray.opacity(0.8))
                     .fontWeight(.medium)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .padding(.horizontal, 12)
+        .padding(.vertical, size == .large ? 24 : 18)
+        .padding(.horizontal, 14)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.gray.opacity(0.15))
@@ -257,7 +367,7 @@ struct SmallMetricCard: View {
     let unit: String
     
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             Text(title)
                 .font(.caption)
                 .foregroundColor(.gray.opacity(0.9))
@@ -266,21 +376,21 @@ struct SmallMetricCard: View {
             
             HStack(alignment: .lastTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
                 
                 if !unit.isEmpty {
                     Text(unit)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.gray.opacity(0.8))
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 10)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.gray.opacity(0.12))
