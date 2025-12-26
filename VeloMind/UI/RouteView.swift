@@ -18,7 +18,6 @@ struct RouteView: View {
                 )
             }
         }
-        .navigationTitle("Routes")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: {

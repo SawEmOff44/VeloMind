@@ -5,44 +5,45 @@ struct ContentView: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        NavigationStack {
-            TabView(selection: $selectedTab) {
+        TabView(selection: $selectedTab) {
+            NavigationStack {
                 RideView()
-                    .tabItem {
-                        Label("Ride", systemImage: "bicycle")
-                    }
-                    .tag(0)
-                
-                RouteView()
-                    .tabItem {
-                        Label("Routes", systemImage: "map")
-                    }
-                    .tag(1)
-                
-                HistoryView()
-                    .tabItem {
-                        Label("History", systemImage: "clock")
-                    }
-                    .tag(2)
-                
-                SettingsView()
-                    .tabItem {
-                        Label("Settings", systemImage: "gear")
-                    }
-                    .tag(3)
+                    .navigationTitle("Ride")
+                    .navigationBarTitleDisplayMode(.inline)
             }
-            .navigationTitle(navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-    
-    private var navigationTitle: String {
-        switch selectedTab {
-        case 0: return "Ride"
-        case 1: return "Routes"
-        case 2: return "History"
-        case 3: return "Settings"
-        default: return "VeloMind"
+            .tabItem {
+                Label("Ride", systemImage: "bicycle")
+            }
+            .tag(0)
+            
+            NavigationStack {
+                RouteView()
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+            .tabItem {
+                Label("Routes", systemImage: "map")
+            }
+            .tag(1)
+            
+            NavigationStack {
+                HistoryView()
+                    .navigationTitle("History")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+            .tabItem {
+                Label("History", systemImage: "clock")
+            }
+            .tag(2)
+            
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Settings")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+            .tabItem {
+                Label("Settings", systemImage: "gear")
+            }
+            .tag(3)
         }
     }
 }

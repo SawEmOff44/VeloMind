@@ -18,6 +18,7 @@ struct RideView: View {
                     // Intelligence Alerts (top priority)
                     IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
                         .padding(.horizontal)
+                        .padding(.top, 10)
                     
                     // Primary metrics
                     VStack(spacing: 14) {

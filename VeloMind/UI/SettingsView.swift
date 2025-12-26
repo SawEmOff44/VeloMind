@@ -48,7 +48,7 @@ struct SettingsView: View {
                     Text("FTP (watts)")
                     Spacer()
                     TextField("FTP", text: $ftp)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
                 }
@@ -85,7 +85,7 @@ struct SettingsView: View {
                     Text("Max Heart Rate (bpm)")
                     Spacer()
                     TextField("Max HR", text: $maxHR)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
                 }
@@ -94,7 +94,7 @@ struct SettingsView: View {
                     Text("Resting HR (bpm)")
                     Spacer()
                     TextField("Resting HR", text: $restingHR)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
                 }
