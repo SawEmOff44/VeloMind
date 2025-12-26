@@ -7,21 +7,20 @@ struct RideView: View {
         ZStack {
             // Background - full screen
             Color.black
-                .ignoresSafeArea()
+                .edgesIgnoringSafeArea(.all)
             
             LinearGradient(
                 gradient: Gradient(colors: [Color.clear, Color.gray.opacity(0.3)]),
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .ignoresSafeArea()
+            .edgesIgnoringSafeArea(.all)
             
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(spacing: 8) {
                     // Intelligence Alerts
                     IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
                         .padding(.horizontal, 12)
-                        .padding(.top, 8)
                     
                     // Primary metrics
                     VStack(spacing: 8) {
@@ -97,8 +96,8 @@ struct RideView: View {
                     // Ride controls
                     RideControlButtons(coordinator: coordinator)
                         .padding(.horizontal, 12)
-                        .padding(.bottom, 20)
                 }
+                .padding(.vertical, 0)
             }
         }
         .edgesIgnoringSafeArea(.all)
