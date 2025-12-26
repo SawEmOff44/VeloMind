@@ -131,35 +131,111 @@ struct RideView: View {
 struct NavigationAlertBox: View {
     @State private var direction: String = "straight"  // left, straight, right
     @State private var distance: String = "0.2 mi"
+    @State private var pulseAnimation: Bool = false
+    @State private var arrowScale: CGFloat = 1.0
     
     var body: some View {
-        HStack(spacing: 16) {
-            // Direction Arrow
-            Image(systemName: directionIcon)
-                .font(.system(size: 42, weight: .bold))
-                .foregroundColor(.blue)
-                .frame(width: 65)
+        HStack(spacing: 20) {
+            // Direction Arrow with animated glow
+            ZStack {
+                // Glow effect
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            gradient: Gradient(colors: [arrowColor.opacity(0.6), Color.clear]),
+                            center: .center,
+                            startRadius: 10,
+                            endRadius: 40
+                        )
+                    )
+                    .frame(width: 80, height: 80)
+                    .scaleEffect(pulseAnimation ? 1.2 : 1.0)
+                    .opacity(pulseAnimation ? 0.3 : 0.8)
+                    .animation(
+                        Animation.easeInOut(duration: 1.5)
+                            .repeatForever(autoreverses: true),
+                        value: pulseAnimation
+                    )
+                
+                // Arrow icon
+                Image(systemName: directionIcon)
+                    .font(.system(size: 48, weight: .bold))
+                    .foregroundColor(arrowColor)
+                    .shadow(color: arrowColor.opacity(0.5), radius: 8, x: 0, y: 0)
+                    .scaleEffect(arrowScale)
+                    .animation(
+                        Animation.spring(response: 0.5, dampingFraction: 0.6)
+                            .repeatForever(autoreverses: true),
+                        value: arrowScale
+                    )
+            }
+            .frame(width: 80)
             
-            // Distance Info
-            VStack(alignment: .leading, spacing: 4) {
+            // Distance Info with animated gradient text
+            VStack(alignment: .leading, spacing: 6) {
                 Text("IN \(distance)")
-                    .font(.headline)
-                    .foregroundColor(.white)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.white, arrowColor.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
+                
                 Text(directionText)
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                    .tracking(0.5)
             }
             
             Spacer()
+            
+            // Animated chevron indicator
+            Image(systemName: "chevron.right")
+                .font(.title2)
+                .foregroundColor(arrowColor.opacity(0.6))
+                .offset(x: pulseAnimation ? 4 : 0)
+                .animation(
+                    Animation.easeInOut(duration: 0.8)
+                        .repeatForever(autoreverses: true),
+                    value: pulseAnimation
+                )
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.gray.opacity(0.2))
-                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+            ZStack {
+                // Gradient background
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.gray.opacity(0.3),
+                        Color.gray.opacity(0.15)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                
+                // Border gradient
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        LinearGradient(
+                            colors: [arrowColor.opacity(0.6), arrowColor.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2
+                    )
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: arrowColor.opacity(0.3), radius: 12, x: 0, y: 4)
         )
         .padding(.horizontal, 12)
+        .onAppear {
+            pulseAnimation = true
+            arrowScale = 1.1
+        }
     }
     
     private var directionIcon: String {
@@ -177,53 +253,102 @@ struct NavigationAlertBox: View {
         default: return "Continue Straight"
         }
     }
+    
+    private var arrowColor: Color {
+        switch direction {
+        case "left": return .yellow
+        case "right": return .orange
+        default: return .cyan
+        }
+    }
 }
 
 // MARK: - Message Dialog Box
 
 struct MessageDialogBox: View {
     @State private var message: String = ""
-    @State private var showMessage: Bool = false
+    @State private var messageType: MessageType = .info
+    
+    enum MessageType {
+        case info, warning, success, error
+        
+        var color: Color {
+            switch self {
+            case .info: return .blue
+            case .warning: return .orange
+            case .success: return .green
+            case .error: return .red
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .info: return "info.circle.fill"
+            case .warning: return "exclamationmark.triangle.fill"
+            case .success: return "checkmark.circle.fill"
+            case .error: return "xmark.octagon.fill"
+            }
+        }
+    }
     
     var body: some View {
-        if showMessage && !message.isEmpty {
-            HStack(spacing: 12) {
-                Image(systemName: "info.circle.fill")
-                    .foregroundColor(.blue)
-                    .font(.title3)
-                
+        HStack(spacing: 12) {
+            Image(systemName: messageType.icon)
+                .foregroundColor(message.isEmpty ? .gray.opacity(0.3) : messageType.color)
+                .font(.title2)
+            
+            if message.isEmpty {
+                Text("No active messages")
+                    .font(.body)
+                    .foregroundColor(.gray.opacity(0.5))
+                    .italic()
+            } else {
                 Text(message)
                     .font(.body)
                     .foregroundColor(.white)
                     .lineLimit(2)
-                
-                Spacer()
-                
+            }
+            
+            Spacer()
+            
+            if !message.isEmpty {
                 Button(action: {
-                    withAnimation {
-                        showMessage = false
+                    withAnimation(.spring()) {
+                        message = ""
                     }
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
+                        .foregroundColor(.gray.opacity(0.7))
+                        .font(.title3)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.blue.opacity(0.2))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.blue.opacity(0.5), lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-            )
-            .padding(.horizontal, 12)
-            .transition(.move(edge: .top).combined(with: .opacity))
-        } else {
-            EmptyView()
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
+        .background(
+            ZStack {
+                // Base background
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(message.isEmpty ? Color.gray.opacity(0.1) : messageType.color.opacity(0.15))
+                
+                // Border with gradient
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        LinearGradient(
+                            colors: message.isEmpty ? 
+                                [Color.gray.opacity(0.3), Color.gray.opacity(0.1)] :
+                                [messageType.color.opacity(0.6), messageType.color.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
+            }
+            .shadow(color: message.isEmpty ? .clear : messageType.color.opacity(0.2), radius: 6, x: 0, y: 3)
+        )
+        .padding(.horizontal, 12)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: message)
     }
 }
 
