@@ -7,7 +7,7 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             RideView()
-                .ignoresSafeArea(.all, edges: .top)
+                .ignoresSafeArea(.container, edges: [.top, .bottom])
                 .tabItem {
                     Label("Ride", systemImage: "bicycle")
                 }
