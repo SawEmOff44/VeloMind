@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var maxHR: String = ""
     @State private var restingHR: String = ""
     @State private var showFTPAlert = false
+    @State private var showStravaAuth = false
     
     let positions = ["Hoods", "Drops"]
     
@@ -97,6 +98,49 @@ struct SettingsView: View {
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
                 }
+            }
+            
+            // Strava Integration Section
+            Section("Strava Integration") {
+                if coordinator.stravaManager.isAuthenticated {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text("Connected to Strava")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    
+                    if let athlete = coordinator.stravaManager.athlete {
+                        HStack {
+                            Text("Athlete")
+                            Spacer()
+                            Text("\\(athlete.firstname) \\(athlete.lastname)")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Button("Sync Activities") {
+                        Task {
+                            await coordinator.fitnessProfileManager.importStravaActivities()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    
+                    Button("Disconnect", role: .destructive) {
+                        // TODO: Implement disconnect
+                    }
+                } else {
+                    Button {
+                        showStravaAuth = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "figure.outdoor.cycle")
+                            Text("Connect to Strava")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
                 
                 Button("Sync Strava Activities") {
                     Task {
@@ -104,6 +148,7 @@ struct SettingsView: View {
                     }
                 }
                 .buttonStyle(.bordered)
+                .disabled(!coordinator.stravaManager.isAuthenticated)
                 
                 Button("Update Fitness Profile") {
                     applyFitnessProfile()
@@ -191,7 +236,7 @@ struct SettingsView: View {
                         .foregroundColor(.red)
                     } else {
                         Button("Connect to Strava") {
-                            // TODO: Implement OAuth flow
+                            showStravaAuth = true
                         }
                     }
                 }
@@ -207,6 +252,10 @@ struct SettingsView: View {
             }
             .onAppear {
                 loadParameters()
+            }
+            .sheet(isPresented: $showStravaAuth) {
+                StravaAuthView()
+                    .environmentObject(coordinator.stravaManager)
             }
     }
     

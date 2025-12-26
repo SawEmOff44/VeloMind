@@ -4,126 +4,114 @@ struct RideView: View {
     @EnvironmentObject var coordinator: RideCoordinator
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // Intelligence Alerts (top priority)
-                IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
-                
-                // Primary metrics
-                VStack(spacing: 12) {
-                    // Power
-                    MetricCard(
-                        title: "POWER",
-                        value: String(format: "%.0f", coordinator.powerEngine.smoothedPower10s),
-                        unit: "W",
-                        color: .orange,
-                        size: .large
-                    )
+        ZStack {
+            // Background gradient
+            LinearGradient(
+                gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Intelligence Alerts (top priority)
+                    IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
+                        .padding(.horizontal)
                     
-                    HStack(spacing: 12) {
-                        // Speed (convert m/s to mph)
+                    // Primary metrics
+                    VStack(spacing: 14) {
+                        // Power - Large display
                         MetricCard(
-                            title: "SPEED",
-                            value: String(format: "%.1f", coordinator.bleManager.currentSpeed * 2.23694),
-                            unit: "mph",
-                            color: .blue
+                            title: "POWER",
+                            value: String(format: "%.0f", coordinator.powerEngine.smoothedPower10s),
+                            unit: "W",
+                            color: .orange,
+                            size: .large
                         )
                         
-                        // Cadence
-                        MetricCard(
-                            title: "CADENCE",
-                            value: String(format: "%.0f", coordinator.bleManager.currentCadence),
-                            unit: "rpm",
-                            color: .green
-                        )
+                        HStack(spacing: 14) {
+                            // Speed (convert m/s to mph)
+                            MetricCard(
+                                title: "SPEED",
+                                value: String(format: "%.1f", coordinator.bleManager.currentSpeed * 2.23694),
+                                unit: "mph",
+                                color: .blue
+                            )
+                            
+                            // Cadence
+                            MetricCard(
+                                title: "CADENCE",
+                                value: String(format: "%.0f", coordinator.bleManager.currentCadence),
+                                unit: "rpm",
+                                color: .green
+                            )
+                        }
                     }
-                }
-                
-                // Secondary metrics
-                VStack(spacing: 8) {
-                    HStack(spacing: 12) {
-                        // Wind (convert m/s to mph)
-                        SmallMetricCard(
-                            title: "WIND",
-                            value: String(format: "%.1f", abs(coordinator.weatherManager.currentWind?.speed ?? 0) * 2.23694),
-                            unit: "mph"
-                        )
-                        
-                        // Grade
-                        SmallMetricCard(
-                            title: "GRADE",
-                            value: String(format: "%.1f", (coordinator.routeManager.currentMatchResult?.grade150m ?? 0) * 100),
-                            unit: "%"
-                        )
-                    }
+                    .padding(.horizontal)
                     
-                    HStack(spacing: 15) {
-                        // Duration
-                        SmallMetricCard(
-                            title: "TIME",
-                            value: formatDuration(coordinator.rideDuration),
-                            unit: ""
-                        )
-                        
-                        // Distance (convert m to miles)
-                        SmallMetricCard(
-                            title: "DISTANCE",
-                            value: String(format: "%.2f", coordinator.rideDistance * 0.000621371),
-                            unit: "mi"
-                        )
-                    }
-                }
-                
-                // Intelligence Metrics
-                IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
-                
-                Spacer()
-                
-                // Ride controls
-                HStack(spacing: 16) {
-                    if !coordinator.isRiding {
-                        Button(action: {
-                            coordinator.startRide()
-                        }) {
-                            Label("Start Ride", systemImage: "play.circle.fill")
-                                .font(.title2)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.green)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                        }
-                    } else {
-                        Button(action: {
-                            coordinator.pauseRide()
-                        }) {
-                            Label("Pause", systemImage: "pause.circle.fill")
-                                .font(.title2)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.yellow)
-                                .foregroundColor(.black)
-                                .cornerRadius(12)
+                    // Divider
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(height: 1)
+                        .padding(.horizontal, 32)
+                    
+                    // Secondary metrics
+                    VStack(spacing: 10) {
+                        HStack(spacing: 14) {
+                            // Wind (convert m/s to mph)
+                            SmallMetricCard(
+                                title: "WIND",
+                                value: String(format: "%.1f", abs(coordinator.weatherManager.currentWind?.speed ?? 0) * 2.23694),
+                                unit: "mph"
+                            )
+                            
+                            // Grade
+                            SmallMetricCard(
+                                title: "GRADE",
+                                value: String(format: "%.1f", (coordinator.routeManager.currentMatchResult?.grade150m ?? 0) * 100),
+                                unit: "%"
+                            )
                         }
                         
-                        Button(action: {
-                            coordinator.stopRide()
-                        }) {
-                            Label("Stop", systemImage: "stop.circle.fill")
-                                .font(.title2)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.red)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
+                        HStack(spacing: 14) {
+                            // Duration
+                            SmallMetricCard(
+                                title: "TIME",
+                                value: formatDuration(coordinator.rideDuration),
+                                unit: ""
+                            )
+                            
+                            // Distance (convert m to miles)
+                            SmallMetricCard(
+                                title: "DISTANCE",
+                                value: String(format: "%.2f", coordinator.rideDistance * 0.000621371),
+                                unit: "mi"
+                            )
                         }
                     }
+                    .padding(.horizontal)
+                    
+                    // Divider
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(height: 1)
+                        .padding(.horizontal, 32)
+                    
+                    // Intelligence Metrics
+                    IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
+                        .padding(.horizontal)
+                    
+                    Spacer(minLength: 30)
+                    
+                    // Ride controls - Fixed at bottom
+                    RideControlButtons(coordinator: coordinator)
+                        .padding(.horizontal)
+                        .padding(.bottom, 20)
                 }
-                .padding(.horizontal)
+                .padding(.top, 10)
             }
-            .padding()
         }
-        .background(Color.black)
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -139,76 +127,176 @@ struct RideView: View {
     }
 }
 
-struct MetricCard: View {
-        let title: String
-        let value: String
-        let unit: String
-        let color: Color
-        var size: Size = .medium
-        
-        enum Size {
-            case small, medium, large
-        }
-        
-        var body: some View {
-            VStack(spacing: 4) {
-                Text(title)
-                    .font(size == .large ? .subheadline : .caption2)
-                    .foregroundColor(.gray)
-                    .tracking(1)
+// MARK: - Ride Control Buttons
+
+struct RideControlButtons: View {
+    @ObservedObject var coordinator: RideCoordinator
+    
+    var body: some View {
+        HStack(spacing: 14) {
+            if !coordinator.isRiding {
+                Button(action: {
+                    coordinator.startRide()
+                }) {
+                    HStack {
+                        Image(systemName: "play.circle.fill")
+                            .font(.title2)
+                        Text("Start Ride")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.green, Color.green.opacity(0.8)]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+                    .shadow(color: Color.green.opacity(0.3), radius: 8, x: 0, y: 4)
+                }
+            } else {
+                Button(action: {
+                    coordinator.pauseRide()
+                }) {
+                    HStack {
+                        Image(systemName: "pause.circle.fill")
+                            .font(.title3)
+                        Text("Pause")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.yellow)
+                    .foregroundColor(.black)
+                    .cornerRadius(14)
+                }
                 
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                    Text(value)
-                        .font(size == .large ? .system(size: 60, weight: .bold) : .system(size: 28, weight: .bold))
-                        .foregroundColor(color)
-                        .minimumScaleFactor(0.4)
-                        .lineLimit(1)
-                    
-                    Text(unit)
-                        .font(size == .large ? .title2 : .callout)
-                        .foregroundColor(.gray)
+                Button(action: {
+                    coordinator.stopRide()
+                }) {
+                    HStack {
+                        Image(systemName: "stop.circle.fill")
+                            .font(.title3)
+                        Text("Stop")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.red, Color.red.opacity(0.8)]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+                    .shadow(color: Color.red.opacity(0.3), radius: 8, x: 0, y: 4)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 8)
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
         }
+    }
+}
+
+// MARK: - Format Duration Helper
+
+private func formatDuration(_ duration: TimeInterval) -> String {
+    let hours = Int(duration) / 3600
+    let minutes = (Int(duration) % 3600) / 60
+    let seconds = Int(duration) % 60
+    
+    if hours > 0 {
+        return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+struct MetricCard: View {
+    let title: String
+    let value: String
+    let unit: String
+    let color: Color
+    var size: Size = .medium
+    
+    enum Size {
+        case small, medium, large
+    }
+    
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(size == .large ? .subheadline : .caption)
+                .foregroundColor(.gray)
+                .tracking(1.5)
+                .fontWeight(.medium)
+            
+            HStack(alignment: .lastTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(size == .large ? .system(size: 64, weight: .bold, design: .rounded) : .system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(color)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                
+                Text(unit)
+                    .font(size == .large ? .title2 : .body)
+                    .foregroundColor(.gray.opacity(0.8))
+                    .fontWeight(.medium)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.gray.opacity(0.15))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(color.opacity(0.3), lineWidth: 1)
+                )
+        )
+        .shadow(color: color.opacity(0.1), radius: 4, x: 0, y: 2)
+    }
 }
 
 struct SmallMetricCard: View {
-        let title: String
-        let value: String
-        let unit: String
-        
-        var body: some View {
-            VStack(spacing: 3) {
-                Text(title)
-                    .font(.caption2)
-                    .foregroundColor(.gray)
-                    .tracking(0.5)
+    let title: String
+    let value: String
+    let unit: String
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.gray.opacity(0.9))
+                .tracking(1)
+                .fontWeight(.medium)
+            
+            HStack(alignment: .lastTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
                 
-                HStack(alignment: .lastTextBaseline, spacing: 2) {
-                    Text(value)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                    
-                    if !unit.isEmpty {
-                        Text(unit)
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                    }
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.caption)
+                        .foregroundColor(.gray.opacity(0.8))
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 6)
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(8)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.gray.opacity(0.12))
+        )
+    }
 }
 
 #Preview {
