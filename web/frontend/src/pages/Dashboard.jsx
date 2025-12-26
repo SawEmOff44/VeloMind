@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getSessions } from '../services/api'
 import { format } from 'date-fns'
+import IntelligenceDashboard from '../components/IntelligenceDashboard'
 
 export default function Dashboard() {
   const [sessions, setSessions] = useState([])
@@ -68,6 +69,26 @@ export default function Dashboard() {
               </dd>
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* Intelligence Dashboard Section */}
+      {sessions.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Performance Intelligence</h2>
+          <IntelligenceDashboard 
+            rideData={{ 
+              ftp: 250, // TODO: Get from user profile
+              recentSessions: sessions.slice(0, 5)
+            }}
+            intelligenceData={{
+              environmentalLoad: 8.5,
+              effortBudget: 67,
+              tss: 142,
+              caloriesBurned: 1850,
+              alerts: []
+            }}
+          />
         </div>
       )}
       

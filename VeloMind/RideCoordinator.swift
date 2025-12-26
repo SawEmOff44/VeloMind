@@ -115,6 +115,12 @@ class RideCoordinator: ObservableObject {
         // Match to route if available
         let routeMatch = routeManager.matchLocation(location)
         
+        // Analyze upcoming climbs
+        var upcomingClimb: ClimbSegment? = nil
+        if let currentIndex = routeManager.getCurrentPositionIndex() {
+            upcomingClimb = routeManager.analyzeUpcomingTerrain(currentIndex: currentIndex)
+        }
+        
         // Get speed (prefer BLE sensor, fallback to GPS)
         let speed = bleManager.currentSpeed > 0 ? bleManager.currentSpeed : locationManager.currentSpeed
         
@@ -147,6 +153,24 @@ class RideCoordinator: ObservableObject {
             rideDistance: rideDistance,
             routeAhead: routeManager.currentRoute
         )
+        
+        // Update climb preview if available
+        if let climb = upcomingClimb, let ftp = intelligenceEngine.riderParameters.ftp {
+            let distanceMiles = climb.distance * 0.000621371
+            let gradePercent = climb.averageGrade * 100
+            
+            // Estimate recommended power (1.0-1.1x FTP for moderate climbs)
+            let powerMultiplier = 1.0 + (gradePercent / 100.0) // Rough estimate
+            let recommendedPower = Int(ftp * powerMultiplier)
+            
+            intelligenceEngine.upcomingClimb = ClimbPreview(
+                distance: distanceMiles,
+                grade: gradePercent,
+                recommendedPower: (recommendedPower - 10)...(recommendedPower + 10)
+            )
+        } else {
+            intelligenceEngine.upcomingClimb = nil
+        }
         
         // Update distance
         // This is simplified - should track actual distance traveled

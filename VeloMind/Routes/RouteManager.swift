@@ -189,4 +189,102 @@ class RouteManager: ObservableObject {
         
         return totalGain
     }
+    
+    // MARK: - Climb Analysis
+    
+    /// Analyze upcoming terrain for climb preview
+    func analyzeUpcomingTerrain(currentIndex: Int, lookAheadDistance: Double = 1600) -> ClimbSegment? {
+        guard let route = currentRoute, currentIndex >= 0, currentIndex < route.points.count else {
+            return nil
+        }
+        
+        let currentDistance = route.points[currentIndex].distance
+        let targetDistance = currentDistance + lookAheadDistance
+        
+        var climbSegments: [ClimbSegment] = []
+        var inClimb = false
+        var climbStart: RoutePoint?
+        var climbStartIndex = currentIndex
+        
+        // Scan ahead for climbs (grade > 3%)
+        for i in (currentIndex + 1)..<route.points.count {
+            let point = route.points[i]
+            
+            if point.distance > targetDistance {
+                break
+            }
+            
+            let grade = calculateGrade(at: i, window: 100) // 100m rolling grade
+            
+            if grade > 0.03 && !inClimb {
+                // Start of climb
+                inClimb = true
+                climbStart = point
+                climbStartIndex = i
+            } else if grade <= 0.02 && inClimb {
+                // End of climb
+                if let start = climbStart {
+                    let distance = point.distance - start.distance
+                    let elevationGain = (point.elevation ?? 0) - (start.elevation ?? 0)
+                    let avgGrade = distance > 0 ? elevationGain / distance : 0
+                    
+                    // Only include significant climbs (>100m, >3% avg)
+                    if distance > 100 && avgGrade > 0.03 {
+                        climbSegments.append(ClimbSegment(
+                            startDistance: start.distance,
+                            endDistance: point.distance,
+                            distance: distance,
+                            elevationGain: elevationGain,
+                            averageGrade: avgGrade,
+                            maxGrade: calculateMaxGrade(from: climbStartIndex, to: i)
+                        ))
+                    }
+                }
+                inClimb = false
+                climbStart = nil
+            }
+        }
+        
+        // Return the first significant climb
+        return climbSegments.first
+    }
+    
+    private func calculateMaxGrade(from startIndex: Int, to endIndex: Int) -> Double {
+        guard let route = currentRoute else { return 0 }
+        
+        var maxGrade = 0.0
+        for i in startIndex...min(endIndex, route.points.count - 1) {
+            let grade = calculateGrade(at: i, window: 50) // 50m window for max
+            maxGrade = max(maxGrade, grade)
+        }
+        return maxGrade
+    }
+    
+    /// Get current position index in route
+    func getCurrentPositionIndex() -> Int? {
+        guard let matchResult = currentMatchResult,
+              let route = currentRoute else {
+            return nil
+        }
+        
+        // Find index of current matched point
+        for (index, point) in route.points.enumerated() {
+            if point.latitude == matchResult.nearestPoint.latitude &&
+               point.longitude == matchResult.nearestPoint.longitude {
+                return index
+            }
+        }
+        return nil
+    }
 }
+
+/// Represents a climb segment on the route
+struct ClimbSegment {
+    let startDistance: Double    // meters
+    let endDistance: Double       // meters
+    let distance: Double          // meters
+    let elevationGain: Double     // meters
+    let averageGrade: Double      // decimal (0.05 = 5%)
+    let maxGrade: Double          // decimal
+}
+

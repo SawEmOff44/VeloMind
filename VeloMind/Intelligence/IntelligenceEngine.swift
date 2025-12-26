@@ -302,16 +302,19 @@ class IntelligenceEngine: ObservableObject {
     // MARK: - Climb Preview
     
     private func previewUpcomingClimbs(routeAhead: Route?) {
-        guard let route = routeAhead else { return }
-        guard let ftp = riderParameters.ftp, ftp > 0 else { return }
+        guard let route = routeAhead else { 
+            upcomingClimb = nil
+            return 
+        }
+        guard let ftp = riderParameters.ftp, ftp > 0 else {
+            upcomingClimb = nil
+            return
+        }
         
-        // Analyze next 0.5-1.0 miles for climbs
-        // This is simplified - real implementation would parse route data
+        // This would be called with route manager's climb analysis
+        // For now, placeholder - real implementation would use RouteManager.analyzeUpcomingTerrain()
         
-        // Placeholder: detect if grade > 3% ahead
-        // Real implementation: route.calculateUpcomingGrade(distance: 1600) // 1 mile
-        
-        upcomingClimb = nil  // Will implement with actual route analysis
+        upcomingClimb = nil  // Updated when integrated with RouteManager
     }
     
     // MARK: - Data Recording
