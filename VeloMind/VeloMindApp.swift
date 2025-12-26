@@ -11,6 +11,7 @@ struct VeloMindApp: App {
                 ContentView()
                     .environmentObject(authManager)
                     .environmentObject(rideCoordinator)
+                    .statusBar(hidden: true)
                     .edgesIgnoringSafeArea(.all)
                     .onAppear {
                         if let userId = authManager.currentUser?.id.uuidString {

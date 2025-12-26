@@ -35,22 +35,27 @@ struct MenuView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                NavigationLink(destination: RideView()) {
-                    Label("Ride", systemImage: "bicycle")
-                }
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
                 
-                NavigationLink(destination: RouteView()) {
-                    Label("Routes", systemImage: "map")
+                List {
+                    NavigationLink(destination: RideView()) {
+                        Label("Ride", systemImage: "bicycle")
+                    }
+                    
+                    NavigationLink(destination: RouteView()) {
+                        Label("Routes", systemImage: "map")
+                    }
+                    
+                    NavigationLink(destination: HistoryView()) {
+                        Label("History", systemImage: "clock")
+                    }
+                    
+                    NavigationLink(destination: SettingsView()) {
+                        Label("Settings", systemImage: "gear")
+                    }
                 }
-                
-                NavigationLink(destination: HistoryView()) {
-                    Label("History", systemImage: "clock")
-                }
-                
-                NavigationLink(destination: SettingsView()) {
-                    Label("Settings", systemImage: "gear")
-                }
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle("Menu")
             .navigationBarTitleDisplayMode(.inline)
@@ -62,6 +67,7 @@ struct MenuView: View {
                 }
             }
         }
+        .presentationBackground(.black)
     }
 }
 

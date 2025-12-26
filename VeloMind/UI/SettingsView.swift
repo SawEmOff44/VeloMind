@@ -16,7 +16,10 @@ struct SettingsView: View {
     let positions = ["Hoods", "Drops"]
     
     var body: some View {
-        Form {
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            Form {
             Section("Account") {
                 if let user = authManager.currentUser {
                     HStack {
@@ -253,10 +256,12 @@ struct SettingsView: View {
             .onAppear {
                 loadParameters()
             }
-            .sheet(isPresented: $showStravaAuth) {
-                StravaAuthView()
-                    .environmentObject(coordinator.stravaManager)
-            }
+            .scrollContentBackground(.hidden)
+        }
+        .sheet(isPresented: $showStravaAuth) {
+            StravaAuthView()
+                .environmentObject(coordinator.stravaManager)
+        }
     }
     
     private func loadParameters() {
