@@ -9,10 +9,10 @@ class IntelligenceEngine: ObservableObject {
     @Published var overcookingAlert: OvercookingAlert?
     @Published var fatigueAlert: FatigueAlert?
     @Published var effortBudgetRemaining: Double = 100.0 // % remaining
-    @Published var predictedSpeed: PredictedSpeed?
     @Published var nutritionAlert: NutritionAlert?
     @Published var pacingRecommendation: PacingRecommendation?
     @Published var upcomingClimb: ClimbPreview?
+    @Published var predictedSpeedValue: PredictedSpeed?
     
     // State tracking
     private var rideStartTime: Date?
@@ -240,10 +240,10 @@ class IntelligenceEngine: ObservableObject {
         let windEffect = windSpeed * 0.3  // Simplified wind impact
         let predictedSpeed = max(0, estimatedSpeed - abs(windEffect))
         
-        let speedMph = predictedSpeed * 2.23694
+        let speedMph = estimatedSpeed * 2.23694
         let windDescription = windSpeed > 0 ? "headwind" : (windSpeed < 0 ? "tailwind" : "calm")
         
-        predictedSpeed = PredictedSpeed(
+        predictedSpeedValue = PredictedSpeed(
             speed: speedMph,
             windCondition: windDescription
         )

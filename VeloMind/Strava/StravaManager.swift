@@ -165,6 +165,15 @@ class StravaManager: ObservableObject {
         }
     }
     
+    // For FitnessProfileManager integration
+    func fetchRecentActivities() async throws -> [StravaActivity] {
+        let data = try await makeAuthenticatedRequest(endpoint: "/athlete/activities?per_page=30")
+        
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode([StravaActivity].self, from: data)
+    }
+    
     func fetchActivityStreams(activityID: Int, streamTypes: [String] = ["time", "latlng", "altitude", "velocity_smooth", "heartrate", "cadence", "watts"]) async throws -> StravaStreams {
         let types = streamTypes.joined(separator: ",")
         let data = try await makeAuthenticatedRequest(endpoint: "/activities/\(activityID)/streams?keys=\(types)&key_by_type=true")

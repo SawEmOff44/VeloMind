@@ -13,7 +13,7 @@ class FitnessProfileManager: ObservableObject {
     init(persistenceManager: PersistenceManager, stravaManager: StravaManager) {
         self.persistenceManager = persistenceManager
         self.stravaManager = stravaManager
-        self.currentProfile = persistenceManager.loadRiderParameters()
+        self.currentProfile = persistenceManager.loadRiderParameters() ?? RiderParameters.default
     }
     
     // MARK: - FTP Management
@@ -101,22 +101,22 @@ class FitnessProfileManager: ObservableObject {
         
         do {
             // Fetch recent Strava activities (last 30 days)
-            let activities = try await stravaManager.fetchRecentActivities(days: 30)
+            let activities = try await stravaManager.fetchRecentActivities()
             
             // Convert to RidePerformance
             let performances = activities.compactMap { activity -> RidePerformance? in
-                guard let avgPower = activity.avgPower, avgPower > 0 else { return nil }
+                guard let avgPower = activity.averageWatts, avgPower > 0 else { return nil }
                 
                 return RidePerformance(
                     date: activity.startDate,
                     avgPower: avgPower,
-                    normalizedPower: activity.normalizedPower ?? avgPower,
+                    normalizedPower: avgPower, // Strava doesn't provide NP directly
                     duration: TimeInterval(activity.elapsedTime),
                     tss: calculateTSS(avgPower: avgPower, duration: Double(activity.elapsedTime)),
-                    avgSpeed: activity.avgSpeed,
-                    temperature: activity.temperature,
+                    avgSpeed: activity.averageSpeed ?? 0,
+                    temperature: nil, // Strava doesn't provide this in activity summary
                     windSpeed: nil,  // Strava doesn't provide this
-                    elevationGain: activity.elevationGain
+                    elevationGain: activity.totalElevationGain
                 )
             }
             

@@ -30,7 +30,7 @@ class RideCoordinator: ObservableObject {
     
     init() {
         // Initialize intelligence components
-        let riderParams = persistenceManager.loadRiderParameters()
+        let riderParams = persistenceManager.loadRiderParameters() ?? RiderParameters.default
         self.intelligenceEngine = IntelligenceEngine(riderParameters: riderParams)
         self.fitnessProfileManager = FitnessProfileManager(
             persistenceManager: persistenceManager,

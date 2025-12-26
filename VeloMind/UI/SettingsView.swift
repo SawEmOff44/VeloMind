@@ -252,7 +252,7 @@ struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
         SettingsView()
             .environmentObject(RideCoordinator())
-            .environmentObject(AuthenticationManager(persistenceManager: PersistenceManager()))
+            .environmentObject(AuthenticationManager())
     }
 }
 

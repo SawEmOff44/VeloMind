@@ -321,7 +321,7 @@ struct IntelligenceMetricsView: View {
             }
             
             // Wind-Aware Speed Prediction
-            if let predicted = engine.predictedSpeed {
+            if let predicted = engine.predictedSpeedValue {
                 HStack {
                     Image(systemName: "wind")
                         .foregroundColor(.cyan)
