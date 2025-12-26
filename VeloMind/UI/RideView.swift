@@ -11,7 +11,7 @@ struct RideView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .ignoresSafeArea()
+            .edgesIgnoringSafeArea(.all)
             
             ScrollView {
                 VStack(spacing: 20) {
@@ -107,13 +107,11 @@ struct RideView: View {
                     // Ride controls - Fixed at bottom
                     RideControlButtons(coordinator: coordinator)
                         .padding(.horizontal)
-                        .padding(.bottom, 90)
+                        .padding(.bottom, 100)
                 }
-                .padding(.top, 60)
+                .padding(.top, 10)
             }
-            .ignoresSafeArea(edges: .vertical)
         }
-        .ignoresSafeArea()
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
