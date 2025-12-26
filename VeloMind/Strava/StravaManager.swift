@@ -14,7 +14,7 @@ class StravaManager: ObservableObject {
     // These should be stored securely and configured via environment
     private let clientID = "191884"  // TODO: Replace with actual client ID
     private let clientSecret = "ed20b59691c7c047232631c66b94f5cfede910c4"  // TODO: Replace with actual secret
-    private let redirectURI = "http://localhost/velomind/strava/callback"
+    private let redirectURI = "velomind://strava/callback"
     
     private var tokens: StravaTokens?
     

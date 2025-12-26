@@ -101,7 +101,7 @@ struct StravaAuthView: View {
             if showWebAuth, let authURL = stravaManager.getAuthorizationURL() {
                 WebAuthenticationView(
                     url: authURL,
-                    callbackURLScheme: "http",
+                    callbackURLScheme: "velomind",
                     onCompletion: { result in
                         showWebAuth = false
                         handleAuthResult(result)
