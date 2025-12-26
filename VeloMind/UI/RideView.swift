@@ -4,14 +4,23 @@ struct RideView: View {
     @EnvironmentObject var coordinator: RideCoordinator
     
     var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 12) {
-                // Intelligence Alerts
-                IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
-                    .padding(.horizontal, 12)
+        ZStack {
+            // Background - full screen
+            LinearGradient(
+                gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 8) {
+                    // Intelligence Alerts
+                    IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
+                        .padding(.horizontal, 12)
                     
-                // Primary metrics
-                VStack(spacing: 10) {
+                    // Primary metrics
+                    VStack(spacing: 8) {
                         // Power - Large display
                         MetricCard(
                             title: "POWER",
@@ -21,7 +30,7 @@ struct RideView: View {
                             size: .large
                         )
                         
-                        HStack(spacing: 14) {
+                        HStack(spacing: 10) {
                             // Speed (convert m/s to mph)
                             MetricCard(
                                 title: "SPEED",
@@ -39,17 +48,11 @@ struct RideView: View {
                             )
                         }
                     }
-                    .padding(.horizontal)
-                    
-                    // Divider
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(height: 1)
-                        .padding(.horizontal, 32)
+                    .padding(.horizontal, 12)
                     
                     // Secondary metrics
-                    VStack(spacing: 10) {
-                        HStack(spacing: 14) {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 10) {
                             // Wind (convert m/s to mph)
                             SmallMetricCard(
                                 title: "WIND",
@@ -65,7 +68,7 @@ struct RideView: View {
                             )
                         }
                         
-                        HStack(spacing: 14) {
+                        HStack(spacing: 10) {
                             // Duration
                             SmallMetricCard(
                                 title: "TIME",
@@ -81,29 +84,22 @@ struct RideView: View {
                             )
                         }
                     }
-                .padding(.horizontal, 12)
-                
-                // Intelligence Metrics
-                IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
                     .padding(.horizontal, 12)
-                
-                Spacer(minLength: 0)
-                
-                // Ride controls
-                RideControlButtons(coordinator: coordinator)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
+                    
+                    // Intelligence Metrics
+                    IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
+                        .padding(.horizontal, 12)
+                    
+                    // Ride controls
+                    RideControlButtons(coordinator: coordinator)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                }
+                .padding(.top, 0)
+                .padding(.bottom, 10)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        )
+        .ignoresSafeArea()
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
