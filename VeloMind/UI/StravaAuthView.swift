@@ -103,6 +103,8 @@ struct StravaAuthView: View {
                     dismiss()
                 }
                 .foregroundColor(.white)
+            }
+        }
     }
     
     private func authenticateWithStrava() {
