@@ -48,7 +48,7 @@ class RouteNavigationManager: NSObject, ObservableObject {
         upcomingWaypoints = route.waypoints
         
         // Start location updates
-        locationManager.startLocationUpdates()
+        locationManager.startTracking()
         
         print("📍 Navigation started for route: \(route.name)")
         print("📍 Total waypoints: \(route.waypoints.count)")

@@ -149,7 +149,7 @@ class RideCoordinator: ObservableObject {
             avgPower: powerEngine.averagePower,
             normalizedPower: powerEngine.normalizedPower,
             avgSpeed: rideDistance / max(rideDuration, 1),
-            maxPower: powerEngine.powerHistory.map { $0.totalPower }.max() ?? 0
+            maxPower: powerEngine.allPowerResults.map { $0.totalPower }.max() ?? 0
         )
         
         // Stop services

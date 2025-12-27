@@ -21,6 +21,11 @@ class PowerEngine: ObservableObject {
     
     // Smoothing buffers
     private var powerHistory: [PowerResult] = []
+    
+    // Public access to power history
+    var allPowerResults: [PowerResult] {
+        powerHistory
+    }
     private var power3sBuffer: [Double] = []
     private var power10sBuffer: [Double] = []
     
