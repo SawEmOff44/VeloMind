@@ -38,6 +38,7 @@
 		0A00001E /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011E /* APIService.swift */; };
 		A9F5213F2EFE1F1C0018B014 /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */; };
 		A9F521402EFE1F1C0018B014 /* FitnessProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */; };
+		A9F521412EFE1F1C0018B015 /* LearningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +75,7 @@
 		0A00011E /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessProfileManager.swift; sourceTree = "<group>"; };
 		A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
+		A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -234,6 +236,7 @@
 			children = (
 				A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */,
 				A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */,
+				A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */,
 			);
 			path = Intelligence;
 			sourceTree = "<group>";
@@ -310,6 +313,7 @@
 				0A000002 /* RideCoordinator.swift in Sources */,
 				A9F5213F2EFE1F1C0018B014 /* IntelligenceEngine.swift in Sources */,
 				A9F521402EFE1F1C0018B014 /* FitnessProfileManager.swift in Sources */,
+				A9F521412EFE1F1C0018B015 /* LearningEngine.swift in Sources */,
 				0A000003 /* BLEManager.swift in Sources */,
 				0A000004 /* LocationManager.swift in Sources */,
 				0A000005 /* RiderParameters.swift in Sources */,
