@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
+import { MapContainer, TileLayer, Polyline, Marker, Popup, Circle, useMapEvents } from 'react-leaflet'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceDot } from 'recharts'
 import { getRoute } from '../services/api'
+import { detectClimbs, getClimbCategoryColor, getClimbCategoryLabel } from '../utils/climbAnalysis'
+import { reverseRoute, getDifficultyColor, predictSpeed, predictSegmentTime } from '../utils/routeUtils'
 import 'leaflet/dist/leaflet.css'
 
 // Fix Leaflet default marker icon issue with Vite
@@ -18,11 +20,24 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
+// Component to handle map clicks
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click: onMapClick,
+  })
+  return null
+}
+
 export default function RouteDetail() {
   const { id } = useParams()
   const [route, setRoute] = useState(null)
   const [loading, setLoading] = useState(true)
   const [mapBounds, setMapBounds] = useState(null)
+  const [selectedPoint, setSelectedPoint] = useState(null)
+  const [waypoints, setWaypoints] = useState([])
+  const [showReversed, setShowReversed] = useState(false)
+  const [riderParams, setRiderParams] = useState({ ftp: 250, mass: 85, cda: 0.32 })
+  const mapRef = useRef(null)
   
   useEffect(() => {
     loadRoute()
@@ -43,11 +58,66 @@ export default function RouteDetail() {
           [Math.max(...lats), Math.max(...lons)]
         ])
       }
+      
+      // Load saved waypoints from localStorage
+      const savedWaypoints = localStorage.getItem(`waypoints_${id}`)
+      if (savedWaypoints) {
+        setWaypoints(JSON.parse(savedWaypoints))
+      }
     } catch (error) {
       console.error('Failed to load route:', error)
     } finally {
       setLoading(false)
     }
+  }
+  
+  const handleChartClick = (data) => {
+    if (data && data.activePayload && data.activePayload[0]) {
+      const pointIndex = data.activePayload[0].payload.index
+      if (route.points && route.points[pointIndex]) {
+        setSelectedPoint(route.points[pointIndex])
+        // Pan map to point
+        if (mapRef.current) {
+          mapRef.current.setView([
+            route.points[pointIndex].latitude,
+            route.points[pointIndex].longitude
+          ], mapRef.current.getZoom())
+        }
+      }
+    }
+  }
+  
+  const handleMapClick = (e) => {
+    const newWaypoint = {
+      id: Date.now(),
+      latitude: e.latlng.lat,
+      longitude: e.latlng.lng,
+      type: 'alert',
+      label: 'New Waypoint',
+      notes: ''
+    }
+    const updatedWaypoints = [...waypoints, newWaypoint]
+    setWaypoints(updatedWaypoints)
+    localStorage.setItem(`waypoints_${id}`, JSON.stringify(updatedWaypoints))
+  }
+  
+  const updateWaypoint = (waypointId, updates) => {
+    const updatedWaypoints = waypoints.map(w => 
+      w.id === waypointId ? { ...w, ...updates } : w
+    )
+    setWaypoints(updatedWaypoints)
+    localStorage.setItem(`waypoints_${id}`, JSON.stringify(updatedWaypoints))
+  }
+  
+  const removeWaypoint = (waypointId) => {
+    const updatedWaypoints = waypoints.filter(w => w.id !== waypointId)
+    setWaypoints(updatedWaypoints)
+    localStorage.setItem(`waypoints_${id}`, JSON.stringify(updatedWaypoints))
+  }
+  
+  const toggleRouteDirection = () => {
+    setShowReversed(!showReversed)
+    setSelectedPoint(null) // Clear selection when reversing
   }
   
   if (loading) {
@@ -69,19 +139,29 @@ export default function RouteDetail() {
     )
   }
   
+  // Prepare route points (reversed or normal)
+  const displayPoints = showReversed && route.points 
+    ? reverseRoute(route.points) 
+    : route.points
+  
+  // Detect climbs in the route
+  const climbs = displayPoints ? detectClimbs(displayPoints) : []
+  
   // Prepare elevation chart data
-  const elevationData = route.points
-    ? route.points.map((point, index) => ({
+  const elevationData = displayPoints
+    ? displayPoints.map((point, index) => ({
         distance: (point.distance / 1609.34).toFixed(2), // Convert to miles
         elevation: point.elevation ? Math.round(point.elevation * 3.28084) : 0, // Convert to feet
-        index
+        index,
+        latitude: point.latitude,
+        longitude: point.longitude
       }))
     : []
   
   // Calculate grade for each segment
-  const gradeData = route.points && route.points.length > 1
-    ? route.points.slice(1).map((point, index) => {
-        const prev = route.points[index]
+  const gradeData = displayPoints && displayPoints.length > 1
+    ? displayPoints.slice(1).map((point, index) => {
+        const prev = displayPoints[index]
         const distanceDiff = point.distance - prev.distance
         const elevationDiff = point.elevation && prev.elevation 
           ? point.elevation - prev.elevation 
@@ -91,7 +171,10 @@ export default function RouteDetail() {
         return {
           distance: (point.distance / 1609.34).toFixed(2), // Convert to miles
           grade: parseFloat(grade.toFixed(1)), // Keep as number for domain calculation
-          index: index + 1
+          index: index + 1,
+          color: getDifficultyColor(grade),
+          latitude: point.latitude,
+          longitude: point.longitude
         }
       })
     : []
@@ -105,29 +188,64 @@ export default function RouteDetail() {
   const stats = {
     distance: (route.total_distance / 1609.34).toFixed(2), // Convert to miles
     elevationGain: Math.round((route.total_elevation_gain || 0) * 3.28084), // Convert to feet
-    maxElevation: route.points && route.points.length > 0
-      ? Math.round(Math.max(...route.points.map(p => (p.elevation || 0) * 3.28084)))
+    maxElevation: displayPoints && displayPoints.length > 0
+      ? Math.round(Math.max(...displayPoints.map(p => (p.elevation || 0) * 3.28084)))
       : 0,
-    minElevation: route.points && route.points.length > 0
-      ? Math.round(Math.min(...route.points.map(p => (p.elevation || 0) * 3.28084)))
+    minElevation: displayPoints && displayPoints.length > 0
+      ? Math.round(Math.min(...displayPoints.map(p => (p.elevation || 0) * 3.28084)))
       : 0,
     avgGrade: route.total_distance > 0 && route.total_elevation_gain
       ? ((route.total_elevation_gain / route.total_distance) * 100).toFixed(1)
       : 0
   }
   
+  // Calculate speed/time predictions
+  const totalTimeMinutes = displayPoints && displayPoints.length > 1
+    ? displayPoints.slice(1).reduce((total, point, index) => {
+        const prev = displayPoints[index]
+        const distanceDiff = point.distance - prev.distance
+        const elevationDiff = point.elevation && prev.elevation ? point.elevation - prev.elevation : 0
+        const grade = distanceDiff > 0 ? (elevationDiff / distanceDiff) * 100 : 0
+        const segmentTime = predictSegmentTime(
+          distanceDiff,
+          grade,
+          riderParams.ftp,
+          riderParams.mass,
+          riderParams.cda
+        )
+        return total + segmentTime
+      }, 0)
+    : 0
+  
+  const avgSpeed = totalTimeMinutes > 0 
+    ? (parseFloat(stats.distance) / (totalTimeMinutes / 60)).toFixed(1)
+    : 0
+  
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-6">
-        <Link to="/routes" className="text-blue-600 hover:underline mb-2 inline-block">
-          ← Back to Routes
-        </Link>
-        <h1 className="text-3xl font-bold text-gray-900">{route.name}</h1>
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <Link to="/routes" className="text-velo-blue-600 hover:underline mb-2 inline-block">
+            ← Back to Routes
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-900">{route.name}</h1>
+          {showReversed && (
+            <span className="inline-block mt-2 px-3 py-1 bg-velo-cyan-100 text-velo-cyan-700 rounded-full text-sm font-medium">
+              Reversed Direction
+            </span>
+          )}
+        </div>
+        <button
+          onClick={toggleRouteDirection}
+          className="px-4 py-2 bg-gradient-to-r from-velo-cyan-500 to-velo-blue-500 text-white rounded-lg hover:from-velo-cyan-600 hover:to-velo-blue-600 transition-all"
+        >
+          {showReversed ? '⟲ Normal Direction' : '⟲ Reverse Route'}
+        </button>
       </div>
       
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500">Distance</p>
           <p className="text-2xl font-bold text-gray-900">{stats.distance} mi</p>
@@ -141,47 +259,230 @@ export default function RouteDetail() {
           <p className="text-2xl font-bold text-gray-900">{stats.maxElevation} ft</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-500">Min Elevation</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.minElevation} ft</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500">Avg Grade</p>
           <p className="text-2xl font-bold text-gray-900">{stats.avgGrade}%</p>
         </div>
+        <div className="bg-gradient-to-br from-velo-cyan-50 to-velo-blue-50 p-4 rounded-lg shadow border border-velo-cyan-200">
+          <p className="text-sm text-velo-cyan-700">Est. Time</p>
+          <p className="text-2xl font-bold text-velo-blue-900">
+            {Math.floor(totalTimeMinutes / 60)}h {Math.round(totalTimeMinutes % 60)}m
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-velo-teal-50 to-velo-green-50 p-4 rounded-lg shadow border border-velo-teal-200">
+          <p className="text-sm text-velo-teal-700">Avg Speed</p>
+          <p className="text-2xl font-bold text-velo-green-900">{avgSpeed} mph</p>
+        </div>
       </div>
+      
+      {/* Climbs Detected */}
+      {climbs.length > 0 && (
+        <div className="bg-white rounded-lg shadow mb-8 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Detected Climbs</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {climbs.map((climb, idx) => (
+              <div 
+                key={idx}
+                className="border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                style={{ borderColor: getClimbCategoryColor(climb.category) }}
+                onClick={() => {
+                  // Pan map to climb start
+                  if (mapRef.current && displayPoints[climb.startIndex]) {
+                    mapRef.current.setView([
+                      displayPoints[climb.startIndex].latitude,
+                      displayPoints[climb.startIndex].longitude
+                    ], 14)
+                  }
+                }}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-semibold text-gray-900">Climb {idx + 1}</h3>
+                  <span 
+                    className="px-2 py-1 rounded text-white text-sm font-bold"
+                    style={{ backgroundColor: getClimbCategoryColor(climb.category) }}
+                  >
+                    {getClimbCategoryLabel(climb.category)}
+                  </span>
+                </div>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p>Distance: {(climb.distance / 1609.34).toFixed(2)} mi</p>
+                  <p>Elevation: {Math.round(climb.elevationGain * 3.28084)} ft</p>
+                  <p>Avg Grade: {climb.avgGrade.toFixed(1)}%</p>
+                  <p>Max Grade: {climb.maxGrade.toFixed(1)}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Map */}
       <div className="bg-white rounded-lg shadow mb-8 overflow-hidden">
-        <div className="p-4 border-b">
+        <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-900">Route Map</h2>
+          <p className="text-sm text-gray-500">Click on map to add waypoint markers</p>
         </div>
         <div className="h-96">
-          {mapBounds && route.points && (
+          {mapBounds && displayPoints && (
             <MapContainer
+              ref={mapRef}
               bounds={mapBounds}
               className="h-full w-full"
               scrollWheelZoom={true}
             >
+              <MapClickHandler onMapClick={handleMapClick} />
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <Polyline
-                positions={route.points.map(p => [p.latitude, p.longitude])}
-                color="blue"
-                weight={3}
-              />
+              
+              {/* Difficulty-colored route segments */}
+              {gradeData.map((segment, idx) => {
+                if (idx === 0 || !displayPoints[idx]) return null
+                return (
+                  <Polyline
+                    key={idx}
+                    positions={[
+                      [displayPoints[idx - 1].latitude, displayPoints[idx - 1].longitude],
+                      [displayPoints[idx].latitude, displayPoints[idx].longitude]
+                    ]}
+                    color={segment.color}
+                    weight={4}
+                    opacity={0.7}
+                  />
+                )
+              })}
+              
               {/* Start marker */}
-              <Marker position={[route.points[0].latitude, route.points[0].longitude]}>
-                <Popup>Start</Popup>
+              <Marker position={[displayPoints[0].latitude, displayPoints[0].longitude]}>
+                <Popup>
+                  <strong>{showReversed ? 'Finish' : 'Start'}</strong>
+                  <br />Elevation: {Math.round(displayPoints[0].elevation * 3.28084)} ft
+                </Popup>
               </Marker>
+              
               {/* End marker */}
               <Marker position={[
-                route.points[route.points.length - 1].latitude,
-                route.points[route.points.length - 1].longitude
+                displayPoints[displayPoints.length - 1].latitude,
+                displayPoints[displayPoints.length - 1].longitude
               ]}>
-                <Popup>Finish</Popup>
+                <Popup>
+                  <strong>{showReversed ? 'Start' : 'Finish'}</strong>
+                  <br />Elevation: {Math.round(displayPoints[displayPoints.length - 1].elevation * 3.28084)} ft
+                </Popup>
               </Marker>
+              
+              {/* Selected point from chart click */}
+              {selectedPoint && (
+                <Circle
+                  center={[selectedPoint.latitude, selectedPoint.longitude]}
+                  radius={50}
+                  pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.4 }}
+                >
+                  <Popup>
+                    <strong>Selected Point</strong>
+                    <br />Distance: {(selectedPoint.distance / 1609.34).toFixed(2)} mi
+                    <br />Elevation: {Math.round(selectedPoint.elevation * 3.28084)} ft
+                  </Popup>
+                </Circle>
+              )}
+              
+              {/* Custom waypoints */}
+              {waypoints.map(waypoint => (
+                <Marker 
+                  key={waypoint.id}
+                  position={[waypoint.latitude, waypoint.longitude]}
+                >
+                  <Popup>
+                    <div className="min-w-[200px]">
+                      <div className="mb-2">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Label</label>
+                        <input
+                          type="text"
+                          value={waypoint.label || ''}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            updateWaypoint(waypoint.id, { label: e.target.value })
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-velo-cyan-500 focus:border-transparent"
+                          placeholder="e.g., Aggressive dogs"
+                        />
+                      </div>
+                      <div className="mb-2">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Type</label>
+                        <select
+                          value={waypoint.type || 'alert'}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            updateWaypoint(waypoint.id, { type: e.target.value })
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-velo-cyan-500 focus:border-transparent"
+                        >
+                          <option value="alert">⚠️ Alert</option>
+                          <option value="danger">🚨 Danger</option>
+                          <option value="water">💧 Water Stop</option>
+                          <option value="food">🍎 Nutrition</option>
+                          <option value="rest">🛑 Rest Stop</option>
+                          <option value="photo">📷 Photo Spot</option>
+                          <option value="turn">↪️ Turn</option>
+                          <option value="steep">⛰️ Steep Section</option>
+                        </select>
+                      </div>
+                      <div className="mb-3">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
+                        <textarea
+                          value={waypoint.notes || ''}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            updateWaypoint(waypoint.id, { notes: e.target.value })
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-velo-cyan-500 focus:border-transparent"
+                          rows="2"
+                          placeholder="Details for iOS alert..."
+                        />
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeWaypoint(waypoint.id)
+                        }}
+                        className="w-full px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                      >
+                        Remove Waypoint
+                      </button>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+              
+              {/* Climb markers */}
+              {climbs.map((climb, idx) => {
+                if (!displayPoints[climb.startIndex]) return null
+                return (
+                  <Circle
+                    key={`climb-${idx}`}
+                    center={[
+                      displayPoints[climb.startIndex].latitude,
+                      displayPoints[climb.startIndex].longitude
+                    ]}
+                    radius={100}
+                    pathOptions={{ 
+                      color: getClimbCategoryColor(climb.category),
+                      fillColor: getClimbCategoryColor(climb.category),
+                      fillOpacity: 0.3
+                    }}
+                  >
+                    <Popup>
+                      <strong>Climb {idx + 1} - {getClimbCategoryLabel(climb.category)}</strong>
+                      <br />Distance: {(climb.distance / 1609.34).toFixed(2)} mi
+                      <br />Elevation: {Math.round(climb.elevationGain * 3.28084)} ft
+                      <br />Avg Grade: {climb.avgGrade.toFixed(1)}%
+                    </Popup>
+                  </Circle>
+                )
+              })}
             </MapContainer>
           )}
         </div>
@@ -189,13 +490,14 @@ export default function RouteDetail() {
       
       {/* Elevation Profile */}
       <div className="bg-white rounded-lg shadow mb-8 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Elevation Profile</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Elevation Profile</h2>
+        <p className="text-sm text-gray-500 mb-4">Click on the chart to highlight location on map</p>
         <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={elevationData}>
+          <AreaChart data={elevationData} onClick={handleChartClick}>
             <defs>
               <linearGradient id="elevationGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" />
@@ -213,9 +515,20 @@ export default function RouteDetail() {
             <Area 
               type="monotone" 
               dataKey="elevation" 
-              stroke="#3b82f6" 
-              fill="url(#elevationGradient)" 
+              stroke="#0284c7" 
+              fill="url(#elevationGradient)"
+              strokeWidth={2}
             />
+            {selectedPoint && (
+              <ReferenceDot
+                x={(selectedPoint.distance / 1609.34).toFixed(2)}
+                y={Math.round(selectedPoint.elevation * 3.28084)}
+                r={8}
+                fill="red"
+                stroke="white"
+                strokeWidth={2}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -223,9 +536,10 @@ export default function RouteDetail() {
       {/* Grade Profile */}
       {gradeData.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Grade Profile</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Grade Profile</h2>
+          <p className="text-sm text-gray-500 mb-4">Colors indicate difficulty: Blue (flat) → Green → Yellow → Orange → Red (steep)</p>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={gradeData}>
+            <LineChart data={gradeData} onClick={handleChartClick}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="distance" 
@@ -247,6 +561,16 @@ export default function RouteDetail() {
                 dot={false}
                 strokeWidth={2}
               />
+              {selectedPoint && gradeData.find(d => d.index === displayPoints.indexOf(selectedPoint)) && (
+                <ReferenceDot
+                  x={(selectedPoint.distance / 1609.34).toFixed(2)}
+                  y={gradeData.find(d => d.index === displayPoints.indexOf(selectedPoint))?.grade || 0}
+                  r={8}
+                  fill="red"
+                  stroke="white"
+                  strokeWidth={2}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </div>
