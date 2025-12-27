@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { invalidateUserCache } from '../services/cache.js';
 
 const router = express.Router();
 
@@ -140,6 +141,9 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
     
+    // Invalidate cache for this user
+    invalidateUserCache(req.user.id);
+    
     res.status(201).json({ session });
   } catch (error) {
     console.error('Create session error:', error);
@@ -158,8 +162,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Session not found' });
     }
-    
-    res.json({ message: 'Session deleted successfully' });
+        // Invalidate cache for this user
+    invalidateUserCache(req.user.id);
+        res.json({ message: 'Session deleted successfully' });
   } catch (error) {
     console.error('Delete session error:', error);
     res.status(500).json({ error: error.message });

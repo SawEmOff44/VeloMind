@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getSessions } from '../services/api'
 import { format } from 'date-fns'
 import IntelligenceDashboard from '../components/IntelligenceDashboard'
+import ActivityFeed from '../components/ActivityFeed'
 import { 
   UserCircleIcon, 
   CogIcon, 
@@ -400,69 +401,29 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div className="p-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-full h-24 w-24 mx-auto mb-6 flex items-center justify-center">
-                <MapIcon className="h-12 w-12 text-gray-400" />
-              </div>
-              <p className="text-gray-600 text-lg font-medium mb-2">No sessions yet</p>
-              <p className="text-gray-500 mb-6">Start your journey by uploading a route!</p>
+        {/* Recent Activity & Intelligence */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Recent Activity Feed */}
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Recent Activity</h2>
               <Link
-                to="/routes"
-                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:shadow-lg transition-all"
+                to="/sessions"
+                className="text-sm font-semibold text-cyan-600 hover:text-cyan-700"
               >
-                Upload GPX Route
+                View All →
               </Link>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {sessions.map((session) => (
-                <Link
-                  key={session.id}
-                  to={`/sessions/${session.id}`}
-                  className="block group"
-                >
-                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 hover:from-cyan-50 hover:to-blue-100 p-5 rounded-xl border-2 border-gray-200 hover:border-cyan-400 transition-all duration-200">
-                    <div className="flex justify-between items-center">
-                      <div className="flex-1">
-                        <h3 className="text-base font-bold text-gray-900 mb-1 group-hover:text-cyan-700 transition-colors">
-                          {session.name || 'Unnamed Session'}
-                        </h3>
-                        <p className="text-sm text-gray-600 flex items-center gap-2">
-                          <ClockIcon className="h-4 w-4" />
-                          {format(new Date(session.start_time), 'PPp')}
-                        </p>
-                      </div>
-                      <div className="flex gap-6 text-right">
-                        <div>
-                          <p className="text-sm text-gray-500 mb-1">Power</p>
-                          <p className="text-lg font-bold text-gray-900 flex items-center gap-1">
-                            <BoltIcon className="h-4 w-4 text-yellow-500" />
-                            {Math.round(session.average_power)}W
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500 mb-1">Distance</p>
-                          <p className="text-lg font-bold text-gray-900 flex items-center gap-1">
-                            <MapIcon className="h-4 w-4 text-blue-500" />
-                            {(session.distance / 1609.34).toFixed(1)}mi
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+            <ActivityFeed limit={5} />
+          </div>
+
+          {/* Intelligence Dashboard */}
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">AI Intelligence</h2>
+            <IntelligenceDashboard />
+          </div>
         </div>
       </div>
-    </div>
     </div>
   )
 }

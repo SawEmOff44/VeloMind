@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import cache, { cacheKeys, cacheTTL } from '../services/cache.js';
 
 const router = express.Router();
 
@@ -8,6 +9,14 @@ const router = express.Router();
 router.get('/overview', authenticateToken, async (req, res) => {
   try {
     const { timeframe = '30' } = req.query; // days
+    
+    // Check cache first
+    const cacheKey = cacheKeys.analyticsOverview(req.user.id, timeframe);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(timeframe));
     
@@ -67,12 +76,17 @@ router.get('/overview', authenticateToken, async (req, res) => {
       [req.user.id, startDate]
     );
     
-    res.json({
+    const result = {
       stats: statsResult.rows[0],
       frequency: frequencyResult.rows,
       powerZones: powerZonesResult.rows,
       timeframe: parseInt(timeframe)
-    });
+    };
+    
+    // Cache the result
+    cache.set(cacheKey, result, cacheTTL.MEDIUM);
+    
+    res.json(result);
   } catch (error) {
     console.error('Get analytics overview error:', error);
     res.status(500).json({ error: error.message });
@@ -83,6 +97,14 @@ router.get('/overview', authenticateToken, async (req, res) => {
 router.get('/trends', authenticateToken, async (req, res) => {
   try {
     const { metric = 'power', timeframe = '90' } = req.query;
+    
+    // Check cache first
+    const cacheKey = cacheKeys.analyticsTrends(req.user.id, metric, timeframe);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(timeframe));
     
@@ -114,11 +136,16 @@ router.get('/trends', authenticateToken, async (req, res) => {
       [req.user.id, startDate]
     );
     
-    res.json({
+    const result = {
       metric,
       data: trendsResult.rows,
       timeframe: parseInt(timeframe)
-    });
+    };
+    
+    // Cache the result
+    cache.set(cacheKey, result, cacheTTL.MEDIUM);
+    
+    res.json(result);
   } catch (error) {
     console.error('Get trends error:', error);
     res.status(500).json({ error: error.message });
@@ -128,6 +155,13 @@ router.get('/trends', authenticateToken, async (req, res) => {
 // Get personal records
 router.get('/records', authenticateToken, async (req, res) => {
   try {
+    // Check cache first
+    const cacheKey = cacheKeys.analyticsRecords(req.user.id);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    
     // Longest ride
     const longestRide = await query(
       `SELECT id, name, distance, start_time
@@ -179,13 +213,18 @@ router.get('/records', authenticateToken, async (req, res) => {
       [req.user.id]
     );
     
-    res.json({
+    const result = {
       longestRide: longestRide.rows[0] || null,
       highestElevation: highestElevation.rows[0] || null,
       highestPower: highestPower.rows[0] || null,
       fastestSpeed: fastestSpeed.rows[0] || null,
       longestDuration: longestDuration.rows[0] || null
-    });
+    };
+    
+    // Cache the result
+    cache.set(cacheKey, result, cacheTTL.LONG);
+    
+    res.json(result);
   } catch (error) {
     console.error('Get records error:', error);
     res.status(500).json({ error: error.message });
