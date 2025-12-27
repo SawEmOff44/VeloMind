@@ -204,26 +204,6 @@ struct RouteCard: View {
 
 struct RouteInfoCard: View {
     let routeInfo: RouteInfo
-    let onSelect: () -> Void
-    
-    var body: some View {
-        Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(routeInfo.name)
-                    .font(.headline)
-                Label(String(format: "%.2f mi", miles), systemImage: "map")
-                Spacer()
-                Label(String(format: "%.0f ft", feet), systemImage: "arrow.up.forward")
-            }
-            .font(.subheadline)
-            .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-struct RouteInfoCard: View {
-    let routeInfo: RouteInfo
     let onLoad: () -> Void
     
     var body: some View {

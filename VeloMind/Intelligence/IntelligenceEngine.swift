@@ -847,8 +847,3 @@ struct AlertPreferences {
     var audioEnabled = true
     var hapticEnabled = true
 }
-
-struct SpeedDataPoint {
-    let speed: Double
-    let timestamp: Date
-}

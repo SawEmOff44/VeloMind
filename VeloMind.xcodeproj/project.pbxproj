@@ -46,6 +46,9 @@
 		0A000024 /* PowerHistoryChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000124 /* PowerHistoryChart.swift */; };
 		0A000025 /* RideNavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000125 /* RideNavigationView.swift */; };
 		0A000026 /* VeloMindColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000126 /* VeloMindColors.swift */; };
+		0A000027 /* LearnedParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000127 /* LearnedParameters.swift */; };
+		0A000028 /* RideSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000128 /* RideSegment.swift */; };
+		0A000029 /* SegmentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000129 /* SegmentStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -90,6 +93,9 @@
 		0A000124 /* PowerHistoryChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerHistoryChart.swift; sourceTree = "<group>"; };
 		0A000125 /* RideNavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideNavigationView.swift; sourceTree = "<group>"; };
 		0A000126 /* VeloMindColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VeloMindColors.swift; sourceTree = "<group>"; };
+		0A000127 /* LearnedParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnedParameters.swift; sourceTree = "<group>"; };
+		0A000128 /* RideSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideSegment.swift; sourceTree = "<group>"; };
+		0A000129 /* SegmentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -168,6 +174,8 @@
 				0A000109 /* StravaModels.swift */,
 				0A00010A /* WindData.swift */,
 				0A000119 /* User.swift */,
+				0A000127 /* LearnedParameters.swift */,
+				0A000128 /* RideSegment.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -177,6 +185,7 @@
 			children = (
 				0A00010B /* ExportManager.swift */,
 				0A00010C /* PersistenceManager.swift */,
+				0A000129 /* SegmentStore.swift */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -355,8 +364,11 @@
 				0A000008 /* SensorData.swift in Sources */,
 				0A000009 /* StravaModels.swift in Sources */,
 				0A00000A /* WindData.swift in Sources */,
+				0A000027 /* LearnedParameters.swift in Sources */,
+				0A000028 /* RideSegment.swift in Sources */,
 				0A00000B /* ExportManager.swift in Sources */,
 				0A00000C /* PersistenceManager.swift in Sources */,
+				0A000029 /* SegmentStore.swift in Sources */,
 				0A00000D /* CalibrationManager.swift in Sources */,
 				0A00000E /* PowerEngine.swift in Sources */,
 				0A00000F /* GPXParser.swift in Sources */,
