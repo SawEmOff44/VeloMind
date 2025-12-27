@@ -43,6 +43,22 @@ CREATE TABLE IF NOT EXISTS routes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Route waypoints table
+CREATE TABLE IF NOT EXISTS route_waypoints (
+    id SERIAL PRIMARY KEY,
+    route_id INTEGER REFERENCES routes(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    latitude DECIMAL(10,7) NOT NULL,
+    longitude DECIMAL(10,7) NOT NULL,
+    type VARCHAR(50) DEFAULT 'alert',
+    label VARCHAR(255),
+    notes TEXT,
+    distance_from_start DECIMAL(10,2),
+    alert_distance INTEGER DEFAULT 1000,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Sessions table
 CREATE TABLE IF NOT EXISTS sessions (
     id SERIAL PRIMARY KEY,
@@ -117,6 +133,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON sessions(start_time);
 CREATE INDEX IF NOT EXISTS idx_session_data_points_session_id ON session_data_points(session_id);
 CREATE INDEX IF NOT EXISTS idx_session_data_points_timestamp ON session_data_points(timestamp);
 CREATE INDEX IF NOT EXISTS idx_routes_user_id ON routes(user_id);
+CREATE INDEX IF NOT EXISTS idx_route_waypoints_route_id ON route_waypoints(route_id);
+CREATE INDEX IF NOT EXISTS idx_route_waypoints_user_id ON route_waypoints(user_id);
 CREATE INDEX IF NOT EXISTS idx_fitness_metrics_user_date ON fitness_metrics(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_rider_parameters_user_id ON rider_parameters(user_id);
 
@@ -133,4 +151,7 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_rider_parameters_updated_at BEFORE UPDATE ON rider_parameters
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_route_waypoints_updated_at BEFORE UPDATE ON route_waypoints
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

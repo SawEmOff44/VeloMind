@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react'
-import { getCurrentUser } from '../services/api'
+import { getCurrentUser, getParameters, createParameters, updateParameters } from '../services/api'
 
 export default function Settings() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [stravaConnected, setStravaConnected] = useState(false)
+  const [fitnessProfile, setFitnessProfile] = useState(null)
+  const [editingFitness, setEditingFitness] = useState(false)
+  const [fitnessForm, setFitnessForm] = useState({
+    name: 'Default Profile',
+    mass: 85,
+    ftp: 250,
+    cda: 0.32,
+    crr: 0.0045,
+    drivetrain_loss: 0.03,
+    position: 'hoods'
+  })
 
   useEffect(() => {
     loadUser()
+    loadFitnessProfile()
   }, [])
 
   const loadUser = async () => {
@@ -19,6 +31,43 @@ export default function Settings() {
       console.error('Failed to load user:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadFitnessProfile = async () => {
+    try {
+      const response = await getParameters()
+      const activeProfile = response.data.parameters?.find(p => p.is_active)
+      if (activeProfile) {
+        setFitnessProfile(activeProfile)
+        setFitnessForm({
+          name: activeProfile.name,
+          mass: parseFloat(activeProfile.mass),
+          ftp: activeProfile.ftp,
+          cda: parseFloat(activeProfile.cda),
+          crr: parseFloat(activeProfile.crr),
+          drivetrain_loss: parseFloat(activeProfile.drivetrain_loss),
+          position: activeProfile.position
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load fitness profile:', error)
+    }
+  }
+
+  const handleFitnessSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      if (fitnessProfile) {
+        await updateParameters(fitnessProfile.id, fitnessForm)
+      } else {
+        await createParameters({ ...fitnessForm, is_active: true })
+      }
+      await loadFitnessProfile()
+      setEditingFitness(false)
+    } catch (error) {
+      console.error('Failed to save fitness profile:', error)
+      alert('Failed to save fitness profile')
     }
   }
 
@@ -75,6 +124,178 @@ export default function Settings() {
             </dd>
           </div>
         </dl>
+      </div>
+
+      {/* Fitness Profile */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Fitness Profile</h2>
+          {!editingFitness && fitnessProfile && (
+            <button
+              onClick={() => setEditingFitness(true)}
+              className="px-3 py-1 text-sm bg-gradient-to-r from-velo-cyan-500 to-velo-blue-500 text-white rounded hover:from-velo-cyan-600 hover:to-velo-blue-600"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+
+        {editingFitness || !fitnessProfile ? (
+          <form onSubmit={handleFitnessSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Profile Name
+                </label>
+                <input
+                  type="text"
+                  value={fitnessForm.name}
+                  onChange={(e) => setFitnessForm({ ...fitnessForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-velo-cyan-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Weight (lbs)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={fitnessForm.mass}
+                  onChange={(e) => setFitnessForm({ ...fitnessForm, mass: parseFloat(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-velo-cyan-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  FTP (watts)
+                  <span className="ml-2 text-xs text-gray-500">Functional Threshold Power</span>
+                </label>
+                <input
+                  type="number"
+                  value={fitnessForm.ftp}
+                  onChange={(e) => setFitnessForm({ ...fitnessForm, ftp: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-velo-cyan-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  CdA
+                  <span className="ml-2 text-xs text-gray-500">Aerodynamic drag</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={fitnessForm.cda}
+                  onChange={(e) => setFitnessForm({ ...fitnessForm, cda: parseFloat(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-velo-cyan-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Rolling Resistance (Crr)
+                </label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={fitnessForm.crr}
+                  onChange={(e) => setFitnessForm({ ...fitnessForm, crr: parseFloat(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-velo-cyan-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Riding Position
+                </label>
+                <select
+                  value={fitnessForm.position}
+                  onChange={(e) => setFitnessForm({ ...fitnessForm, position: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-velo-cyan-500"
+                >
+                  <option value="hoods">Hoods</option>
+                  <option value="drops">Drops</option>
+                  <option value="aero">Aero</option>
+                  <option value="tops">Tops</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-gradient-to-r from-velo-cyan-500 to-velo-blue-500 text-white rounded-md hover:from-velo-cyan-600 hover:to-velo-blue-600"
+              >
+                Save Profile
+              </button>
+              {editingFitness && fitnessProfile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingFitness(false)
+                    setFitnessForm({
+                      name: fitnessProfile.name,
+                      mass: parseFloat(fitnessProfile.mass),
+                      ftp: fitnessProfile.ftp,
+                      cda: parseFloat(fitnessProfile.cda),
+                      crr: parseFloat(fitnessProfile.crr),
+                      drivetrain_loss: parseFloat(fitnessProfile.drivetrain_loss),
+                      position: fitnessProfile.position
+                    })
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Weight</p>
+              <p className="text-lg font-semibold text-gray-900">{fitnessProfile.mass} lbs</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">FTP</p>
+              <p className="text-lg font-semibold text-gray-900">{fitnessProfile.ftp} watts</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">CdA</p>
+              <p className="text-lg font-semibold text-gray-900">{fitnessProfile.cda}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Rolling Resistance</p>
+              <p className="text-lg font-semibold text-gray-900">{fitnessProfile.crr}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Position</p>
+              <p className="text-lg font-semibold text-gray-900 capitalize">{fitnessProfile.position}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Power-to-Weight</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {(fitnessProfile.ftp / (fitnessProfile.mass * 0.453592)).toFixed(2)} W/kg
+              </p>
+            </div>
+          </div>
+        )}
+        
+        <div className="mt-4 p-4 bg-velo-cyan-50 rounded-md">
+          <p className="text-sm text-velo-cyan-900">
+            <strong>💡 Tip:</strong> This profile is used for route predictions and iOS ride intelligence. 
+            Update your FTP regularly after fitness tests for accurate pacing recommendations.
+          </p>
+        </div>
       </div>
 
       {/* Strava Integration */}

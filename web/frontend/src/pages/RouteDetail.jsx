@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Polyline, Marker, Popup, Circle, useMapEvents } from 'react-leaflet'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceDot } from 'recharts'
-import { getRoute } from '../services/api'
+import { getRoute, getActiveParameters, getWaypoints, syncWaypoints } from '../services/api'
 import { detectClimbs, getClimbCategoryColor, getClimbCategoryLabel } from '../utils/climbAnalysis'
 import { reverseRoute, getDifficultyColor, predictSpeed, predictSegmentTime } from '../utils/routeUtils'
 import 'leaflet/dist/leaflet.css'
@@ -41,6 +41,7 @@ export default function RouteDetail() {
   
   useEffect(() => {
     loadRoute()
+    loadRiderParams()
   }, [id])
   
   const loadRoute = async () => {
@@ -59,15 +60,40 @@ export default function RouteDetail() {
         ])
       }
       
-      // Load saved waypoints from localStorage
-      const savedWaypoints = localStorage.getItem(`waypoints_${id}`)
-      if (savedWaypoints) {
-        setWaypoints(JSON.parse(savedWaypoints))
+      // Load waypoints from backend
+      try {
+        const waypointsResponse = await getWaypoints(id)
+        if (waypointsResponse.data.waypoints && waypointsResponse.data.waypoints.length > 0) {
+          setWaypoints(waypointsResponse.data.waypoints)
+        } else {
+          // Fallback to localStorage for backward compatibility
+          const savedWaypoints = localStorage.getItem(`waypoints_${id}`)
+          if (savedWaypoints) {
+            setWaypoints(JSON.parse(savedWaypoints))
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load waypoints:', error)
       }
     } catch (error) {
       console.error('Failed to load route:', error)
     } finally {
       setLoading(false)
+    }
+  }
+  
+  const loadRiderParams = async () => {
+    try {
+      const response = await getActiveParameters()
+      if (response.data) {
+        setRiderParams({
+          ftp: response.data.ftp || 250,
+          mass: parseFloat(response.data.mass) || 85,
+          cda: parseFloat(response.data.cda) || 0.32
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load rider parameters:', error)
     }
   }
   
@@ -107,12 +133,22 @@ export default function RouteDetail() {
     )
     setWaypoints(updatedWaypoints)
     localStorage.setItem(`waypoints_${id}`, JSON.stringify(updatedWaypoints))
+    
+    // Sync to backend (debounced in real app)
+    syncWaypoints(id, updatedWaypoints).catch(err => 
+      console.error('Failed to sync waypoints:', err)
+    )
   }
   
   const removeWaypoint = (waypointId) => {
     const updatedWaypoints = waypoints.filter(w => w.id !== waypointId)
     setWaypoints(updatedWaypoints)
     localStorage.setItem(`waypoints_${id}`, JSON.stringify(updatedWaypoints))
+    
+    // Sync to backend
+    syncWaypoints(id, updatedWaypoints).catch(err => 
+      console.error('Failed to sync waypoints:', err)
+    )
   }
   
   const toggleRouteDirection = () => {

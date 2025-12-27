@@ -90,4 +90,20 @@ export const getStravaActivities = () =>
 export const syncStrava = () => 
   api.post('/strava/sync')
 
+// Waypoints
+export const getWaypoints = (routeId) =>
+  api.get(`/waypoints/route/${routeId}`)
+
+export const createWaypoint = (routeId, data) =>
+  api.post(`/waypoints/route/${routeId}`, data)
+
+export const updateWaypoint = (waypointId, data) =>
+  api.put(`/waypoints/${waypointId}`, data)
+
+export const deleteWaypoint = (waypointId) =>
+  api.delete(`/waypoints/${waypointId}`)
+
+export const syncWaypoints = (routeId, waypoints) =>
+  api.post(`/waypoints/route/${routeId}/sync`, { waypoints })
+
 export default api
