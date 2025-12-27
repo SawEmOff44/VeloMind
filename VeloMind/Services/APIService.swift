@@ -3,7 +3,7 @@ import Foundation
 /// Service for communicating with VeloMind backend API
 @MainActor
 class APIService: ObservableObject {
-    private let baseURL = "http://localhost:3001/api" // TODO: Update to production URL
+    private let baseURL = "http://127.0.0.1:3001/api" // Use 127.0.0.1 for iOS Simulator
     private let tokenKey = "velomind.authToken"
     
     private var authToken: String? {

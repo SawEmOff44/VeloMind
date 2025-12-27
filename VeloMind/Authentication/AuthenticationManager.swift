@@ -23,7 +23,7 @@ class AuthenticationManager: ObservableObject {
         defer { isLoading = false }
         
         // Call backend API
-        guard let url = URL(string: "http://localhost:3001/api/auth/login") else {
+        guard let url = URL(string: "http://127.0.0.1:3001/api/auth/login") else {
             throw AuthError.invalidURL
         }
         
@@ -71,7 +71,7 @@ class AuthenticationManager: ObservableObject {
         defer { isLoading = false }
         
         // Call backend API
-        guard let url = URL(string: "http://localhost:3001/api/auth/register") else {
+        guard let url = URL(string: "http://127.0.0.1:3001/api/auth/register") else {
             throw AuthError.invalidURL
         }
         
