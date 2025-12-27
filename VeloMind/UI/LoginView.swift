@@ -19,11 +19,27 @@ struct LoginView: View {
                     
                     // Logo and Title
                     VStack(spacing: 15) {
-                        Image("VeloMind_Logo")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 120)
-                            .shadow(color: .veloCyan.opacity(0.3), radius: 20, x: 0, y: 0)
+                        if let logo = UIImage(named: "VeloMind_Logo") {
+                            Image(uiImage: logo)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(height: 120)
+                                .shadow(color: .veloCyan.opacity(0.3), radius: 20, x: 0, y: 0)
+                        } else {
+                            // Fallback: cycling icon
+                            Image(systemName: "bicycle.circle.fill")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(height: 120)
+                                .foregroundStyle(
+                                    LinearGradient(
+                                        colors: [.veloCyan, .veloTeal, .veloGreen],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .shadow(color: .veloCyan.opacity(0.3), radius: 20, x: 0, y: 0)
+                        }
                         
                         Text("VeloMind")
                             .font(.system(size: 48, weight: .bold))
