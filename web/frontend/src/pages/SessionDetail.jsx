@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getSession, getSessionAnalytics } from '../services/api'
 import { format } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 
 export default function SessionDetail() {
   const { id } = useParams()
@@ -29,6 +30,38 @@ export default function SessionDetail() {
     }
   }
   
+  const handleExport = (format) => {
+    const apiBase = import.meta.env.VITE_API_BASE || '/api'
+    const token = localStorage.getItem('token')
+    const url = `${apiBase}/export/session/${id}/${format}`
+    
+    // Create a temporary link and click it
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', '')
+    link.style.display = 'none'
+    
+    // Add authorization header via fetch
+    fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+      .then(response => response.blob())
+      .then(blob => {
+        const blobUrl = window.URL.createObjectURL(blob)
+        link.href = blobUrl
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(blobUrl)
+      })
+      .catch(error => {
+        console.error('Export failed:', error)
+        alert('Failed to export session')
+      })
+  }
+  
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -47,12 +80,34 @@ export default function SessionDetail() {
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">
-        {session.name || 'Unnamed Session'}
-      </h1>
-      <p className="text-gray-500 mb-8">
-        {format(new Date(session.start_time), 'PPp')}
-      </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {session.name || 'Unnamed Session'}
+          </h1>
+          <p className="text-gray-500">
+            {format(new Date(session.start_time), 'PPp')}
+          </p>
+        </div>
+        
+        {/* Export Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleExport('csv')}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg hover:from-green-600 hover:to-teal-600 transition-all font-semibold"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            CSV
+          </button>
+          <button
+            onClick={() => handleExport('tcx')}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all font-semibold"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            TCX
+          </button>
+        </div>
+      </div>
       
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

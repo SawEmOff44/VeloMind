@@ -12,6 +12,8 @@ import gpxRoutes from './routes/gpx.js';
 import parametersRoutes from './routes/parameters.js';
 import stravaRoutes from './routes/strava.js';
 import waypointsRoutes from './routes/waypoints.js';
+import analyticsRoutes from './routes/analytics.js';
+import exportRoutes from './routes/export.js';
 
 dotenv.config();
 
@@ -73,6 +75,8 @@ app.use('/api/gpx', gpxRoutes);
 app.use('/api/parameters', parametersRoutes);
 app.use('/api/strava', stravaRoutes);
 app.use('/api/waypoints', waypointsRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/export', exportRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

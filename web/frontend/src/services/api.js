@@ -106,4 +106,20 @@ export const deleteWaypoint = (waypointId) =>
 export const syncWaypoints = (routeId, waypoints) =>
   api.post(`/waypoints/route/${routeId}/sync`, { waypoints })
 
+// Analytics
+export const getAnalyticsOverview = (timeframe = 30) =>
+  api.get(`/analytics/overview?timeframe=${timeframe}`)
+
+export const getAnalyticsTrends = (metric = 'power', timeframe = 90) =>
+  api.get(`/analytics/trends?metric=${metric}&timeframe=${timeframe}`)
+
+export const getAnalyticsRecords = () =>
+  api.get('/analytics/records')
+
+export const getAnalyticsCalendar = (year = new Date().getFullYear()) =>
+  api.get(`/analytics/calendar?year=${year}`)
+
+export const getAnalyticsComparison = (sessionId) =>
+  api.get(`/analytics/comparison/${sessionId}`)
+
 export default api

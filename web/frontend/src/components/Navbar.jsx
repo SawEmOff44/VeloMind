@@ -58,6 +58,16 @@ export default function Navbar({ isAuthenticated }) {
                   Routes
                 </Link>
                 <Link
+                  to="/analytics"
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    isActive('/analytics')
+                      ? 'border-blue-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  Analytics
+                </Link>
+                <Link
                   to="/parameters"
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                     isActive('/parameters')
@@ -162,6 +172,17 @@ export default function Navbar({ isAuthenticated }) {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Routes
+                </Link>
+                <Link
+                  to="/analytics"
+                  className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    isActive('/analytics')
+                      ? 'border-cyan-500 text-cyan-700 bg-cyan-50'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Analytics
                 </Link>
                 <Link
                   to="/parameters"
