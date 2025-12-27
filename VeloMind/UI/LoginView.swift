@@ -53,19 +53,19 @@ struct LoginView: View {
                     
                     // Form Fields
                     VStack(spacing: 16) {
-                        TextField("Email", text: $email)
+                        TextField("", text: $email, prompt: Text("Email").foregroundColor(.veloTeal))
                             .textFieldStyle(RoundedTextFieldStyle())
                             .textContentType(.emailAddress)
                             .autocapitalization(.none)
                             .keyboardType(.emailAddress)
                         
                         if isRegistering {
-                            TextField("Name", text: $name)
+                            TextField("", text: $name, prompt: Text("Name").foregroundColor(.veloTeal))
                                 .textFieldStyle(RoundedTextFieldStyle())
                                 .textContentType(.name)
                         }
                         
-                        SecureField("Password", text: $password)
+                        SecureField("", text: $password, prompt: Text("Password").foregroundColor(.veloTeal))
                             .textFieldStyle(RoundedTextFieldStyle())
                             .textContentType(isRegistering ? .newPassword : .password)
                     }
