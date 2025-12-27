@@ -77,6 +77,13 @@ export default function Settings() {
     const redirectUri = `${window.location.origin}/strava/callback`
     const scope = 'read,activity:read_all'
     
+    console.log('Strava OAuth:', { clientId, redirectUri })
+    
+    if (!clientId) {
+      alert('Strava Client ID not configured. Please check your environment variables.')
+      return
+    }
+    
     window.location.href = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`
   }
 
