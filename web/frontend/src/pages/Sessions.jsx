@@ -48,66 +48,121 @@ export default function Sessions() {
           <p className="text-sm text-gray-400">Sessions are created from the iOS app</p>
         </div>
       ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Distance
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Avg Power
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sessions.map((session) => (
-                <tr key={session.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {format(new Date(session.start_time), 'PP')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <Link
-                      to={`/sessions/${session.id}`}
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      {session.name || 'Unnamed Session'}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {(session.distance / 1609.34).toFixed(1)} mi
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {Math.round(session.duration / 60)} min
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {Math.round(session.average_power)} W
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <button
-                      onClick={() => handleDelete(session.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
+        <>
+          {/* Desktop Table View (hidden on mobile) */}
+          <div className="hidden md:block bg-white shadow overflow-hidden sm:rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Distance
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Duration
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Avg Power
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sessions.map((session) => (
+                  <tr key={session.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {format(new Date(session.start_time), 'PP')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <Link
+                        to={`/sessions/${session.id}`}
+                        className="text-velo-cyan-600 hover:text-velo-cyan-800 font-semibold"
+                      >
+                        {session.name || 'Unnamed Session'}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {(session.distance / 1609.34).toFixed(1)} mi
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {Math.round(session.duration / 60)} min
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {Math.round(session.average_power)} W
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <button
+                        onClick={() => handleDelete(session.id)}
+                        className="text-red-600 hover:text-red-900 font-medium"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Mobile Card View (hidden on desktop) */}
+          <div className="md:hidden space-y-4">
+            {sessions.map((session) => (
+              <div key={session.id} className="bg-white rounded-lg shadow p-4 border border-gray-200">
+                <Link
+                  to={`/sessions/${session.id}`}
+                  className="block mb-3"
+                >
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    {session.name || 'Unnamed Session'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {format(new Date(session.start_time), 'PP')}
+                  </p>
+                </Link>
+                
+                <div className="grid grid-cols-3 gap-3 mb-3">
+                  <div className="bg-gradient-to-br from-cyan-50 to-teal-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-600 mb-1">Distance</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {(session.distance / 1609.34).toFixed(1)}
+                      <span className="text-sm font-normal ml-1">mi</span>
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-teal-50 to-green-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-600 mb-1">Duration</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {Math.round(session.duration / 60)}
+                      <span className="text-sm font-normal ml-1">min</span>
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-green-50 to-cyan-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-600 mb-1">Power</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {Math.round(session.average_power)}
+                      <span className="text-sm font-normal ml-1">W</span>
+                    </p>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => handleDelete(session.id)}
+                  className="w-full py-2 bg-red-50 text-red-600 font-semibold rounded-lg hover:bg-red-100 transition-colors"
+                >
+                  Delete Session
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

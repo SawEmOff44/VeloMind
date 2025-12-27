@@ -225,6 +225,80 @@ struct SettingsView: View {
                     .buttonStyle(.borderedProminent)
                 }
                 
+                // Intelligence & Alerts Section
+                Section {
+                    Group {
+                        // Alert Toggles
+                        Toggle("Steep Climb Alerts", isOn: Binding(
+                            get: { coordinator.intelligenceEngine.alertPreferences.steepClimbAlertsEnabled },
+                            set: { coordinator.intelligenceEngine.alertPreferences.steepClimbAlertsEnabled = $0 }
+                        ))
+                        
+                        Toggle("Power Change Alerts", isOn: Binding(
+                            get: { coordinator.intelligenceEngine.alertPreferences.powerChangeAlertsEnabled },
+                            set: { coordinator.intelligenceEngine.alertPreferences.powerChangeAlertsEnabled = $0 }
+                        ))
+                        
+                        Toggle("Audio Alerts", isOn: Binding(
+                            get: { coordinator.intelligenceEngine.alertPreferences.audioEnabled },
+                            set: { coordinator.intelligenceEngine.alertPreferences.audioEnabled = $0 }
+                        ))
+                        
+                        Toggle("Haptic Feedback", isOn: Binding(
+                            get: { coordinator.intelligenceEngine.alertPreferences.hapticEnabled },
+                            set: { coordinator.intelligenceEngine.alertPreferences.hapticEnabled = $0 }
+                        ))
+                    }
+                    
+                    // Alert Thresholds
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Steep Grade Threshold: \(Int(coordinator.intelligenceEngine.alertPreferences.steepGradeThreshold))%")
+                            .font(.subheadline)
+                        Slider(
+                            value: Binding(
+                                get: { coordinator.intelligenceEngine.alertPreferences.steepGradeThreshold },
+                                set: { coordinator.intelligenceEngine.alertPreferences.steepGradeThreshold = $0 }
+                            ),
+                            in: 5...15,
+                            step: 1
+                        )
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Power Change Threshold: \(Int(coordinator.intelligenceEngine.alertPreferences.powerChangeThresholdPercent))%")
+                            .font(.subheadline)
+                        Slider(
+                            value: Binding(
+                                get: { coordinator.intelligenceEngine.alertPreferences.powerChangeThresholdPercent },
+                                set: { coordinator.intelligenceEngine.alertPreferences.powerChangeThresholdPercent = $0 }
+                            ),
+                            in: 10...40,
+                            step: 5
+                        )
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Alert Cooldown: \(Int(coordinator.intelligenceEngine.alertPreferences.alertCooldownSeconds))s")
+                            .font(.subheadline)
+                        Slider(
+                            value: Binding(
+                                get: { coordinator.intelligenceEngine.alertPreferences.alertCooldownSeconds },
+                                set: { coordinator.intelligenceEngine.alertPreferences.alertCooldownSeconds = $0 }
+                            ),
+                            in: 60...300,
+                            step: 30
+                        )
+                    }
+                } header: {
+                    HStack {
+                        Image(systemName: "bell.badge")
+                        Text("Intelligence & Alerts")
+                    }
+                } footer: {
+                    Text("Customize when and how VeloMind alerts you about upcoming terrain and power changes.")
+                        .font(.caption)
+                }
+                
                 Section("Calibration") {
                     NavigationLink("Steady-State Calibration") {
                         CalibrationView(mode: .steadyState)
