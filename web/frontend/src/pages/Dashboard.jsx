@@ -134,14 +134,14 @@ export default function Dashboard() {
                   <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
                     <div className="flex items-center gap-2">
                       <UserCircleIcon className="h-5 w-5 text-green-300" />
-                      <span className="text-white font-bold">{userProfile.weight}kg</span>
+                      <span className="text-white font-bold">{userProfile.weight}lbs</span>
                       <span className="text-blue-100 text-sm">Weight</span>
                     </div>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/30">
                     <div className="flex items-center gap-2">
                       <CogIcon className="h-5 w-5 text-purple-300" />
-                      <span className="text-white font-bold">{userProfile.bike.weight}kg</span>
+                      <span className="text-white font-bold">{userProfile.bike.weight}lbs</span>
                       <span className="text-blue-100 text-sm">{userProfile.bike.name}</span>
                     </div>
                   </div>
@@ -183,7 +183,7 @@ export default function Dashboard() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Weight (kg)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Weight (lbs)</label>
                 <input
                   type="number"
                   step="0.1"
@@ -202,7 +202,7 @@ export default function Dashboard() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Bike Weight (kg)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Bike Weight (lbs)</label>
                 <input
                   type="number"
                   step="0.1"
@@ -325,8 +325,8 @@ export default function Dashboard() {
             </div>
             <dt className="text-sm font-medium opacity-90 mb-1">Total Distance</dt>
             <dd className="text-4xl font-black">
-              {(stats.totalDistance / 1000).toFixed(0)}
-              <span className="text-2xl font-normal ml-1">km</span>
+              {(stats.totalDistance / 1609.34).toFixed(0)}
+              <span className="text-2xl font-normal ml-1">mi</span>
             </dd>
             <p className="text-xs opacity-75 mt-2">Amazing miles! 🎯</p>
           </div>
@@ -450,7 +450,7 @@ export default function Dashboard() {
                           <p className="text-sm text-gray-500 mb-1">Distance</p>
                           <p className="text-lg font-bold text-gray-900 flex items-center gap-1">
                             <MapIcon className="h-4 w-4 text-blue-500" />
-                            {(session.distance / 1000).toFixed(1)}km
+                            {(session.distance / 1609.34).toFixed(1)}mi
                           </p>
                         </div>
                       </div>

@@ -141,7 +141,7 @@ export default function Parameters() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Total Mass (kg)
+                  Total Mass (lbs)
                 </label>
                 <input
                   type="number"
@@ -281,7 +281,7 @@ export default function Parameters() {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-gray-500">Total Mass:</dt>
-                  <dd className="font-medium text-gray-900">{param.total_mass_kg} kg</dd>
+                  <dd className="font-medium text-gray-900">{param.total_mass_kg} lbs</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500">CdA:</dt>

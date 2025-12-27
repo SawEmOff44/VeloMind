@@ -61,7 +61,7 @@ class RouteManager: ObservableObject {
         // Detect turns for navigation
         turns = detectTurns(in: processed)
         
-        logger.info("Loaded route '\(name)' with \(processed.count) points, \(route.totalDistance / 1000, privacy: .public) km, \(self.turns.count) turns")
+        logger.info("Loaded route '\(name)' with \(processed.count) points, \(route.totalDistance / 1609.34, privacy: .public) mi, \(self.turns.count) turns")
     }
     
     // MARK: - Route Matching

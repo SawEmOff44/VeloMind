@@ -87,7 +87,7 @@ export default function Sessions() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {(session.distance / 1000).toFixed(1)} km
+                    {(session.distance / 1609.34).toFixed(1)} mi
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {Math.round(session.duration / 60)} min

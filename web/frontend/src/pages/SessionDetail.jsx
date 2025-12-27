@@ -59,7 +59,7 @@ export default function SessionDetail() {
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500">Distance</p>
           <p className="text-2xl font-bold text-gray-900">
-            {(session.distance / 1000).toFixed(1)} km
+            {(session.distance / 1609.34).toFixed(1)} mi
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">

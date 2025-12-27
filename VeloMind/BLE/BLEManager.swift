@@ -117,7 +117,7 @@ class BLEManager: NSObject, ObservableObject {
                     
                     currentSpeed = speed
                     delegate?.didUpdateSpeed(speed, timestamp: Date())
-                    logger.debug("Speed: \(speed * 3.6, privacy: .public) km/h")
+                    logger.debug("Speed: \(speed * 2.23694, privacy: .public) mph")
                 }
             }
             

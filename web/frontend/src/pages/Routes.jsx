@@ -179,8 +179,8 @@ export default function Routes() {
                       <span>Distance</span>
                     </div>
                     <p className="text-2xl font-bold text-gray-900">
-                      {(route.total_distance / 1000).toFixed(1)}
-                      <span className="text-sm font-normal text-gray-500 ml-1">km</span>
+                      {(route.total_distance / 1609.34).toFixed(1)}
+                      <span className="text-sm font-normal text-gray-500 ml-1">mi</span>
                     </p>
                   </div>
                   

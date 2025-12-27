@@ -50,7 +50,7 @@ struct ActivityRow: View {
                 .font(.headline)
             
             HStack {
-                Text("\(String(format: "%.1f", activity.distance / 1000)) km")
+                Text("\(String(format: "%.1f", activity.distance / 1609.34)) mi")
                 Text("•")
                 Text(formatDuration(activity.movingTime))
                 

@@ -349,7 +349,7 @@ struct CalibrationView: View {
             
             Text(mode == .steadyState ?
                  "Ride at a steady effort for 10-15 minutes on flat or consistent grade terrain." :
-                 "Find a safe, flat road. Coast from 30 km/h to 20 km/h without pedaling.")
+                 "Find a safe, flat road. Coast from 20 mph to 13 mph without pedaling.")
                 .multilineTextAlignment(.center)
                 .padding()
             
@@ -464,7 +464,7 @@ struct RoutesSyncView: View {
                             .fontWeight(.semibold)
                     }
                     Spacer()
-                    Text("\(route.totalDistance / 1000, specifier: "%.1f") km")
+                    Text("\(route.totalDistance / 1609.34, specifier: "%.1f") mi")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

@@ -13,7 +13,7 @@ class ExportManager {
     // MARK: - CSV Export
     
     static func exportToCSV(_ session: RideSession) -> String {
-        var csv = "timestamp,latitude,longitude,altitude,speed_ms,speed_kmh,cadence_rpm,heartrate_bpm,power_watts,grade_percent,wind_speed_ms,wind_direction_deg\n"
+        var csv = "timestamp,latitude,longitude,altitude_ft,speed_ms,speed_mph,cadence_rpm,heartrate_bpm,power_watts,grade_percent,wind_speed_ms,wind_direction_deg\n"
         
         let dateFormatter = ISO8601DateFormatter()
         

@@ -2,7 +2,7 @@ import Foundation
 
 /// Rider parameters for power calculation
 struct RiderParameters: Codable {
-    var mass: Double            // kg (rider + bike)
+    var mass: Double            // lbs (rider + bike)
     var cda: Double            // Coefficient of drag × frontal area (m²)
     var crr: Double            // Coefficient of rolling resistance
     var drivetrainLoss: Double // Percentage (0.03 = 3%)
@@ -23,7 +23,7 @@ struct RiderParameters: Codable {
     
     // Defaults for typical road cyclist
     static let `default` = RiderParameters(
-        mass: 85.0,           // 75kg rider + 10kg bike
+        mass: 187.0,           // 165lbs rider + 22lbs bike
         cda: 0.32,            // Hoods position, typical road bike
         crr: 0.0045,          // Road tires on asphalt
         drivetrainLoss: 0.03, // 3% drivetrain loss

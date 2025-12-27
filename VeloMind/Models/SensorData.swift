@@ -7,8 +7,8 @@ struct SensorData {
     let heartRate: Int?          // bpm
     let timestamp: Date
     
-    var speedKmh: Double? {
-        speed.map { $0 * 3.6 }
+    var speedMph: Double? {
+        speed.map { $0 * 2.23694 }
     }
 }
 

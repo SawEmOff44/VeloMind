@@ -72,8 +72,8 @@ export default function RouteDetail() {
   // Prepare elevation chart data
   const elevationData = route.points
     ? route.points.map((point, index) => ({
-        distance: (point.distance / 1000).toFixed(2), // Convert to km
-        elevation: point.elevation ? Math.round(point.elevation) : 0,
+        distance: (point.distance / 1609.34).toFixed(2), // Convert to miles
+        elevation: point.elevation ? Math.round(point.elevation * 3.28084) : 0, // Convert to feet
         index
       }))
     : []
@@ -89,7 +89,7 @@ export default function RouteDetail() {
         const grade = distanceDiff > 0 ? (elevationDiff / distanceDiff) * 100 : 0
         
         return {
-          distance: (point.distance / 1000).toFixed(2),
+          distance: (point.distance / 1609.34).toFixed(2), // Convert to miles
           grade: grade.toFixed(1),
           index: index + 1
         }
@@ -98,13 +98,13 @@ export default function RouteDetail() {
   
   // Route statistics
   const stats = {
-    distance: (route.total_distance / 1000).toFixed(2),
-    elevationGain: Math.round(route.total_elevation_gain || 0),
+    distance: (route.total_distance / 1609.34).toFixed(2), // Convert to miles
+    elevationGain: Math.round((route.total_elevation_gain || 0) * 3.28084), // Convert to feet
     maxElevation: route.points && route.points.length > 0
-      ? Math.max(...route.points.map(p => p.elevation || 0))
+      ? Math.round(Math.max(...route.points.map(p => (p.elevation || 0) * 3.28084)))
       : 0,
     minElevation: route.points && route.points.length > 0
-      ? Math.min(...route.points.map(p => p.elevation || 0))
+      ? Math.round(Math.min(...route.points.map(p => (p.elevation || 0) * 3.28084)))
       : 0,
     avgGrade: route.total_distance > 0 && route.total_elevation_gain
       ? ((route.total_elevation_gain / route.total_distance) * 100).toFixed(1)
@@ -125,19 +125,19 @@ export default function RouteDetail() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500">Distance</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.distance} km</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.distance} mi</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500">Elevation Gain</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.elevationGain} m</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.elevationGain} ft</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500">Max Elevation</p>
-          <p className="text-2xl font-bold text-gray-900">{Math.round(stats.maxElevation)} m</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.maxElevation} ft</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500">Min Elevation</p>
-          <p className="text-2xl font-bold text-gray-900">{Math.round(stats.minElevation)} m</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.minElevation} ft</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500">Avg Grade</p>
@@ -196,14 +196,14 @@ export default function RouteDetail() {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               dataKey="distance" 
-              label={{ value: 'Distance (km)', position: 'insideBottom', offset: -5 }}
+              label={{ value: 'Distance (mi)', position: 'insideBottom', offset: -5 }}
             />
             <YAxis 
-              label={{ value: 'Elevation (m)', angle: -90, position: 'insideLeft' }}
+              label={{ value: 'Elevation (ft)', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip 
-              formatter={(value) => [`${value} m`, 'Elevation']}
-              labelFormatter={(label) => `${label} km`}
+              formatter={(value) => [`${value} ft`, 'Elevation']}
+              labelFormatter={(label) => `${label} mi`}
             />
             <Area 
               type="monotone" 
@@ -224,7 +224,7 @@ export default function RouteDetail() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="distance" 
-                label={{ value: 'Distance (km)', position: 'insideBottom', offset: -5 }}
+                label={{ value: 'Distance (mi)', position: 'insideBottom', offset: -5 }}
               />
               <YAxis 
                 domain={['dataMin - 1', 'dataMax + 1']}
@@ -233,7 +233,7 @@ export default function RouteDetail() {
               />
               <Tooltip 
                 formatter={(value) => [`${parseFloat(value).toFixed(1)}%`, 'Grade']}
-                labelFormatter={(label) => `${label} km`}
+                labelFormatter={(label) => `${label} mi`}
               />
               <Line 
                 type="monotone" 
