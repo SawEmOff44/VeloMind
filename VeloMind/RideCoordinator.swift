@@ -16,6 +16,7 @@ class RideCoordinator: ObservableObject {
     let persistenceManager = PersistenceManager()
     let navigationManager: RouteNavigationManager
     let backgroundTaskManager = BackgroundTaskManager()
+    let watchConnectivityManager = WatchConnectivityManager.shared
     
     // Intelligence & Fitness
     let intelligenceEngine: IntelligenceEngine
@@ -58,6 +59,7 @@ class RideCoordinator: ObservableObject {
         self.intelligenceEngine.learningEngine = learningEngine
         
         setupDelegates()
+        setupWatchNotifications()
         
         // Load learned parameters async
         Task {
@@ -71,6 +73,29 @@ class RideCoordinator: ObservableObject {
     
     private func setupDelegates() {
         bleManager.delegate = self
+    }
+    
+    private func setupWatchNotifications() {
+        // Listen for watch control requests
+        NotificationCenter.default.addObserver(
+            forName: .watchRequestedRideStart,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.startRide()
+            }
+        }
+        
+        NotificationCenter.default.addObserver(
+            forName: .watchRequestedRideStop,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.stopRide()
+            }
+        }
     }
     
     // MARK: - Ride Control
@@ -264,6 +289,9 @@ class RideCoordinator: ObservableObject {
         // This is simplified - should track actual distance traveled
         rideDistance += speed * 1.0  // 1 second interval
         
+        // Sync data to Apple Watch
+        syncToWatch(speed: speed, powerResult: powerResult)
+        
         // Record calibration data if active
         if calibrationManager.isCalibrating {
             calibrationManager.recordData(
@@ -293,5 +321,33 @@ extension RideCoordinator: SensorDataDelegate {
     
     func didUpdateConnectionState(_ isConnected: Bool, sensorType: BLESensorType) {
         // Connection state already published by BLEManager
+    }
+}
+
+// MARK: - Apple Watch Sync
+
+extension RideCoordinator {
+    private func syncToWatch(speed: Double, powerResult: PowerResult) {
+        watchConnectivityManager.sendRideData(
+            power: powerResult.totalPower,
+            speed: speed * 2.23694,  // Convert m/s to mph
+            cadence: bleManager.currentCadence,
+            heartRate: Double(bleManager.currentHeartRate),
+            distance: rideDistance * 0.000621371,  // Convert m to miles
+            duration: rideDuration,
+            currentZone: intelligenceEngine.currentPowerZone.rawValue,
+            targetZone: intelligenceEngine.targetPowerZone?.rawValue,
+            routeAnalysis: intelligenceEngine.routeAheadAnalysis,
+            isRiding: isRiding
+        )
+        
+        // Update complication with key metrics
+        if let routeAnalysis = intelligenceEngine.routeAheadAnalysis {
+            watchConnectivityManager.updateComplication(
+                power: powerResult.totalPower,
+                zone: intelligenceEngine.currentPowerZone.rawValue,
+                upcomingElevation: routeAnalysis.elevationGain * 3.28084
+            )
+        }
     }
 }

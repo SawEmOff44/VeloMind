@@ -138,6 +138,9 @@ class RouteNavigationManager: NSObject, ObservableObject {
         
         print("🚨 WAYPOINT ALERT: \(label) in \(distanceFeet) feet")
         
+        // Send to Apple Watch
+        WatchConnectivityManager.shared.sendWaypointAlert(waypoint: waypoint, distanceFeet: Double(distanceFeet))
+        
         // Create notification content
         let content = UNMutableNotificationContent()
         content.title = "\(waypoint.type.icon) \(label)"

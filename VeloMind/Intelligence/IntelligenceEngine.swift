@@ -641,6 +641,9 @@ class IntelligenceEngine: ObservableObject {
         
         let synthesizer = AVSpeechSynthesizer()
         synthesizer.speak(utterance)
+        
+        // Send to Apple Watch for haptic feedback
+        WatchConnectivityManager.shared.sendAudioAlertToWatch(message: message)
     }
 }
 
