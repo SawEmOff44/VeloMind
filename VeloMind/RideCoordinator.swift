@@ -14,6 +14,7 @@ class RideCoordinator: ObservableObject {
     let stravaManager = StravaManager()
     let fitnessManager = FitnessManager()
     let persistenceManager = PersistenceManager()
+    let navigationManager: RouteNavigationManager
     
     // Intelligence & Fitness
     let intelligenceEngine: IntelligenceEngine
@@ -26,6 +27,7 @@ class RideCoordinator: ObservableObject {
     @Published var rideStartTime: Date?
     @Published var rideDuration: TimeInterval = 0
     @Published var rideDistance: Double = 0
+    @Published var isNavigating = false
     
     private var cancellables = Set<AnyCancellable>()
     private var updateTimer: Timer?
@@ -48,6 +50,7 @@ class RideCoordinator: ObservableObject {
             persistenceManager: persistenceManager,
             stravaManager: stravaManager
         )
+        self.navigationManager = RouteNavigationManager(locationManager: locationManager)
         
         // Link learning engine to other components
         self.powerEngine.learningEngine = learningEngine
@@ -92,8 +95,23 @@ class RideCoordinator: ObservableObject {
         startUpdateLoop()
     }
     
+    func startRideWithNavigation(route: Route) {
+        // Start normal ride
+        startRide()
+        
+        // Start navigation
+        navigationManager.startNavigation(route: route)
+        isNavigating = true
+    }
+    
     func stopRide() {
         isRiding = false
+        
+        // Stop navigation if active
+        if isNavigating {
+            navigationManager.stopNavigation()
+            isNavigating = false
+        }
         
         // End learning session and save ride data
         learningEngine.endRide(

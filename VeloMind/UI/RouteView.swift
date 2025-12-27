@@ -139,15 +139,78 @@ struct RouteView: View {
 
 struct RouteCard: View {
     let route: Route
+    @EnvironmentObject var coordinator: RideCoordinator
+    @State private var showNavigationAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(route.name)
-                .font(.headline)
-            
             HStack {
-                let miles = route.totalDistance * 0.000621371
-                let feet = route.totalElevationGain * 3.28084
+                VStack(alignment: .leading) {
+                    Text(route.name)
+                        .font(.headline)
+                    
+                    HStack {
+                        let miles = route.totalDistance * 0.000621371
+                        let feet = route.totalElevationGain * 3.28084
+                        
+                        Label(String(format: "%.1f mi", miles), systemImage: "figure.outdoor.cycle")
+                            .font(.caption)
+                        
+                        Label(String(format: "%.0f ft", feet), systemImage: "arrow.up")
+                            .font(.caption)
+                        
+                        if !route.waypoints.isEmpty {
+                            Label("\(route.waypoints.count)", systemImage: "mappin")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    showNavigationAlert = true
+                }) {
+                    VStack {
+                        Image(systemName: "location.fill")
+                            .font(.title2)
+                        Text("Navigate")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(
+                        LinearGradient(
+                            colors: [Color.cyan, Color.blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .cornerRadius(12)
+                }
+            }
+        }
+        .alert("Start Navigation?", isPresented: $showNavigationAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Start Ride") {
+                coordinator.startRideWithNavigation(route: route)
+            }
+        } message: {
+            Text("This will start a ride with turn-by-turn navigation and waypoint alerts for '\(route.name)'")
+        }
+    }
+}
+
+struct RouteInfoCard: View {
+    let routeInfo: RouteInfo
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(routeInfo.name)
+                    .font(.headline)
                 Label(String(format: "%.2f mi", miles), systemImage: "map")
                 Spacer()
                 Label(String(format: "%.0f ft", feet), systemImage: "arrow.up.forward")
