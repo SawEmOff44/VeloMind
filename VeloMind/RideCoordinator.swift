@@ -15,6 +15,7 @@ class RideCoordinator: ObservableObject {
     let fitnessManager = FitnessManager()
     let persistenceManager = PersistenceManager()
     let navigationManager: RouteNavigationManager
+    let backgroundTaskManager = BackgroundTaskManager()
     
     // Intelligence & Fitness
     let intelligenceEngine: IntelligenceEngine
@@ -80,6 +81,10 @@ class RideCoordinator: ObservableObject {
         rideDuration = 0
         rideDistance = 0
         
+        // Configure background support
+        backgroundTaskManager.configureAudioSession()
+        backgroundTaskManager.activateAudioSession()
+        
         // Start all services
         locationManager.startTracking()
         bleManager.startScanning()
@@ -126,6 +131,9 @@ class RideCoordinator: ObservableObject {
         stopUpdateLoop()
         locationManager.stopTracking()
         bleManager.stopScanning()
+        
+        // Deactivate background support
+        backgroundTaskManager.deactivateAudioSession()
     }
     
     func pauseRide() {
@@ -141,9 +149,23 @@ class RideCoordinator: ObservableObject {
     // MARK: - Update Loop
     
     private func startUpdateLoop() {
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        // Adapt interval based on power mode
+        let interval = backgroundTaskManager.recommendedUpdateInterval()
+        updateTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.updateRideData()
+            }
+        }
+        
+        // Restart timer if power mode changes
+        NotificationCenter.default.addObserver(
+            forName: .NSProcessInfoPowerStateDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.stopUpdateLoop()
+                self?.startUpdateLoop()
             }
         }
     }

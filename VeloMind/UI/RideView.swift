@@ -18,10 +18,16 @@ struct RideView: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 8) {
+                    // Background Status Indicator
+                    if coordinator.backgroundTaskManager.isInBackground {
+                        BackgroundStatusBanner(manager: coordinator.backgroundTaskManager)
+                            .padding(.top, 50)
+                    }
+                    
                     // Navigation Box - Full width at top
                     NavigationAlertBox()
                         .frame(height: 80)
-                        .padding(.top, 50)
+                        .padding(.top, coordinator.backgroundTaskManager.isInBackground ? 8 : 50)
                     
                     // Intelligence Alerts
                     IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
@@ -1070,3 +1076,51 @@ struct LearningActiveIndicator: View {
     }
 }
 
+// MARK: - Background Status Banner
+
+struct BackgroundStatusBanner: View {
+    @ObservedObject var manager: BackgroundTaskManager
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "moon.fill")
+                .foregroundColor(.yellow)
+                .font(.caption)
+            
+            Text("Background Mode")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            if manager.isLowPowerModeEnabled {
+                HStack(spacing: 4) {
+                    Image(systemName: "battery.25")
+                        .foregroundColor(.orange)
+                        .font(.caption2)
+                    Text("Low Power")
+                        .font(.caption2)
+                        .foregroundColor(.orange)
+                }
+            }
+            
+            if manager.backgroundTimeRemaining < Double.infinity {
+                Text("\(Int(manager.backgroundTimeRemaining / 60))m")
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            LinearGradient(
+                colors: [Color.yellow.opacity(0.3), Color.orange.opacity(0.3)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+        .cornerRadius(8)
+        .padding(.horizontal, 12)
+    }
+}

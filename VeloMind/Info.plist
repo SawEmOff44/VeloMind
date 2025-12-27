@@ -28,6 +28,7 @@
 	<array>
 		<string>location</string>
 		<string>bluetooth-central</string>
+		<string>audio</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>VeloMind needs your location to track your ride, calculate grade, and estimate power output.</string>
