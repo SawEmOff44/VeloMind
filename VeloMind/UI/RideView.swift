@@ -593,6 +593,11 @@ struct IntelligenceAlertsView: View {
     
     var body: some View {
         VStack(spacing: 8) {
+            // Phase 2: Route Ahead Analysis
+            if let routeAnalysis = engine.routeAheadAnalysis {
+                RouteAheadCard(analysis: routeAnalysis, currentZone: engine.currentPowerZone, targetZone: engine.targetPowerZone)
+            }
+            
             // Overcooking Alert
             if let alert = engine.overcookingAlert {
                 AlertBanner(
@@ -630,11 +635,251 @@ struct IntelligenceAlertsView: View {
     }
 }
 
+// MARK: - Phase 2 Route Ahead Card
+
+struct RouteAheadCard: View {
+    let analysis: RouteAheadAnalysis
+    let currentZone: PowerZone
+    let targetZone: PowerZone?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                Image(systemName: "arrow.forward.circle.fill")
+                    .foregroundColor(.veloCyan)
+                    .font(.title3)
+                Text("Next \(String(format: "%.1f", analysis.distanceAhead / 1609.34)) Miles")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                Spacer()
+                Text(analysis.difficulty.rawValue)
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(analysis.difficulty.color)
+                    .cornerRadius(8)
+            }
+            
+            // Stats Grid
+            HStack(spacing: 16) {
+                StatPill(icon: "arrow.up", value: "+\(Int(analysis.elevationGain * 3.28084)) ft", color: .orange)
+                StatPill(icon: "percent", value: "\(String(format: "%.1f", analysis.avgGrade))% avg", color: .yellow)
+                StatPill(icon: "clock", value: formatTime(analysis.estimatedTime), color: .green)
+            }
+            
+            // Power Zones
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Current")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(currentZone.color)
+                            .frame(width: 8, height: 8)
+                        Text(currentZone.rawValue)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                    }
+                }
+                
+                Image(systemName: "arrow.right")
+                    .foregroundColor(.gray)
+                    .font(.caption)
+                
+                if let target = targetZone {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Target")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(target.color)
+                                .frame(width: 8, height: 8)
+                            Text(target.rawValue)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(Int(analysis.requiredPower.lowerBound))-\(Int(analysis.requiredPower.upperBound))W")
+                        .font(.headline)
+                        .foregroundColor(.veloCyan)
+                    Text("target range")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            // Recommendation
+            HStack(spacing: 8) {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(.yellow)
+                    .font(.caption)
+                Text(analysis.recommendation)
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(10)
+            .background(Color.white.opacity(0.1))
+            .cornerRadius(8)
+        }
+        .padding()
+        .background(
+            LinearGradient(
+                colors: [Color.veloCyan.opacity(0.2), Color.veloBlue.opacity(0.2)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.veloCyan.opacity(0.3), lineWidth: 1)
+        )
+    }
+    
+    private func formatTime(_ seconds: TimeInterval) -> String {
+        let mins = Int(seconds / 60)
+        if mins < 60 {
+            return "\(mins)m"
+        } else {
+            let hours = mins / 60
+            let remainingMins = mins % 60
+            return "\(hours)h \(remainingMins)m"
+        }
+    }
+}
+
+struct StatPill: View {
+    let icon: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption)
+            Text(value)
+                .font(.caption)
+                .fontWeight(.semibold)
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(color.opacity(0.2))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Phase 2 Power Zone Gauge
+
+struct PowerZoneGauge: View {
+    let currentZone: PowerZone
+    let targetZone: PowerZone?
+    let currentPower: Double
+    let ftp: Double
+    
+    private let allZones: [PowerZone] = [.recovery, .endurance, .tempo, .threshold, .vo2max, .anaerobic]
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // Header
+            HStack {
+                Text("POWER ZONE")
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+                    .tracking(0.5)
+                Spacer()
+                Text("\(Int(currentPower))W")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                Text("(\(Int((currentPower / ftp) * 100))% FTP)")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            
+            // Zone Bar
+            HStack(spacing: 2) {
+                ForEach(allZones, id: \.self) { zone in
+                    ZStack {
+                        Rectangle()
+                            .fill(zone.color.opacity(currentZone == zone ? 1.0 : 0.3))
+                            .frame(height: 24)
+                        
+                        if currentZone == zone {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.3))
+                                .frame(height: 24)
+                                .overlay(
+                                    Rectangle()
+                                        .stroke(Color.white, lineWidth: 2)
+                                )
+                        }
+                        
+                        if let target = targetZone, target == zone {
+                            VStack {
+                                Image(systemName: "arrowtriangle.down.fill")
+                                    .font(.caption2)
+                                    .foregroundColor(.white)
+                                    .offset(y: -8)
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+            }
+            .cornerRadius(4)
+            
+            // Labels
+            HStack {
+                Text(currentZone.rawValue)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(currentZone.color)
+                
+                if let target = targetZone, target != currentZone {
+                    Image(systemName: "arrow.right")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    Text(target.rawValue)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(target.color)
+                }
+                
+                Spacer()
+                
+                Text(currentZone.ftpRange)
+                    .font(.caption2)
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding()
+        .background(Color.gray.opacity(0.15))
+        .cornerRadius(12)
+        .padding(.horizontal)
+    }
+}
+
 struct IntelligenceMetricsView: View {
     @ObservedObject var engine: IntelligenceEngine
     
     var body: some View {
         VStack(spacing: 12) {
+            // Phase 2: Power Zone Gauge
+            PowerZoneGauge(currentZone: engine.currentPowerZone, targetZone: engine.targetPowerZone, currentPower: engine.currentPower, ftp: engine.riderParameters?.ftp ?? 200)
+            
             // Environmental Load & Effort Budget
             HStack(spacing: 12) {
                 // Environmental Load Index

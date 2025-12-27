@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AVFoundation
 
 /// Central intelligence engine for real-time ride guidance
 @MainActor
@@ -13,6 +14,10 @@ class IntelligenceEngine: ObservableObject {
     @Published var pacingRecommendation: PacingRecommendation?
     @Published var upcomingClimb: ClimbPreview?
     @Published var predictedSpeedValue: PredictedSpeed?
+    @Published var routeAheadAnalysis: RouteAheadAnalysis?
+    @Published var currentPowerZone: PowerZone = .recovery
+    @Published var targetPowerZone: PowerZone?
+    @Published var audioAlert: AudioAlert?
     
     // State tracking
     private var rideStartTime: Date?
@@ -21,6 +26,8 @@ class IntelligenceEngine: ObservableObject {
     private var lastCalorieIntake: Date?
     private var powerHistory: [PowerDataPoint] = []
     private var speedHistory: [SpeedDataPoint] = []
+    private var lastAudioAlertTime: Date?
+    private var currentRoutePosition: Double = 0.0  // meters along route
     
     // Reference to rider parameters
     private(set) var riderParameters: RiderParameters
@@ -45,6 +52,15 @@ class IntelligenceEngine: ObservableObject {
         rideDistance: Double,
         routeAhead: Route?
     ) {
+        // Update power zone
+        updatePowerZone(currentPower: currentPower)
+        
+        // Analyze route ahead if available
+        if let route = routeAhead {
+            analyzeRouteAhead(route: route, currentPosition: rideDistance, currentPower: currentPower)
+            calculateTargetPowerZone(routeAhead: routeAheadAnalysis)
+        }
+        
         // Calculate environmental load
         calculateEnvironmentalLoad(
             temperature: temperature,
@@ -355,10 +371,276 @@ class IntelligenceEngine: ObservableObject {
         powerHistory = []
         speedHistory = []
         effortBudgetRemaining = 100
+        currentRoutePosition = 0.0
+        lastAudioAlertTime = nil
     }
     
     func updateRiderParameters(_ parameters: RiderParameters) {
         self.riderParameters = parameters
+    }
+    
+    func updateRoutePosition(_ distance: Double) {
+        currentRoutePosition = distance
+    }
+    
+    // MARK: - Phase 2: Route-Ahead Analysis
+    
+    /// Analyze the next 2 miles of route and provide recommendations
+    func analyzeRouteAhead(route: Route, currentPosition: Double, currentPower: Double) {
+        let lookaheadDistance = 3218.69  // 2 miles in meters
+        let endPosition = currentPosition + lookaheadDistance
+        
+        // Get route points in the lookahead window
+        let aheadPoints = route.points.filter { point in
+            point.distance >= currentPosition && point.distance <= endPosition
+        }
+        
+        guard aheadPoints.count > 1 else {
+            routeAheadAnalysis = nil
+            return
+        }
+        
+        // Calculate statistics
+        let elevationGain = calculateElevationGain(points: aheadPoints)
+        let distance = aheadPoints.last!.distance - aheadPoints.first!.distance
+        let avgGrade = (elevationGain / distance) * 100
+        let maxGrade = calculateMaxGrade(points: aheadPoints)
+        
+        // Calculate required power range
+        let (minPower, maxPower) = calculateRequiredPower(
+            distance: distance,
+            elevationGain: elevationGain,
+            avgGrade: avgGrade
+        )
+        
+        // Estimate time
+        let estimatedTime = estimateSegmentTime(
+            distance: distance,
+            avgGrade: avgGrade,
+            targetPower: (minPower + maxPower) / 2
+        )
+        
+        // Determine difficulty
+        let difficulty = determineDifficulty(grade: avgGrade, elevationGain: elevationGain)
+        
+        // Generate recommendation
+        let recommendation = generateRouteRecommendation(
+            currentPower: currentPower,
+            requiredPower: (minPower + maxPower) / 2,
+            difficulty: difficulty,
+            distance: distance
+        )
+        
+        routeAheadAnalysis = RouteAheadAnalysis(
+            distanceAhead: distance,
+            elevationGain: elevationGain,
+            avgGrade: avgGrade,
+            maxGrade: maxGrade,
+            requiredPower: minPower...maxPower,
+            estimatedTime: estimatedTime,
+            difficulty: difficulty,
+            recommendation: recommendation
+        )
+        
+        // Trigger audio alert if significant change ahead
+        checkForAudioAlert(analysis: routeAheadAnalysis!)
+    }
+    
+    /// Update current power zone
+    func updatePowerZone(currentPower: Double) {
+        guard let ftp = riderParameters.ftp, ftp > 0 else { return }
+        
+        let zones: [PowerZone] = [.recovery, .endurance, .tempo, .threshold, .vo2max, .anaerobic]
+        for zone in zones {
+            if zone.range(ftp: ftp).contains(currentPower) {
+                currentPowerZone = zone
+                break
+            }
+        }
+    }
+    
+    /// Calculate required target power zone for route ahead
+    func calculateTargetPowerZone(routeAhead: RouteAheadAnalysis?) {
+        guard let analysis = routeAhead, let ftp = riderParameters.ftp else {
+            targetPowerZone = nil
+            return
+        }
+        
+        let targetPower = (analysis.requiredPower.lowerBound + analysis.requiredPower.upperBound) / 2
+        
+        let zones: [PowerZone] = [.recovery, .endurance, .tempo, .threshold, .vo2max, .anaerobic]
+        for zone in zones {
+            if zone.range(ftp: ftp).contains(targetPower) {
+                targetPowerZone = zone
+                break
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods for Route Analysis
+    
+    private func calculateElevationGain(points: [RoutePoint]) -> Double {
+        var gain = 0.0
+        for i in 1..<points.count {
+            let diff = (points[i].elevation ?? 0) - (points[i-1].elevation ?? 0)
+            if diff > 0 {
+                gain += diff
+            }
+        }
+        return gain
+    }
+    
+    private func calculateMaxGrade(points: [RoutePoint]) -> Double {
+        var maxGrade = 0.0
+        for i in 1..<points.count {
+            let elevDiff = (points[i].elevation ?? 0) - (points[i-1].elevation ?? 0)
+            let distDiff = points[i].distance - points[i-1].distance
+            if distDiff > 0 {
+                let grade = (elevDiff / distDiff) * 100
+                maxGrade = max(maxGrade, grade)
+            }
+        }
+        return maxGrade
+    }
+    
+    private func calculateRequiredPower(distance: Double, elevationGain: Double, avgGrade: Double) -> (Double, Double) {
+        guard let ftp = riderParameters.ftp else { return (150, 200) }
+        
+        // Base power on grade
+        let basePower: Double
+        if avgGrade < 2 {
+            basePower = ftp * 0.65  // Endurance
+        } else if avgGrade < 4 {
+            basePower = ftp * 0.80  // Tempo
+        } else if avgGrade < 6 {
+            basePower = ftp * 0.90  // Threshold
+        } else if avgGrade < 8 {
+            basePower = ftp * 1.00  // At FTP
+        } else {
+            basePower = ftp * 1.10  // Above FTP
+        }
+        
+        // Adjust for total elevation
+        let elevationFactor = 1.0 + (elevationGain / 1000.0) * 0.05
+        
+        let minPower = basePower * 0.9 * elevationFactor
+        let maxPower = basePower * 1.1 * elevationFactor
+        
+        return (minPower, maxPower)
+    }
+    
+    private func estimateSegmentTime(distance: Double, avgGrade: Double, targetPower: Double) -> TimeInterval {
+        // Simple speed estimation based on power and grade
+        let mass = riderParameters.mass
+        let cda = riderParameters.cda
+        
+        // Rough speed calculation (simplified physics)
+        var speed: Double
+        if avgGrade < 1 {
+            speed = 30 * 0.44704  // 30 mph flat
+        } else if avgGrade < 3 {
+            speed = 20 * 0.44704  // 20 mph slight climb
+        } else if avgGrade < 5 {
+            speed = 15 * 0.44704  // 15 mph moderate
+        } else if avgGrade < 7 {
+            speed = 10 * 0.44704  // 10 mph steep
+        } else {
+            speed = 7 * 0.44704   // 7 mph very steep
+        }
+        
+        // Adjust by power-to-weight
+        if let ftp = riderParameters.ftp {
+            let powerToWeight = ftp / (mass * 0.453592)  // W/kg
+            if powerToWeight > 4.0 {
+                speed *= 1.2
+            } else if powerToWeight > 3.0 {
+                speed *= 1.1
+            } else if powerToWeight < 2.0 {
+                speed *= 0.9
+            }
+        }
+        
+        return distance / speed
+    }
+    
+    private func determineDifficulty(grade: Double, elevationGain: Double) -> RouteAheadAnalysis.DifficultyLevel {
+        let difficultyScore = (abs(grade) * 10) + (elevationGain / 10)
+        
+        if difficultyScore < 30 {
+            return .easy
+        } else if difficultyScore < 60 {
+            return .moderate
+        } else if difficultyScore < 90 {
+            return .hard
+        } else if difficultyScore < 120 {
+            return .veryHard
+        } else {
+            return .extreme
+        }
+    }
+    
+    private func generateRouteRecommendation(currentPower: Double, requiredPower: Double, difficulty: RouteAheadAnalysis.DifficultyLevel, distance: Double) -> String {
+        let powerDiff = requiredPower - currentPower
+        let distanceMiles = distance / 1609.34
+        
+        if abs(powerDiff) < 10 {
+            return "Maintain current effort for next \(String(format: "%.1f", distanceMiles)) miles"
+        } else if powerDiff > 30 {
+            return "Increase effort by \(Int(powerDiff))W for upcoming \(difficulty.rawValue.lowercased()) section"
+        } else if powerDiff > 10 {
+            return "Slightly increase effort (+\(Int(powerDiff))W) ahead"
+        } else if powerDiff < -30 {
+            return "Easy pace ahead - recover \(Int(abs(powerDiff)))W for next \(String(format: "%.1f", distanceMiles)) mi"
+        } else {
+            return "Slight decrease (-\(Int(abs(powerDiff)))W) ahead"
+        }
+    }
+    
+    private func checkForAudioAlert(analysis: RouteAheadAnalysis) {
+        // Only trigger audio alerts every 2 minutes minimum
+        if let lastAlert = lastAudioAlertTime, Date().timeIntervalSince(lastAlert) < 120 {
+            return
+        }
+        
+        var message: String?
+        var priority: AudioAlert.AlertPriority = .medium
+        
+        // Alert for steep climbs
+        if analysis.maxGrade > 8 {
+            message = "Steep climb ahead: \(String(format: "%.0f", analysis.maxGrade)) percent grade in \(String(format: "%.1f", analysis.distanceAhead / 1609.34)) miles"
+            priority = .high
+        }
+        // Alert for significant power changes
+        else if let current = powerHistory.last?.power {
+            let targetPower = (analysis.requiredPower.lowerBound + analysis.requiredPower.upperBound) / 2
+            let powerDiff = targetPower - current
+            
+            if abs(powerDiff) > 50 {
+                if powerDiff > 0 {
+                    message = "Increase effort by \(Int(powerDiff)) watts for upcoming climb"
+                } else {
+                    message = "Easy pace ahead. Recover for \(String(format: "%.1f", analysis.distanceAhead / 1609.34)) miles"
+                }
+                priority = .medium
+            }
+        }
+        
+        if let msg = message {
+            audioAlert = AudioAlert(message: msg, priority: priority, timestamp: Date())
+            lastAudioAlertTime = Date()
+            
+            // Trigger actual audio speech
+            speakAlert(message: msg)
+        }
+    }
+    
+    private func speakAlert(message: String) {
+        let utterance = AVSpeechUtterance(string: message)
+        utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+        utterance.rate = 0.5
+        
+        let synthesizer = AVSpeechSynthesizer()
+        synthesizer.speak(utterance)
     }
 }
 
@@ -414,6 +696,101 @@ struct PowerDataPoint {
     let power: Double
     let timestamp: Date
 }
+
+struct SpeedDataPoint {
+    let speed: Double
+    let timestamp: Date
+}
+
+// MARK: - Phase 2 Intelligence Models
+
+/// Power zone classification
+enum PowerZone: String, Hashable {
+    case recovery = "Recovery"
+    case endurance = "Endurance"
+    case tempo = "Tempo"
+    case threshold = "Threshold"
+    case vo2max = "VO2 Max"
+    case anaerobic = "Anaerobic"
+    
+    var color: Color {
+        switch self {
+        case .recovery: return .gray
+        case .endurance: return .blue
+        case .tempo: return .green
+        case .threshold: return .yellow
+        case .vo2max: return .orange
+        case .anaerobic: return .red
+        }
+    }
+    
+    var ftpRange: String {
+        switch self {
+        case .recovery: return "0-55% FTP"
+        case .endurance: return "56-75% FTP"
+        case .tempo: return "76-90% FTP"
+        case .threshold: return "91-105% FTP"
+        case .vo2max: return "106-120% FTP"
+        case .anaerobic: return "121%+ FTP"
+        }
+    }
+    
+    func range(ftp: Double) -> ClosedRange<Double> {
+        switch self {
+        case .recovery: return 0...(ftp * 0.55)
+        case .endurance: return (ftp * 0.56)...(ftp * 0.75)
+        case .tempo: return (ftp * 0.76)...(ftp * 0.90)
+        case .threshold: return (ftp * 0.91)...(ftp * 1.05)
+        case .vo2max: return (ftp * 1.06)...(ftp * 1.20)
+        case .anaerobic: return (ftp * 1.21)...9999
+        }
+    }
+}
+
+/// Analysis of route ahead (next 2 miles)
+struct RouteAheadAnalysis {
+    let distanceAhead: Double  // meters
+    let elevationGain: Double  // meters
+    let avgGrade: Double       // %
+    let maxGrade: Double       // %
+    let requiredPower: ClosedRange<Double>  // watts
+    let estimatedTime: TimeInterval  // seconds
+    let difficulty: DifficultyLevel
+    let recommendation: String
+    
+    enum DifficultyLevel: String {
+        case easy = "Easy"
+        case moderate = "Moderate"
+        case hard = "Hard"
+        case veryHard = "Very Hard"
+        case extreme = "Extreme"
+        
+        var color: Color {
+            switch self {
+            case .easy: return .green
+            case .moderate: return .yellow
+            case .hard: return .orange
+            case .veryHard: return .red
+            case .extreme: return .purple
+            }
+        }
+    }
+}
+
+/// Audio alert for voice announcements
+struct AudioAlert {
+    let message: String
+    let priority: AlertPriority
+    let timestamp: Date
+    
+    enum AlertPriority {
+        case low
+        case medium
+        case high
+        case critical
+    }
+}
+
 
 struct SpeedDataPoint {
     let speed: Double
