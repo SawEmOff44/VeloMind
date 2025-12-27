@@ -101,7 +101,7 @@ struct RideView: View {
                     .padding(.horizontal, 12)
                     
                     // Intelligence Metrics
-                    IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
+                    IntelligenceMetricsView()
                         .padding(.horizontal, 12)
                     
                     // Phase 2 Polish: Power History Chart
@@ -898,12 +898,17 @@ struct PowerZoneGauge: View {
 }
 
 struct IntelligenceMetricsView: View {
-    @ObservedObject var engine: IntelligenceEngine
+    @EnvironmentObject var coordinator: RideCoordinator
     
     var body: some View {
         VStack(spacing: 12) {
             // Phase 2: Power Zone Gauge
-            PowerZoneGauge(currentZone: engine.currentPowerZone, targetZone: engine.targetPowerZone, currentPower: engine.currentPower, ftp: engine.riderParameters?.ftp ?? 200)
+            PowerZoneGauge(
+                currentZone: coordinator.intelligenceEngine.currentPowerZone,
+                targetZone: coordinator.intelligenceEngine.targetPowerZone,
+                currentPower: coordinator.powerEngine.smoothedPower3s,
+                ftp: coordinator.intelligenceEngine.riderParameters.ftp ?? 200
+            )
             
             // Environmental Load & Effort Budget
             HStack(spacing: 12) {
@@ -917,7 +922,7 @@ struct IntelligenceMetricsView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
                         Image(systemName: "cloud.sun.fill")
                             .foregroundColor(.orange)
-                        Text("+\(Int(engine.environmentalLoadIndex))%")
+                        Text("+\(Int(coordinator.intelligenceEngine.environmentalLoadIndex))%")
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.orange)
                     }
@@ -944,14 +949,14 @@ struct IntelligenceMetricsView: View {
                             .frame(width: 50, height: 50)
                         
                         Circle()
-                            .trim(from: 0, to: engine.effortBudgetRemaining / 100.0)
-                            .stroke(budgetColor(engine.effortBudgetRemaining), lineWidth: 6)
+                            .trim(from: 0, to: coordinator.intelligenceEngine.effortBudgetRemaining / 100.0)
+                            .stroke(budgetColor(coordinator.intelligenceEngine.effortBudgetRemaining), lineWidth: 6)
                             .frame(width: 50, height: 50)
                             .rotationEffect(.degrees(-90))
                         
-                        Text("\(Int(engine.effortBudgetRemaining))%")
+                        Text("\(Int(coordinator.intelligenceEngine.effortBudgetRemaining))%")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(budgetColor(engine.effortBudgetRemaining))
+                            .foregroundColor(budgetColor(coordinator.intelligenceEngine.effortBudgetRemaining))
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -961,7 +966,7 @@ struct IntelligenceMetricsView: View {
             }
             
             // Wind-Aware Speed Prediction
-            if let predicted = engine.predictedSpeedValue {
+            if let predicted = coordinator.intelligenceEngine.predictedSpeedValue {
                 HStack {
                     Image(systemName: "wind")
                         .foregroundColor(.cyan)
@@ -978,7 +983,7 @@ struct IntelligenceMetricsView: View {
             }
             
             // Upcoming Climb Preview
-            if let climb = engine.upcomingClimb {
+            if let climb = coordinator.intelligenceEngine.upcomingClimb {
                 let distanceValue = climb.distance
                 let distanceDisplay = String(format: "%.1f", distanceValue)
                 let gradeDisplay = String(format: "%.1f", climb.grade)
