@@ -227,10 +227,12 @@ export default function RouteDetail() {
                 label={{ value: 'Distance (km)', position: 'insideBottom', offset: -5 }}
               />
               <YAxis 
+                domain={['dataMin - 1', 'dataMax + 1']}
+                tickFormatter={(value) => `${value}%`}
                 label={{ value: 'Grade (%)', angle: -90, position: 'insideLeft' }}
               />
               <Tooltip 
-                formatter={(value) => [`${value}%`, 'Grade']}
+                formatter={(value) => [`${parseFloat(value).toFixed(1)}%`, 'Grade']}
                 labelFormatter={(label) => `${label} km`}
               />
               <Line 
