@@ -14,8 +14,8 @@ struct VeloMindApp: App {
                     .statusBar(hidden: true)
                     .edgesIgnoringSafeArea(.all)
                     .onAppear {
-                        if let userId = authManager.currentUser?.id.uuidString {
-                            rideCoordinator.persistenceManager.setCurrentUser(userId)
+                        if let userId = authManager.currentUser?.id {
+                            rideCoordinator.persistenceManager.setCurrentUser(String(userId))
                         }
                     }
                     .onOpenURL { url in
