@@ -19,8 +19,8 @@ export default function Navbar({ isAuthenticated }) {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-2xl font-bold text-blue-600">
-                🚴 VeloMind
+              <Link to={isAuthenticated ? "/dashboard" : "/"} className="flex items-center gap-2">
+                <img src="/images/VeloMind_Logo.v2.png" alt="VeloMind" className="h-10 w-auto" />
               </Link>
             </div>
             {isAuthenticated && (

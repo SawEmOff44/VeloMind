@@ -20,10 +20,10 @@ export default function Landing() {
         
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 sm:py-40">
           <div className="text-center">
-            {/* Icon with glow effect */}
+            {/* Logo with glow effect */}
             <div className="mb-8 relative inline-block">
               <div className="absolute inset-0 bg-cyan-500/50 blur-3xl rounded-full animate-pulse" />
-              <span className="relative text-7xl sm:text-9xl filter drop-shadow-2xl">🚴</span>
+              <img src="/images/VeloMind_Logo.v2.png" alt="VeloMind" className="relative h-32 sm:h-40 w-auto mx-auto filter drop-shadow-2xl" />
             </div>
             
             <h1 className="text-5xl font-black tracking-tight text-white sm:text-7xl md:text-8xl mb-6">

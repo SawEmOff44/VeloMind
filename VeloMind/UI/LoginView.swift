@@ -19,8 +19,10 @@ struct LoginView: View {
                     
                     // Logo and Title
                     VStack(spacing: 15) {
-                        Text("🚴")
-                            .font(.system(size: 80))
+                        Image("VeloMind_Logo")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 100)
                         
                         Text("VeloMind")
                             .font(.system(size: 48, weight: .bold))
