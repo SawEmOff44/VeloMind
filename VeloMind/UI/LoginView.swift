@@ -22,7 +22,8 @@ struct LoginView: View {
                         Image("VeloMind_Logo")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(height: 100)
+                            .frame(height: 120)
+                            .shadow(color: .veloCyan.opacity(0.3), radius: 20, x: 0, y: 0)
                         
                         Text("VeloMind")
                             .font(.system(size: 48, weight: .bold))
