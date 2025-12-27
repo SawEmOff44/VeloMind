@@ -163,6 +163,8 @@ class BackgroundTaskManager: ObservableObject {
     
     deinit {
         NotificationCenter.default.removeObserver(self)
-        endBackgroundTask()
+        Task { @MainActor in
+            endBackgroundTask()
+        }
     }
 }
