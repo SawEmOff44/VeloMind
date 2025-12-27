@@ -90,11 +90,16 @@ export default function RouteDetail() {
         
         return {
           distance: (point.distance / 1609.34).toFixed(2), // Convert to miles
-          grade: grade.toFixed(1),
+          grade: parseFloat(grade.toFixed(1)), // Keep as number for domain calculation
           index: index + 1
         }
       })
     : []
+  
+  // Calculate grade domain with 1% padding
+  const gradeMin = gradeData.length > 0 ? Math.min(...gradeData.map(d => d.grade)) : 0
+  const gradeMax = gradeData.length > 0 ? Math.max(...gradeData.map(d => d.grade)) : 0
+  const gradeDomain = [Math.floor(gradeMin - 1), Math.ceil(gradeMax + 1)]
   
   // Route statistics
   const stats = {
@@ -227,7 +232,7 @@ export default function RouteDetail() {
                 label={{ value: 'Distance (mi)', position: 'insideBottom', offset: -5 }}
               />
               <YAxis 
-                domain={['dataMin - 1', 'dataMax + 1']}
+                domain={gradeDomain}
                 tickFormatter={(value) => `${value}%`}
                 label={{ value: 'Grade (%)', angle: -90, position: 'insideLeft' }}
               />
