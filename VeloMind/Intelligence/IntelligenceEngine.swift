@@ -19,6 +19,10 @@ class IntelligenceEngine: ObservableObject {
     @Published var targetPowerZone: PowerZone?
     @Published var audioAlert: AudioAlert?
     
+    // Phase 2 Polish: Power history and preferences
+    @Published var powerZoneHistory: [PowerZoneHistoryPoint] = []
+    @Published var alertPreferences = AlertPreferences()
+    
     // State tracking
     private var rideStartTime: Date?
     private var totalTSS: Double = 0.0
@@ -28,6 +32,7 @@ class IntelligenceEngine: ObservableObject {
     private var speedHistory: [SpeedDataPoint] = []
     private var lastAudioAlertTime: Date?
     private var currentRoutePosition: Double = 0.0  // meters along route
+    private let maxHistoryDuration: TimeInterval = 300  // 5 minutes
     
     // Reference to rider parameters
     private(set) var riderParameters: RiderParameters
@@ -370,6 +375,7 @@ class IntelligenceEngine: ObservableObject {
         lastCalorieIntake = nil
         powerHistory = []
         speedHistory = []
+        powerZoneHistory = []
         effortBudgetRemaining = 100
         currentRoutePosition = 0.0
         lastAudioAlertTime = nil
@@ -457,6 +463,9 @@ class IntelligenceEngine: ObservableObject {
                 break
             }
         }
+        
+        // Record to history
+        recordPowerZoneHistory(power: currentPower, zone: currentPowerZone)
     }
     
     /// Calculate required target power zone for route ahead
@@ -635,6 +644,8 @@ class IntelligenceEngine: ObservableObject {
     }
     
     private func speakAlert(message: String) {
+        guard alertPreferences.audioEnabled else { return }
+        
         let utterance = AVSpeechUtterance(string: message)
         utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
         utterance.rate = 0.5
@@ -643,7 +654,28 @@ class IntelligenceEngine: ObservableObject {
         synthesizer.speak(utterance)
         
         // Send to Apple Watch for haptic feedback
-        WatchConnectivityManager.shared.sendAudioAlertToWatch(message: message)
+        if alertPreferences.hapticEnabled {
+            WatchConnectivityManager.shared.sendAudioAlertToWatch(message: message)
+        }
+    }
+    
+    // MARK: - Phase 2 Polish: Power History Tracking
+    
+    private func recordPowerZoneHistory(power: Double, zone: PowerZone) {
+        guard let ftp = riderParameters.ftp else { return }
+        
+        let point = PowerZoneHistoryPoint(
+            timestamp: Date(),
+            power: power,
+            zone: zone,
+            ftpPercent: (power / ftp) * 100
+        )
+        
+        powerZoneHistory.append(point)
+        
+        // Trim to last 5 minutes
+        let cutoffTime = Date().addingTimeInterval(-maxHistoryDuration)
+        powerZoneHistory.removeAll { $0.timestamp < cutoffTime }
     }
 }
 
@@ -794,6 +826,27 @@ struct AudioAlert {
     }
 }
 
+// MARK: - Phase 2 Polish: Power History & Preferences
+
+/// Point in power zone history
+struct PowerZoneHistoryPoint: Identifiable {
+    let id = UUID()
+    let timestamp: Date
+    let power: Double
+    let zone: PowerZone
+    let ftpPercent: Double
+}
+
+/// User preferences for intelligence alerts
+struct AlertPreferences {
+    var steepClimbAlertsEnabled = true
+    var powerChangeAlertsEnabled = true
+    var steepGradeThreshold: Double = 8.0  // % grade
+    var powerChangeThresholdPercent: Double = 20.0  // % FTP difference
+    var alertCooldownSeconds: TimeInterval = 120  // 2 minutes default
+    var audioEnabled = true
+    var hapticEnabled = true
+}
 
 struct SpeedDataPoint {
     let speed: Double

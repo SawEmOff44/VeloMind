@@ -104,6 +104,25 @@ struct RideView: View {
                     IntelligenceMetricsView(engine: coordinator.intelligenceEngine)
                         .padding(.horizontal, 12)
                     
+                    // Phase 2 Polish: Power History Chart
+                    if !coordinator.intelligenceEngine.powerZoneHistory.isEmpty {
+                        PowerHistoryChart(
+                            history: coordinator.intelligenceEngine.powerZoneHistory,
+                            targetPower: coordinator.intelligenceEngine.routeAheadAnalysis?.requiredPower
+                        )
+                        .padding(.horizontal, 12)
+                    }
+                    
+                    // Phase 2 Polish: Power Comparison
+                    if coordinator.intelligenceEngine.routeAheadAnalysis != nil {
+                        PowerComparison(
+                            currentPower: coordinator.powerEngine.smoothedPower10s,
+                            requiredPower: coordinator.intelligenceEngine.routeAheadAnalysis?.requiredPower,
+                            ftp: coordinator.intelligenceEngine.riderParameters.ftp
+                        )
+                        .padding(.horizontal, 12)
+                    }
+                    
                     // Learning Mode Indicator
                     if coordinator.learningEngine.learnedParameters.hasUsefulLearning {
                         LearningActiveIndicator(learningEngine: coordinator.learningEngine)
