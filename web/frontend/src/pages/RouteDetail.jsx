@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { getRoute, getActiveParameters, getWaypoints, syncWaypoints } from '../services/api'
 import { detectClimbs, getClimbCategoryColor, getClimbCategoryLabel } from '../utils/climbAnalysis'
 import { reverseRoute, getDifficultyColor, predictSpeed, predictSegmentTime } from '../utils/routeUtils'
+import { ShareIcon, CheckIcon } from '@heroicons/react/24/outline'
 import 'leaflet/dist/leaflet.css'
 
 // Fix Leaflet default marker icon issue with Vite
@@ -37,6 +38,9 @@ export default function RouteDetail() {
   const [waypoints, setWaypoints] = useState([])
   const [showReversed, setShowReversed] = useState(false)
   const [riderParams, setRiderParams] = useState({ ftp: 250, mass: 85, cda: 0.32 })
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [shareLink, setShareLink] = useState('')
+  const [copied, setCopied] = useState(false)
   const mapRef = useRef(null)
   
   useEffect(() => {
@@ -156,6 +160,18 @@ export default function RouteDetail() {
     setSelectedPoint(null) // Clear selection when reversing
   }
   
+  const handleShareRoute = () => {
+    const link = `${window.location.origin}/routes/${id}`
+    setShareLink(link)
+    setShareModalOpen(true)
+  }
+  
+  const copyShareLink = () => {
+    navigator.clipboard.writeText(shareLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -260,7 +276,7 @@ export default function RouteDetail() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="mb-6 flex justify-between items-start">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <Link to="/routes" className="text-velo-blue-600 hover:underline mb-2 inline-block">
             ← Back to Routes
@@ -272,12 +288,74 @@ export default function RouteDetail() {
             </span>
           )}
         </div>
-        <button
-          onClick={toggleRouteDirection}
-          className="px-4 py-2 bg-gradient-to-r from-velo-cyan-500 to-velo-blue-500 text-white rounded-lg hover:from-velo-cyan-600 hover:to-velo-blue-600 transition-all"
-        >
-          {showReversed ? '⟲ Normal Direction' : '⟲ Reverse Route'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleShareRoute}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg hover:from-green-600 hover:to-teal-600 transition-all font-semibold"
+          >
+            <ShareIcon className="w-5 h-5" />
+            Share
+          </button>
+          <button
+            onClick={toggleRouteDirection}
+            className="px-4 py-2 bg-gradient-to-r from-velo-cyan-500 to-velo-blue-500 text-white rounded-lg hover:from-velo-cyan-600 hover:to-velo-blue-600 transition-all font-semibold"
+          >
+            {showReversed ? '⟲ Normal Direction' : '⟲ Reverse Route'}
+          </button>
+        </div>
+      </div>
+      
+      {/* Share Modal */}
+      {shareModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Share Route</h3>
+              <button
+                onClick={() => setShareModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <span className="text-2xl">×</span>
+              </button>
+            </div>
+            
+            <p className="text-gray-600 mb-4">
+              Share this route with others using the link below:
+            </p>
+            
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="text"
+                value={shareLink}
+                readOnly
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 text-sm"
+              />
+              <button
+                onClick={copyShareLink}
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  copied
+                    ? 'bg-green-500 text-white'
+                    : 'bg-velo-cyan text-white hover:bg-velo-cyan-dark'
+                }`}
+              >
+                {copied ? (
+                  <>
+                    <CheckIcon className="w-5 h-5 inline" />
+                  </>
+                ) : (
+                  'Copy'
+                )}
+              </button>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Anyone with this link can view this route, but they'll need a VeloMind account to download it to their device.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
       
       {/* Statistics Cards */}

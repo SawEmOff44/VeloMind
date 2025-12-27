@@ -9,6 +9,7 @@ import Sessions from './pages/Sessions'
 import SessionDetail from './pages/SessionDetail'
 import RoutesPage from './pages/Routes'
 import RouteDetail from './pages/RouteDetail'
+import RouteComparison from './pages/RouteComparison'
 import Parameters from './pages/Parameters'
 import Settings from './pages/Settings'
 import StravaCallback from './pages/StravaCallback'
@@ -82,6 +83,12 @@ function App() {
           <Route path="/routes" element={
             <ProtectedRoute>
               <RoutesPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/routes/compare" element={
+            <ProtectedRoute>
+              <RouteComparison />
             </ProtectedRoute>
           } />
           
