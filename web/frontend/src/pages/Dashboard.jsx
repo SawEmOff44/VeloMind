@@ -383,47 +383,29 @@ export default function Dashboard() {
         </div>
       )}
       
-      {/* Recent Sessions */}
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-200">
-        <div className="px-6 py-5 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <ClockIcon className="h-6 w-6 text-purple-600" />
-              Recent Sessions
-            </h2>
+      {/* Recent Activity & Intelligence */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Recent Activity Feed */}
+        <div className="bg-white rounded-2xl shadow-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Recent Activity</h2>
             <Link
               to="/sessions"
-              className="text-sm font-medium text-cyan-600 hover:text-cyan-700 flex items-center gap-1"
+              className="text-sm font-semibold text-cyan-600 hover:text-cyan-700"
             >
-              View All
-              <ArrowTrendingUpIcon className="h-4 w-4" />
+              View All →
             </Link>
           </div>
+          <ActivityFeed limit={5} />
         </div>
-        
-        {/* Recent Activity & Intelligence */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Recent Activity Feed */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Recent Activity</h2>
-              <Link
-                to="/sessions"
-                className="text-sm font-semibold text-cyan-600 hover:text-cyan-700"
-              >
-                View All →
-              </Link>
-            </div>
-            <ActivityFeed limit={5} />
-          </div>
 
-          {/* Intelligence Dashboard */}
-          <div className="bg-white rounded-2xl shadow-xl p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">AI Intelligence</h2>
-            <IntelligenceDashboard />
-          </div>
+        {/* Intelligence Dashboard */}
+        <div className="bg-white rounded-2xl shadow-xl p-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">AI Intelligence</h2>
+          <IntelligenceDashboard />
         </div>
       </div>
+    </div>
     </div>
   )
 }
