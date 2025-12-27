@@ -4,6 +4,22 @@ import Foundation
 @MainActor
 class APIService: ObservableObject {
     private let baseURL = "http://localhost:3001/api" // TODO: Update to production URL
+    private let tokenKey = "velomind.authToken"
+    
+    private var authToken: String? {
+        UserDefaults.standard.string(forKey: tokenKey)
+    }
+    
+    private func authorizedRequest(url: URL, method: String = "GET") -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        return request
+    }
     
     // MARK: - Routes
     
@@ -12,8 +28,7 @@ class APIService: ObservableObject {
             throw APIError.invalidURL
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        let request = authorizedRequest(url: url)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -32,8 +47,7 @@ class APIService: ObservableObject {
             throw APIError.invalidURL
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        let request = authorizedRequest(url: url)
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -50,8 +64,7 @@ class APIService: ObservableObject {
             throw APIError.invalidURL
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        var request = authorizedRequest(url: url, method: "POST")
         
         let boundary = UUID().uuidString
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")

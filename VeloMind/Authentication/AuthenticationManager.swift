@@ -22,19 +22,44 @@ class AuthenticationManager: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         
-        // TODO: Implement actual API authentication with backend
-        // For now, create a local user for development
+        // Call backend API
+        guard let url = URL(string: "http://localhost:3001/api/auth/login") else {
+            throw AuthError.invalidURL
+        }
         
-        // Simulate network delay
-        try await Task.sleep(nanoseconds: 1_000_000_000)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Create user
+        let body = ["email": email, "password": password]
+        request.httpBody = try JSONEncoder().encode(body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AuthError.serverError
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw AuthError.invalidCredentials
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw AuthError.serverError
+        }
+        
+        let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
+        
+        // Save token
+        UserDefaults.standard.set(authResponse.token, forKey: tokenKey)
+        
+        // Create and save user
         let user = User(
+            id: authResponse.userId,
             email: email,
-            name: extractNameFromEmail(email)
+            name: authResponse.name ?? extractNameFromEmail(email)
         )
         
-        // Save user
         saveUser(user)
         
         self.currentUser = user
@@ -45,18 +70,44 @@ class AuthenticationManager: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         
-        // TODO: Implement actual API registration with backend
+        // Call backend API
+        guard let url = URL(string: "http://localhost:3001/api/auth/register") else {
+            throw AuthError.invalidURL
+        }
         
-        // Simulate network delay
-        try await Task.sleep(nanoseconds: 1_000_000_000)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Create user
+        let body = ["email": email, "password": password, "name": name]
+        request.httpBody = try JSONEncoder().encode(body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AuthError.serverError
+        }
+        
+        if httpResponse.statusCode == 400 {
+            throw AuthError.userExists
+        }
+        
+        guard httpResponse.statusCode == 201 else {
+            throw AuthError.serverError
+        }
+        
+        let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
+        
+        // Save token
+        UserDefaults.standard.set(authResponse.token, forKey: tokenKey)
+        
+        // Create and save user
         let user = User(
+            id: authResponse.userId,
             email: email,
             name: name
         )
         
-        // Save user
         saveUser(user)
         
         self.currentUser = user

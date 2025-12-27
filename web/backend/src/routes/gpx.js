@@ -58,9 +58,9 @@ router.get('/list', authenticateToken, async (req, res) => {
 });
 
 // Download GPX file (for iOS sync)
-router.get('/download/:id', async (req, res) => {
+router.get('/download/:id', authenticateToken, async (req, res) => {
   try {
-    const userId = req.query.user_id || 1; // Default to user 1 for iOS app
+    const userId = req.user.id;
     const routeResult = await query(
       'SELECT * FROM routes WHERE id = $1 AND user_id = $2',
       [req.params.id, userId]
@@ -254,9 +254,9 @@ router.post('/upload', authenticateToken, upload.single('gpx'), async (req, res)
 });
 
 // Get route by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const userId = req.query.user_id || 1; // Default to user 1 for iOS app
+    const userId = req.user.id;
     const result = await query(
       'SELECT * FROM routes WHERE id = $1 AND user_id = $2',
       [req.params.id, userId]
@@ -322,9 +322,9 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
 });
 
 // Get all routes for user
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    const userId = req.query.user_id || 1; // Default to user 1 for iOS app
+    const userId = req.user.id;
     const result = await query(
       `SELECT id, name, total_distance, total_elevation_gain, point_count, created_at
        FROM routes
