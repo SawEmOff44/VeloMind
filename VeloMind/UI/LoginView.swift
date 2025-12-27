@@ -69,7 +69,7 @@ struct LoginView: View {
                     .frame(height: 55)
                     .background(
                         LinearGradient(
-                            colors: [.blue, .cyan],
+                            colors: [.veloCyan, .veloTeal, .veloGreen],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -91,7 +91,7 @@ struct LoginView: View {
                             Text(isRegistering ? "Already have an account?" : "Don't have an account?")
                                 .foregroundColor(.gray)
                             Text(isRegistering ? "Sign In" : "Create Account")
-                                .foregroundColor(.blue)
+                                .foregroundColor(.veloTeal)
                                 .fontWeight(.semibold)
                         }
                         .font(.subheadline)

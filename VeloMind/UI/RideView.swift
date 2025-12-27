@@ -44,7 +44,7 @@ struct RideView: View {
                                 title: "SPEED",
                                 value: String(format: "%.1f", coordinator.bleManager.currentSpeed * 2.23694),
                                 unit: "mph",
-                                color: .blue
+                                color: .veloCyan
                             )
                             
                             // Cadence
@@ -52,7 +52,7 @@ struct RideView: View {
                                 title: "CADENCE",
                                 value: String(format: "%.0f", coordinator.bleManager.currentCadence),
                                 unit: "rpm",
-                                color: .green
+                                color: .veloGreen
                             )
                         }
                     }
@@ -331,7 +331,7 @@ struct MessageDialogBox: View {
         
         var color: Color {
             switch self {
-            case .info: return .blue
+            case .info: return .veloTeal
             case .warning: return .orange
             case .success: return .green
             case .error: return .red

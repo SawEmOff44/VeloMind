@@ -93,9 +93,9 @@ export default function Routes() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Routes</h1>
           <p className="text-gray-600">Upload GPX files and sync them to your iPhone</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-cyan-50 border border-cyan-200 rounded-lg">
-          <MapIcon className="w-5 h-5 text-cyan-600" />
-          <span className="text-sm font-medium text-cyan-900">{routes.length} routes</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-velo-cyan/10 border border-velo-cyan/30 rounded-lg">
+          <MapIcon className="w-5 h-5 text-velo-cyan" />
+          <span className="text-sm font-medium text-velo-cyan-dark">{routes.length} routes</span>
         </div>
       </div>
       
@@ -103,8 +103,8 @@ export default function Routes() {
       <div
         className={`mb-8 border-2 border-dashed rounded-2xl p-16 text-center transition-all duration-300 ${
           dragActive
-            ? 'border-cyan-500 bg-cyan-50 scale-[1.02]'
-            : 'border-gray-300 hover:border-cyan-400 hover:bg-gray-50'
+            ? 'border-velo-cyan bg-velo-cyan/10 scale-[1.02]'
+            : 'border-gray-300 hover:border-velo-teal hover:bg-gray-50'
         }`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -112,13 +112,13 @@ export default function Routes() {
         onDrop={handleDrop}
       >
         <div className="flex items-center justify-center mb-4">
-          <div className="p-4 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl">
+          <div className="p-4 bg-gradient-to-br from-velo-cyan to-velo-teal rounded-2xl">
             <ArrowUpTrayIcon className="h-12 w-12 text-white" />
           </div>
         </div>
         <div className="mt-6">
           <label htmlFor="file-upload" className="cursor-pointer">
-            <span className={`text-lg font-semibold ${uploading ? 'text-gray-400' : 'text-cyan-600 hover:text-cyan-700'}`}>
+            <span className={`text-lg font-semibold ${uploading ? 'text-gray-400' : 'text-velo-teal hover:text-velo-green'}`}>
               {uploading ? 'Uploading...' : 'Click to upload or drag and drop'}
             </span>
             <input
@@ -151,10 +151,10 @@ export default function Routes() {
           {routes.map((route) => (
             <div 
               key={route.id} 
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-cyan-200"
+              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-velo-cyan"
             >
               {/* Route Header */}
-              <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-6 text-white">
+              <div className="bg-gradient-to-br from-velo-cyan to-velo-teal p-6 text-white">
                 <div className="flex items-start justify-between mb-3">
                   <MapIcon className="h-8 w-8" />
                   <button
@@ -206,7 +206,7 @@ export default function Routes() {
                 
                 <Link
                   to={`/routes/${route.id}`}
-                  className="mt-4 block w-full text-center py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
+                  className="mt-4 block w-full text-center py-2.5 px-4 bg-gradient-to-r from-velo-cyan to-velo-green text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
                 >
                   View Details
                 </Link>

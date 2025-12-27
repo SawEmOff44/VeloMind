@@ -83,11 +83,11 @@ export default function Dashboard() {
   } : null
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-cyan-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50 to-cyan-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Hero Header with Profile */}
-        <div className="mb-8 bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 rounded-3xl shadow-2xl overflow-hidden">
+        <div className="mb-8 bg-gradient-to-r from-velo-cyan-dark via-velo-teal to-velo-green rounded-3xl shadow-2xl overflow-hidden">
           <div className="px-8 py-12 relative">
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10">
@@ -228,7 +228,7 @@ export default function Dashboard() {
             <div className="mt-6 flex gap-3">
               <button
                 onClick={saveUserProfile}
-                className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all"
+                className="px-6 py-2 bg-gradient-to-r from-velo-cyan to-velo-teal text-white font-semibold rounded-lg hover:shadow-lg transition-all"
               >
                 Save Changes
               </button>
@@ -246,10 +246,10 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Link
             to="/routes"
-            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-cyan-500"
+            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-velo-cyan"
           >
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="h-12 w-12 bg-gradient-to-br from-velo-cyan to-velo-blue rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                 <MapIcon className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -261,10 +261,10 @@ export default function Dashboard() {
           
           <Link
             to="/sessions"
-            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-purple-500"
+            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-velo-teal"
           >
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="h-12 w-12 bg-gradient-to-br from-velo-teal to-velo-green rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                 <ChartBarIcon className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -276,10 +276,10 @@ export default function Dashboard() {
           
           <Link
             to="/parameters"
-            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-green-500"
+            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-velo-green"
           >
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="h-12 w-12 bg-gradient-to-br from-velo-green to-velo-teal rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                 <CogIcon className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -291,10 +291,10 @@ export default function Dashboard() {
           
           <Link
             to="/settings"
-            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-orange-500"
+            className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-velo-blue"
           >
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="h-12 w-12 bg-gradient-to-br from-velo-blue to-velo-cyan rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                 <FireIcon className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -308,7 +308,7 @@ export default function Dashboard() {
         {/* Performance Stats Grid */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="bg-gradient-to-br from-velo-blue to-velo-cyan rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-4">
               <ClockIcon className="h-8 w-8 opacity-80" />
               <TrophyIcon className="h-6 w-6 opacity-60" />
@@ -318,7 +318,7 @@ export default function Dashboard() {
             <p className="text-xs opacity-75 mt-2">Keep riding! 🚴</p>
           </div>
           
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="bg-gradient-to-br from-velo-teal to-velo-green rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-4">
               <MapIcon className="h-8 w-8 opacity-80" />
               <ArrowTrendingUpIcon className="h-6 w-6 opacity-60" />
@@ -331,7 +331,7 @@ export default function Dashboard() {
             <p className="text-xs opacity-75 mt-2">Amazing miles! 🎯</p>
           </div>
           
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="bg-gradient-to-br from-velo-green to-velo-teal rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-4">
               <BoltIcon className="h-8 w-8 opacity-80" />
               <FireIcon className="h-6 w-6 opacity-60" />
@@ -344,7 +344,7 @@ export default function Dashboard() {
             <p className="text-xs opacity-75 mt-2">Crushing it! ⚡</p>
           </div>
           
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-transform">
+          <div className="bg-gradient-to-br from-velo-cyan to-velo-blue rounded-2xl shadow-xl p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-4">
               <ClockIcon className="h-8 w-8 opacity-80" />
               <HeartIcon className="h-6 w-6 opacity-60" />
@@ -363,7 +363,7 @@ export default function Dashboard() {
       {sessions.length > 0 && (
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <ChartBarIcon className="h-7 w-7 text-cyan-600" />
+            <ChartBarIcon className="h-7 w-7 text-velo-teal" />
             Performance Intelligence
           </h2>
           <IntelligenceDashboard 

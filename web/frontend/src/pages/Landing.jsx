@@ -12,11 +12,11 @@ import {
 
 export default function Landing() {
   return (
-    <div className="bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 min-h-screen">
+    <div className="bg-gradient-to-b from-gray-900 via-teal-900 to-gray-900 min-h-screen">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         {/* Animated background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-cyan-600/10 to-purple-600/20 animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-br from-velo-cyan/20 via-velo-teal/10 to-velo-green/20 animate-pulse" />
         
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 sm:py-40">
           <div className="text-center">
@@ -28,7 +28,7 @@ export default function Landing() {
             
             <h1 className="text-5xl font-black tracking-tight text-white sm:text-7xl md:text-8xl mb-6">
               Train Smarter with{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 animate-gradient">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-velo-cyan via-velo-teal to-velo-green animate-gradient">
                 VeloMind
               </span>
             </h1>
@@ -36,7 +36,7 @@ export default function Landing() {
             <p className="mt-8 text-xl sm:text-2xl leading-relaxed text-gray-300 max-w-4xl mx-auto font-light">
               Real-time intelligence for cyclists. Physics-based power estimation, 
               AI learning, and professional analytics—
-              <span className="text-cyan-400 font-semibold"> no power meter required</span>.
+              <span className="text-velo-cyan font-semibold"> no power meter required</span>.
             </p>
             
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-6">
@@ -94,8 +94,8 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {/* Feature 1 - Real-Time Power */}
-            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 border border-gray-700 hover:border-cyan-500/50">
-              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-velo-cyan/20 transition-all duration-300 border border-gray-700 hover:border-velo-cyan/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-velo-cyan to-velo-blue mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <BoltIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">Real-Time Power</h3>
@@ -105,8 +105,8 @@ export default function Landing() {
             </div>
 
             {/* Feature 2 - AI Learning */}
-            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 border border-gray-700 hover:border-purple-500/50">
-              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-velo-teal/20 transition-all duration-300 border border-gray-700 hover:border-velo-teal/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-velo-teal to-velo-green mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <SparklesIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">AI Learning</h3>
@@ -116,8 +116,8 @@ export default function Landing() {
             </div>
 
             {/* Feature 3 - Smart Navigation */}
-            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-green-500/20 transition-all duration-300 border border-gray-700 hover:border-green-500/50">
-              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-velo-green/20 transition-all duration-300 border border-gray-700 hover:border-velo-green/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-velo-green to-velo-teal mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <MapIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">Smart Navigation</h3>
@@ -127,8 +127,8 @@ export default function Landing() {
             </div>
 
             {/* Feature 4 - Intelligence Alerts */}
-            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300 border border-gray-700 hover:border-orange-500/50">
-              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-velo-blue/20 transition-all duration-300 border border-gray-700 hover:border-velo-blue/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-velo-blue to-velo-cyan mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <FireIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">Intelligence Alerts</h3>
@@ -138,8 +138,8 @@ export default function Landing() {
             </div>
 
             {/* Feature 5 - Environmental Awareness */}
-            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 border border-gray-700 hover:border-blue-500/50">
-              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-velo-cyan/20 transition-all duration-300 border border-gray-700 hover:border-velo-cyan/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-velo-cyan to-velo-teal mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <CloudIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">Environmental Load</h3>
@@ -149,8 +149,8 @@ export default function Landing() {
             </div>
 
             {/* Feature 6 - Advanced Analytics */}
-            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300 border border-gray-700 hover:border-indigo-500/50">
-              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-velo-teal/20 transition-all duration-300 border border-gray-700 hover:border-velo-teal/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-velo-teal to-velo-blue mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <ChartBarIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">Pro Analytics</h3>
@@ -160,8 +160,8 @@ export default function Landing() {
             </div>
 
             {/* Feature 7 - Effort Budget */}
-            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-300 border border-gray-700 hover:border-yellow-500/50">
-              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-velo-green/20 transition-all duration-300 border border-gray-700 hover:border-velo-green/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-velo-green to-velo-cyan mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <BeakerIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">Effort Budget</h3>
@@ -171,8 +171,8 @@ export default function Landing() {
             </div>
 
             {/* Feature 8 - Strava Integration */}
-            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-red-500/20 transition-all duration-300 border border-gray-700 hover:border-red-500/50">
-              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <div className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 shadow-xl hover:shadow-2xl hover:shadow-velo-blue/20 transition-all duration-300 border border-gray-700 hover:border-velo-blue/50">
+              <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-velo-blue to-velo-green mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <CpuChipIcon className="h-9 w-9 text-white" />
               </div>
               <h3 className="text-xl font-bold text-white mb-3 text-center">Strava Sync</h3>

@@ -420,7 +420,7 @@ struct SensorSettingsView: View {
                             Text(device.name ?? "Unknown Device")
                             Spacer()
                             Image(systemName: "plus.circle")
-                                .foregroundColor(.blue)
+                                .foregroundColor(.veloTeal)
                         }
                     }
                 }
