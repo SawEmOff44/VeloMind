@@ -279,6 +279,46 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get route with waypoints for iOS download
+router.get('/:id/download', authenticateToken, async (req, res) => {
+  try {
+    // Get route
+    const routeResult = await query(
+      'SELECT * FROM routes WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    
+    if (routeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Route not found' });
+    }
+    
+    const route = routeResult.rows[0];
+    
+    // Parse GPX to get points
+    const parsed = await parseGPX(route.gpx_data);
+    
+    // Get waypoints
+    const waypointsResult = await query(
+      `SELECT * FROM route_waypoints 
+       WHERE route_id = $1 AND user_id = $2
+       ORDER BY distance_from_start ASC`,
+      [req.params.id, req.user.id]
+    );
+    
+    res.json({
+      id: route.id,
+      name: route.name,
+      total_distance: route.total_distance,
+      total_elevation_gain: route.total_elevation_gain,
+      points: parsed.points,
+      waypoints: waypointsResult.rows
+    });
+  } catch (error) {
+    console.error('Download route error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all routes for user
 router.get('/', authenticateToken, async (req, res) => {
   try {

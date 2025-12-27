@@ -1,7 +1,8 @@
-const express = require('express')
+import express from 'express'
+import { authenticateToken } from '../middleware/auth.js'
+import pool from '../db.js'
+
 const router = express.Router()
-const { authenticateToken } = require('../middleware/auth')
-const pool = require('../db')
 
 // Get all waypoints for a route
 router.get('/route/:routeId', authenticateToken, async (req, res) => {
@@ -187,4 +188,4 @@ router.post('/route/:routeId/sync', authenticateToken, async (req, res) => {
   }
 })
 
-module.exports = router
+export default router
