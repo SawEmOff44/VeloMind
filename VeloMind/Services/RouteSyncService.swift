@@ -79,7 +79,11 @@ actor RouteSyncService {
         
         for remoteRoute in remoteRoutes {
             // Check if route already exists locally
-            if !routeManager.hasRoute(withId: String(remoteRoute.id)) {
+            let hasRoute = await MainActor.run {
+                routeManager.hasRoute(withId: String(remoteRoute.id))
+            }
+            
+            if !hasRoute {
                 // Download and parse GPX
                 let gpxData = try await downloadRoute(id: remoteRoute.id)
                 

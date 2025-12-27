@@ -73,20 +73,21 @@ class BackgroundTaskManager: ObservableObject {
         guard backgroundTaskID != .invalid else { return }
         
         UIApplication.shared.endBackgroundTask(backgroundTaskID)
-        logger.info("Ended background task: \(backgroundTaskID.rawValue)")
+        logger.info("Ended background task: \(self.backgroundTaskID.rawValue)")
         backgroundTaskID = .invalid
     }
     
     private func monitorBackgroundTime() {
-        Task {
-            while backgroundTaskID != .invalid {
+        Task { [weak self] in
+            guard let self = self else { return }
+            while self.backgroundTaskID != .invalid {
                 let remaining = UIApplication.shared.backgroundTimeRemaining
                 await MainActor.run {
-                    backgroundTimeRemaining = remaining
+                    self.backgroundTimeRemaining = remaining
                 }
                 
                 if remaining < 30 {
-                    logger.warning("Low background time remaining: \(remaining)s")
+                    self.logger.warning("Low background time remaining: \\(remaining)s")
                 }
                 
                 try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds

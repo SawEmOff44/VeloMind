@@ -134,14 +134,14 @@ class WatchConnectivityManager: NSObject, ObservableObject {
         
         let alert: [String: Any] = [
             "type": "waypoint",
-            "label": waypoint.label,
+            "label": waypoint.label ?? "",
             "waypointType": waypoint.type.rawValue,
             "distance": distanceFeet,
             "notes": waypoint.notes ?? ""
         ]
         
         session.sendMessage(alert, replyHandler: nil)
-        logger.info("Sent waypoint alert to watch: \(waypoint.label)")
+        logger.info("Sent waypoint alert to watch: \(waypoint.label ?? "unknown")")
     }
     
     /// Send audio alert text to watch (for haptic feedback)
