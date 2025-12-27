@@ -106,7 +106,7 @@ class PersistenceManager: ObservableObject {
         }
     }
     
-    func deleteRoute(_ id: UUID) {
+    func deleteRoute(_ id: Int) {
         var savedRoutes = loadRoutes()
         savedRoutes.removeAll { $0.id == id }
         

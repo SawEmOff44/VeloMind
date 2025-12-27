@@ -49,6 +49,7 @@ class RouteManager: ObservableObject {
         let elevationGain = calculateElevationGain(processed)
         
         let route = Route(
+            id: 0,
             name: name,
             points: processed,
             totalDistance: processed.last?.distance ?? 0,
