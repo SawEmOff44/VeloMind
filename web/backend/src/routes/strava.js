@@ -197,8 +197,8 @@ router.post('/sync', authenticateToken, async (req, res) => {
       // Create session from Strava activity
       await query(
         `INSERT INTO sessions (
-          user_id, name, start_time, end_time, total_distance, total_time, 
-          avg_power, max_power, avg_speed, max_speed, total_elevation_gain,
+          user_id, name, start_time, end_time, distance, duration, 
+          average_power, max_power, average_speed, max_speed, total_elevation_gain,
           strava_activity_id, source
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
