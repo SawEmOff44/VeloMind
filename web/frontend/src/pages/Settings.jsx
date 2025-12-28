@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getCurrentUser, getParameters, createParameters, updateParameters } from '../services/api'
 
 export default function Settings() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [stravaConnected, setStravaConnected] = useState(false)
+  const [showStravaSuccess, setShowStravaSuccess] = useState(false)
   const [fitnessProfile, setFitnessProfile] = useState(null)
   const [editingFitness, setEditingFitness] = useState(false)
   const [fitnessForm, setFitnessForm] = useState({
@@ -18,6 +21,15 @@ export default function Settings() {
   })
 
   useEffect(() => {
+    // Check for Strava connection success
+    if (searchParams.get('strava') === 'connected') {
+      setShowStravaSuccess(true)
+      // Clear the query parameter
+      setSearchParams({})
+      // Hide success message after 5 seconds
+      setTimeout(() => setShowStravaSuccess(false), 5000)
+    }
+    
     loadUser()
     loadFitnessProfile()
   }, [])
@@ -112,6 +124,24 @@ export default function Settings() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Settings</h1>
+
+      {/* Success Message */}
+      {showStravaSuccess && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">
+                Successfully connected to Strava! Your activities will now sync automatically.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Account Information */}
       <div className="bg-white shadow rounded-lg p-6 mb-6">
