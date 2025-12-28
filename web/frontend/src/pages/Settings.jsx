@@ -84,26 +84,38 @@ export default function Settings() {
   }
 
   const handleStravaConnect = () => {
-    // Redirect to Strava OAuth
-    const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID
-    const redirectUri = `${import.meta.env.VITE_API_BASE.replace('/api', '')}/strava/callback`
-    const scope = 'read,activity:read_all'
-    const state = user?.id || '1' // Pass user ID for backend to update
-    
-    const stravaUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}`
-    
-    console.log('Strava OAuth:', { clientId, redirectUri, stravaUrl })
-    console.log('About to redirect to:', stravaUrl)
-    
-    if (!clientId) {
-      alert('Strava Client ID not configured. Please check your environment variables.')
-      return
+    try {
+      // Redirect to Strava OAuth
+      const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID
+      const redirectUri = `${import.meta.env.VITE_API_BASE.replace('/api', '')}/strava/callback`
+      const scope = 'read,activity:read_all'
+      
+      if (!user || !user.id) {
+        console.error('User not loaded yet:', user)
+        alert('Please wait for the page to fully load before connecting to Strava.')
+        return
+      }
+      
+      const state = user.id.toString() // Ensure it's a string
+      
+      const stravaUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}`
+      
+      console.log('Strava OAuth:', { clientId, redirectUri, userId: user.id, stravaUrl })
+      console.log('About to redirect to:', stravaUrl)
+      
+      if (!clientId) {
+        alert('Strava Client ID not configured. Please check your environment variables.')
+        return
+      }
+      
+      // Use window.location.assign instead of href for better debugging
+      console.log('Executing redirect...')
+      window.location.assign(stravaUrl)
+      console.log('Redirect executed - this should not log')
+    } catch (error) {
+      console.error('Error in handleStravaConnect:', error)
+      alert(`Failed to connect to Strava: ${error.message}`)
     }
-    
-    // Use window.location.assign instead of href for better debugging
-    console.log('Executing redirect...')
-    window.location.assign(stravaUrl)
-    console.log('Redirect executed - this should not log')
   }
 
   const handleStravaDisconnect = async () => {
@@ -370,6 +382,7 @@ export default function Settings() {
               Connect your Strava account to automatically import your cycling activities and share your VeloMind rides with the Strava community.
             </p>
             <button
+              type="button"
               onClick={handleStravaConnect}
               className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
             >
