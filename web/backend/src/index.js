@@ -31,7 +31,7 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// CORS - Allow all Vercel deployments and localhost
+// CORS - Allow all Vercel deployments, localhost, and mobile apps
 const allowedOrigins = [
   'http://localhost:3000',
   'https://velo-mind.vercel.app',
@@ -40,7 +40,7 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
+    // Allow requests with no origin (mobile apps, curl, Postman, iOS TestFlight)
     if (!origin) return callback(null, true);
     
     // Check if origin matches allowed patterns
@@ -53,6 +53,10 @@ app.use(cors({
     if (isAllowed || process.env.CORS_ORIGIN === origin) {
       callback(null, true);
     } else {
+      // Log rejected origins in development for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('CORS rejected origin:', origin);
+      }
       callback(new Error('Not allowed by CORS'));
     }
   },
