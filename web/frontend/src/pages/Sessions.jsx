@@ -27,10 +27,20 @@ export default function Sessions() {
     setSyncing(true)
     try {
       const response = await syncStravaActivities()
-      alert(`Synced ${response.data.imported} activities (${response.data.skipped} already imported)`)
-      await loadSessions()
+      console.log('Sync response:', response.data)
+      
+      if (response.data.error) {
+        alert(`Error: ${response.data.error}`)
+      } else {
+        const imported = response.data.imported || 0
+        const skipped = response.data.skipped || 0
+        const total = response.data.total || 0
+        alert(`Sync complete! Imported ${imported} new activities. ${skipped} were already imported. Found ${total} total cycling activities in last 30 days.`)
+        await loadSessions()
+      }
     } catch (error) {
       console.error('Failed to sync Strava activities:', error)
+      console.error('Error response:', error.response?.data)
       alert(error.response?.data?.error || 'Failed to sync Strava activities. Make sure you have connected your Strava account in Settings.')
     } finally {
       setSyncing(false)
