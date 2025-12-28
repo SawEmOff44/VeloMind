@@ -30,15 +30,12 @@
 		0A000015 /* RideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000115 /* RideView.swift */; };
 		0A000016 /* RouteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000116 /* RouteView.swift */; };
 		0A000017 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000117 /* SettingsView.swift */; };
-		0A00001C /* StravaAuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011D /* StravaAuthView.swift */; };
 		0A000018 /* WeatherManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000118 /* WeatherManager.swift */; };
 		0A000019 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000119 /* User.swift */; };
 		0A00001A /* AuthenticationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011A /* AuthenticationManager.swift */; };
 		0A00001B /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011B /* LoginView.swift */; };
+		0A00001C /* StravaAuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011D /* StravaAuthView.swift */; };
 		0A00001E /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00011E /* APIService.swift */; };
-		A9F5213F2EFE1F1C0018B014 /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */; };
-		A9F521402EFE1F1C0018B014 /* FitnessProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */; };
-		A9F521412EFE1F1C0018B015 /* LearningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */; };
 		0A000020 /* RouteNavigationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000120 /* RouteNavigationManager.swift */; };
 		0A000021 /* BackgroundTaskManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000121 /* BackgroundTaskManager.swift */; };
 		0A000022 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000122 /* WatchConnectivityManager.swift */; };
@@ -49,6 +46,9 @@
 		0A000027 /* LearnedParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000127 /* LearnedParameters.swift */; };
 		0A000028 /* RideSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000128 /* RideSegment.swift */; };
 		0A000029 /* SegmentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000129 /* SegmentStore.swift */; };
+		A9F5213F2EFE1F1C0018B014 /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */; };
+		A9F521402EFE1F1C0018B014 /* FitnessProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */; };
+		A9F521412EFE1F1C0018B015 /* LearningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -76,16 +76,13 @@
 		0A000115 /* RideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideView.swift; sourceTree = "<group>"; };
 		0A000116 /* RouteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteView.swift; sourceTree = "<group>"; };
 		0A000117 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		0A00011D /* StravaAuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaAuthView.swift; sourceTree = "<group>"; };
 		0A000118 /* WeatherManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherManager.swift; sourceTree = "<group>"; };
 		0A000119 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		0A00011A /* AuthenticationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationManager.swift; sourceTree = "<group>"; };
 		0A00011B /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		0A00011C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0A00011D /* StravaAuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaAuthView.swift; sourceTree = "<group>"; };
 		0A00011E /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
-		A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessProfileManager.swift; sourceTree = "<group>"; };
-		A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
-		A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningEngine.swift; sourceTree = "<group>"; };
 		0A000120 /* RouteNavigationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteNavigationManager.swift; sourceTree = "<group>"; };
 		0A000121 /* BackgroundTaskManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundTaskManager.swift; sourceTree = "<group>"; };
 		0A000122 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
@@ -96,6 +93,9 @@
 		0A000127 /* LearnedParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnedParameters.swift; sourceTree = "<group>"; };
 		0A000128 /* RideSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideSegment.swift; sourceTree = "<group>"; };
 		0A000129 /* SegmentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentStore.swift; sourceTree = "<group>"; };
+		A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessProfileManager.swift; sourceTree = "<group>"; };
+		A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
+		A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -400,6 +400,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9K5ZUAM9MP;
@@ -430,6 +431,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9K5ZUAM9MP;
