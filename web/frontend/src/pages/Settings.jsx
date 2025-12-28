@@ -90,14 +90,20 @@ export default function Settings() {
     const scope = 'read,activity:read_all'
     const state = user?.id || '1' // Pass user ID for backend to update
     
-    console.log('Strava OAuth:', { clientId, redirectUri })
+    const stravaUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${state}`
+    
+    console.log('Strava OAuth:', { clientId, redirectUri, stravaUrl })
+    console.log('About to redirect to:', stravaUrl)
     
     if (!clientId) {
       alert('Strava Client ID not configured. Please check your environment variables.')
       return
     }
     
-    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}`
+    // Use window.location.assign instead of href for better debugging
+    console.log('Executing redirect...')
+    window.location.assign(stravaUrl)
+    console.log('Redirect executed - this should not log')
   }
 
   const handleStravaDisconnect = async () => {
