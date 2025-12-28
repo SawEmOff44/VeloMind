@@ -3,8 +3,18 @@ import Foundation
 /// Service for communicating with VeloMind backend API
 @MainActor
 class APIService: ObservableObject {
-    private let baseURL = "http://127.0.0.1:3001/api" // Use 127.0.0.1 for iOS Simulator
+    private let baseURL: String
     private let tokenKey = "velomind.authToken"
+    
+    init() {
+        #if DEBUG
+        // Use localhost for Simulator during development
+        self.baseURL = "http://127.0.0.1:3001/api"
+        #else
+        // Use production backend for TestFlight/App Store
+        self.baseURL = "https://your-backend.vercel.app/api"
+        #endif
+    }
     
     private var authToken: String? {
         UserDefaults.standard.string(forKey: tokenKey)
@@ -24,7 +34,7 @@ class APIService: ObservableObject {
     // MARK: - Routes
     
     func fetchRoutes() async throws -> [RouteInfo] {
-        guard let url = URL(string: "\(baseURL)/gpx") else {
+        guard let url = URL(string: "\(baseURL)/gpx/list") else {
             throw APIError.invalidURL
         }
         
@@ -39,7 +49,8 @@ class APIService: ObservableObject {
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode([RouteInfo].self, from: data)
+        let routesResponse = try decoder.decode(RoutesResponse.self, from: data)
+        return routesResponse.routes
     }
     
     func downloadRoute(id: Int) async throws -> Data {
@@ -97,19 +108,23 @@ class APIService: ObservableObject {
 
 // MARK: - Models
 
+struct RoutesResponse: Codable {
+    let routes: [RouteInfo]
+}
+
 struct RouteInfo: Codable, Identifiable {
     let id: Int
     let name: String
-    let distance: Double?
-    let elevationGain: Double?
+    let totalDistance: Double?
+    let totalElevationGain: Double?
     let createdAt: String
     
     var distanceMiles: Double {
-        (distance ?? 0) * 0.000621371
+        (totalDistance ?? 0) * 0.000621371
     }
     
     var elevationFeet: Double {
-        (elevationGain ?? 0) * 3.28084
+        (totalElevationGain ?? 0) * 3.28084
     }
 }
 

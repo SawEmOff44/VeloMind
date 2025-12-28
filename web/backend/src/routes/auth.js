@@ -38,7 +38,11 @@ router.post('/register', async (req, res) => {
       { expiresIn: '30d' }
     );
     
-    res.status(201).json({ user, token });
+    res.status(201).json({ 
+      token,
+      user_id: user.id,
+      name: user.name
+    });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: error.message });
@@ -79,7 +83,11 @@ router.post('/login', async (req, res) => {
     // Remove password from response
     delete user.password_hash;
     
-    res.json({ user, token });
+    res.json({ 
+      token,
+      user_id: user.id,
+      name: user.name
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: error.message });

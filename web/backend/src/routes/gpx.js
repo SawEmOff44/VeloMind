@@ -43,7 +43,7 @@ router.get('/list', authenticateToken, async (req, res) => {
   try {
     const result = await query(
       `SELECT id, user_id, name, total_distance, total_elevation_gain, 
-              point_count, created_at, updated_at
+              point_count, created_at
        FROM routes
        WHERE user_id = $1
        ORDER BY created_at DESC`,

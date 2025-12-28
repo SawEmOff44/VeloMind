@@ -19,31 +19,29 @@ struct LoginView: View {
                     
                     // Logo and Title
                     VStack(spacing: 15) {
-                        if let logo = UIImage(named: "VeloMind_Logo") {
-                            Image(uiImage: logo)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(height: 120)
-                                .shadow(color: .veloCyan.opacity(0.3), radius: 20, x: 0, y: 0)
-                        } else {
-                            // Fallback: cycling icon
-                            Image(systemName: "bicycle.circle.fill")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(height: 120)
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.veloCyan, .veloTeal, .veloGreen],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
+                        // Logo - cycling icon with brand gradient
+                        Image(systemName: "bicycle.circle.fill")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 120)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.veloCyan, .veloTeal, .veloGreen],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
                                 )
-                                .shadow(color: .veloCyan.opacity(0.3), radius: 20, x: 0, y: 0)
-                        }
+                            )
+                            .shadow(color: .veloCyan.opacity(0.3), radius: 20, x: 0, y: 0)
                         
                         Text("VeloMind")
                             .font(.system(size: 48, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.veloCyan, .veloTeal, .veloGreen],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
                         
                         Text("Power Your Ride")
                             .font(.title3)

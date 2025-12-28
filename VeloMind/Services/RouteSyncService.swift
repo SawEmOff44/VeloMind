@@ -8,8 +8,13 @@ actor RouteSyncService {
     private var authToken: String?
     
     private init() {
-        // Use environment variable or default to localhost
-        self.baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:3000/api"
+        #if DEBUG
+        // Use localhost for Simulator during development
+        self.baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://127.0.0.1:3001/api"
+        #else
+        // Use production backend for TestFlight/App Store
+        self.baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "https://your-backend.vercel.app/api"
+        #endif
     }
     
     func setAuthToken(_ token: String) {

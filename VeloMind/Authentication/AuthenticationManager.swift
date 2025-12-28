@@ -10,6 +10,14 @@ class AuthenticationManager: ObservableObject {
     private let userDefaultsKey = "velomind.currentUser"
     private let tokenKey = "velomind.authToken"
     
+    private var baseURL: String {
+        #if DEBUG
+        return "http://127.0.0.1:3001/api"
+        #else
+        return "https://your-backend.vercel.app/api"
+        #endif
+    }
+    
     var currentToken: String? {
         UserDefaults.standard.string(forKey: tokenKey)
     }
@@ -23,7 +31,7 @@ class AuthenticationManager: ObservableObject {
         defer { isLoading = false }
         
         // Call backend API
-        guard let url = URL(string: "http://127.0.0.1:3001/api/auth/login") else {
+        guard let url = URL(string: "\(baseURL)/auth/login") else {
             throw AuthError.invalidURL
         }
         
@@ -71,7 +79,7 @@ class AuthenticationManager: ObservableObject {
         defer { isLoading = false }
         
         // Call backend API
-        guard let url = URL(string: "http://127.0.0.1:3001/api/auth/register") else {
+        guard let url = URL(string: "\(baseURL)/auth/register") else {
             throw AuthError.invalidURL
         }
         
