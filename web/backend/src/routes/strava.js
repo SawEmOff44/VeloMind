@@ -35,6 +35,14 @@ router.get('/callback', async (req, res) => {
     // Note: This requires the user to be logged in (state should contain user ID)
     const userId = state; // In production, decode from secure state parameter
     
+    // First, clear this strava_id from any other users (in case of re-authorization)
+    await query(
+      `UPDATE users SET strava_id = NULL, strava_access_token = NULL, strava_refresh_token = NULL, strava_token_expires_at = NULL 
+       WHERE strava_id = $1 AND id != $2`,
+      [tokenData.athlete.id, userId]
+    );
+    
+    // Now update the current user with Strava tokens
     await query(
       `UPDATE users
        SET strava_id = $1, strava_access_token = $2, strava_refresh_token = $3, strava_token_expires_at = $4
