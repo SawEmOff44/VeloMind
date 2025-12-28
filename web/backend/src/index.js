@@ -68,6 +68,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// OAuth Callback Route (must be at root level, not under /api)
+app.use('/strava', stravaRoutes);
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
