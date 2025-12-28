@@ -122,4 +122,8 @@ export const getAnalyticsCalendar = (year = new Date().getFullYear()) =>
 export const getAnalyticsComparison = (sessionId) =>
   api.get(`/analytics/comparison/${sessionId}`)
 
+// Strava
+export const syncStravaActivities = () =>
+  api.post('/strava/sync')
+
 export default api

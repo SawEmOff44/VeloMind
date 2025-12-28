@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getSessions, deleteSession } from '../services/api'
+import { getSessions, deleteSession, syncStravaActivities } from '../services/api'
 import { format } from 'date-fns'
 
 export default function Sessions() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   
   useEffect(() => {
     loadSessions()
@@ -19,6 +20,20 @@ export default function Sessions() {
       console.error('Failed to load sessions:', error)
     } finally {
       setLoading(false)
+    }
+  }
+  
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      const response = await syncStravaActivities()
+      alert(`Synced ${response.data.imported} activities (${response.data.skipped} already imported)`)
+      await loadSessions()
+    } catch (error) {
+      console.error('Failed to sync Strava activities:', error)
+      alert(error.response?.data?.error || 'Failed to sync Strava activities. Make sure you have connected your Strava account in Settings.')
+    } finally {
+      setSyncing(false)
     }
   }
   
@@ -38,6 +53,28 @@ export default function Sessions() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Sessions</h1>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {syncing ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Syncing...
+            </>
+          ) : (
+            <>
+              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+              </svg>
+              Sync from Strava
+            </>
+          )}
+        </button>
       </div>
       
       {loading ? (
