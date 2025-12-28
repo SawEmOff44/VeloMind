@@ -74,8 +74,9 @@ export default function Settings() {
   const handleStravaConnect = () => {
     // Redirect to Strava OAuth
     const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID
-    const redirectUri = `${window.location.origin}/strava/callback`
+    const redirectUri = `${import.meta.env.VITE_API_BASE.replace('/api', '')}/strava/callback`
     const scope = 'read,activity:read_all'
+    const state = user?.id || '1' // Pass user ID for backend to update
     
     console.log('Strava OAuth:', { clientId, redirectUri })
     
@@ -84,7 +85,7 @@ export default function Settings() {
       return
     }
     
-    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`
+    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}`
   }
 
   const handleStravaDisconnect = async () => {
