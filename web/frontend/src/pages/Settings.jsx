@@ -37,8 +37,8 @@ export default function Settings() {
   const loadUser = async () => {
     try {
       const response = await getCurrentUser()
-      setUser(response.data)
-      setStravaConnected(!!response.data.strava_athlete_id)
+      setUser(response.data.user)
+      setStravaConnected(!!response.data.user.strava_id)
     } catch (error) {
       console.error('Failed to load user:', error)
     } finally {
