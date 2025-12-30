@@ -238,7 +238,7 @@ class FitnessProfileManager: ObservableObject {
         saveProfile()
     }
     
-    private func saveProfile() {
+    func saveProfile() {
         persistenceManager.saveRiderParameters(currentProfile)
     }
 }
