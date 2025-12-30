@@ -432,4 +432,96 @@ router.post('/sync-streams/:sessionId', authenticateToken, async (req, res) => {
   }
 });
 
+// Refresh streams for all existing Strava sessions
+router.post('/refresh-all-streams', authenticateToken, async (req, res) => {
+  try {
+    // Get user's Strava access token
+    const userResult = await query(
+      'SELECT strava_access_token, strava_refresh_token, strava_token_expires_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    if (userResult.rows.length === 0 || !userResult.rows[0].strava_access_token) {
+      return res.status(401).json({ error: 'Strava not connected' });
+    }
+    
+    const user = userResult.rows[0];
+    let accessToken = user.strava_access_token;
+    
+    // Check if token needs refresh
+    const now = Math.floor(Date.now() / 1000);
+    if (user.strava_token_expires_at && user.strava_token_expires_at < now) {
+      const refreshResponse = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.STRAVA_CLIENT_ID,
+          client_secret: process.env.STRAVA_CLIENT_SECRET,
+          refresh_token: user.strava_refresh_token,
+          grant_type: 'refresh_token'
+        })
+      });
+      
+      const refreshData = await refreshResponse.json();
+      if (refreshResponse.ok) {
+        accessToken = refreshData.access_token;
+        await query(
+          'UPDATE users SET strava_access_token = $1, strava_token_expires_at = $2 WHERE id = $3',
+          [refreshData.access_token, refreshData.expires_at, req.user.id]
+        );
+      }
+    }
+    
+    // Get all Strava sessions that don't have stream data
+    const sessionsResult = await query(
+      `SELECT s.id, s.strava_activity_id, s.start_time 
+       FROM sessions s
+       LEFT JOIN session_data_points sdp ON s.id = sdp.session_id
+       WHERE s.user_id = $1 
+         AND s.strava_activity_id IS NOT NULL
+         AND sdp.id IS NULL
+       ORDER BY s.start_time DESC`,
+      [req.user.id]
+    );
+    
+    let refreshed = 0;
+    let failed = 0;
+    
+    for (const session of sessionsResult.rows) {
+      try {
+        const streamData = await fetchAndStoreStreams(
+          session.id, 
+          session.strava_activity_id, 
+          accessToken, 
+          new Date(session.start_time)
+        );
+        
+        const normalizedPower = calculateNormalizedPower(streamData.powerData);
+        
+        await query(
+          `UPDATE sessions 
+           SET normalized_power = $1, max_heart_rate = $2, max_cadence = $3
+           WHERE id = $4`,
+          [normalizedPower, streamData.maxHeartRate, streamData.maxCadence, session.id]
+        );
+        
+        refreshed++;
+      } catch (error) {
+        console.error(`Failed to refresh streams for session ${session.id}:`, error.message);
+        failed++;
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      refreshed,
+      failed,
+      total: sessionsResult.rows.length 
+    });
+  } catch (error) {
+    console.error('Refresh all streams error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

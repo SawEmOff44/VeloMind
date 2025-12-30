@@ -126,4 +126,10 @@ export const getAnalyticsComparison = (sessionId) =>
 export const syncStravaActivities = () =>
   api.post('/strava/sync')
 
+export const syncStravaStreams = (sessionId) =>
+  api.post(`/strava/sync-streams/${sessionId}`)
+
+export const refreshAllStravaStreams = () =>
+  api.post('/strava/refresh-all-streams')
+
 export default api

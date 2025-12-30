@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { getSession, getSessionAnalytics } from '../services/api'
+import { getSession, getSessionAnalytics, syncStravaStreams } from '../services/api'
 import { format } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { ArrowDownTrayIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 
 export default function SessionDetail() {
   const { id } = useParams()
   const [session, setSession] = useState(null)
   const [analytics, setAnalytics] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   
   useEffect(() => {
     loadSession()
@@ -27,6 +28,46 @@ export default function SessionDetail() {
       console.error('Failed to load session:', error)
     } finally {
       setLoading(false)
+    }
+  }
+  
+  const handleSyncStreams = async () => {
+    if (!session?.strava_activity_id) {
+      alert('This session is not from Strava')
+      return
+    }
+    
+    setSyncing(true)
+    try {
+      const response = await syncStravaStreams(id)
+      alert(`Successfully synced ${response.data.dataPoints} data points!`)
+      // Reload the session data
+      await loadSession()
+    } catch (error) {
+      console.error('Failed to sync streams:', error)
+      alert('Failed to sync Strava data. ' + (error.response?.data?.error || error.message))
+    } finally {
+      setSyncing(false)
+    }
+  }
+  
+  const handleSyncStreams = async () => {
+    if (!session?.strava_activity_id) {
+      alert('This session is not from Strava')
+      return
+    }
+    
+    setSyncing(true)
+    try {
+      const response = await syncStravaStreams(id)
+      alert(`Successfully synced ${response.data.dataPoints} data points!`)
+      // Reload the session data
+      await loadSession()
+    } catch (error) {
+      console.error('Failed to sync streams:', error)
+      alert('Failed to sync Strava data. ' + (error.response?.data?.error || error.message))
+    } finally {
+      setSyncing(false)
     }
   }
   
@@ -62,6 +103,26 @@ export default function SessionDetail() {
       })
   }
   
+  const handleSyncStreams = async () => {
+    if (!session?.strava_activity_id) {
+      alert('This session is not from Strava')
+      return
+    }
+    
+    setSyncing(true)
+    try {
+      const response = await syncStravaStreams(id)
+      alert(`Successfully synced ${response.data.dataPoints} data points!`)
+      // Reload the session data
+      await loadSession()
+    } catch (error) {
+      console.error('Failed to sync streams:', error)
+      alert('Failed to sync Strava data. ' + (error.response?.data?.error || error.message))
+    } finally {
+      setSyncing(false)
+    }
+  }
+  
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -92,6 +153,16 @@ export default function SessionDetail() {
         
         {/* Export Buttons */}
         <div className="flex items-center gap-2">
+          {session.source === 'strava' && (
+            <button
+              onClick={handleSyncStreams}
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowPathIcon className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Syncing...' : 'Sync Strava Data'}
+            </button>
+          )}
           <button
             onClick={() => handleExport('csv')}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg hover:from-green-600 hover:to-teal-600 transition-all font-semibold"
