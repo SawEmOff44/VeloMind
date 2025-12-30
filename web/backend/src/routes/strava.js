@@ -4,6 +4,29 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Helper function to calculate normalized power from power array
+function calculateNormalizedPower(powerData) {
+  if (!powerData || powerData.length < 30) {
+    return null;
+  }
+  
+  // Calculate 30-second rolling average
+  const rollingAvg = [];
+  for (let i = 0; i < powerData.length; i++) {
+    const start = Math.max(0, i - 29);
+    const window = powerData.slice(start, i + 1);
+    const avg = window.reduce((sum, p) => sum + (p || 0), 0) / window.length;
+    rollingAvg.push(avg);
+  }
+  
+  // Calculate 4th root of average of 4th power
+  const sumFourthPower = rollingAvg.reduce((sum, p) => sum + Math.pow(p, 4), 0);
+  const avgFourthPower = sumFourthPower / rollingAvg.length;
+  const normalizedPower = Math.pow(avgFourthPower, 0.25);
+  
+  return normalizedPower;
+}
+
 // Helper function to fetch and store Strava activity streams
 async function fetchAndStoreStreams(sessionId, stravaActivityId, accessToken, startTime) {
   const streamTypes = 'time,latlng,distance,altitude,velocity_smooth,heartrate,cadence,watts,grade_smooth';
@@ -62,7 +85,13 @@ async function fetchAndStoreStreams(sessionId, stravaActivityId, accessToken, st
     );
   }
   
-  return dataLength;
+  // Return analytics data
+  return {
+    dataLength,
+    powerData: streams.watts?.data || [],
+    maxHeartRate: streams.heartrate?.data ? Math.max(...streams.heartrate.data.filter(hr => hr)) : null,
+    maxCadence: streams.cadence?.data ? Math.max(...streams.cadence.data.filter(c => c)) : null
+  };
 }
 
 // Strava OAuth callback handler
@@ -260,8 +289,8 @@ router.post('/sync', authenticateToken, async (req, res) => {
         `INSERT INTO sessions (
           user_id, name, start_time, end_time, distance, duration, 
           average_power, max_power, average_speed, max_speed, total_elevation_gain,
-          strava_activity_id, source
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          strava_activity_id, source, average_heart_rate, average_cadence
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id`,
         [
           req.user.id,
@@ -276,7 +305,9 @@ router.post('/sync', authenticateToken, async (req, res) => {
           activity.max_speed || null,
           activity.total_elevation_gain || null,
           activity.id,
-          'strava'
+          'strava',
+          activity.average_heartrate ? Math.round(activity.average_heartrate) : null,
+          activity.average_cadence ? Math.round(activity.average_cadence) : null
         ]
       );
       
@@ -284,9 +315,21 @@ router.post('/sync', authenticateToken, async (req, res) => {
       
       // Fetch and store detailed activity streams
       try {
-        await fetchAndStoreStreams(sessionId, activity.id, accessToken, new Date(activity.start_date));
+        const streamData = await fetchAndStoreStreams(sessionId, activity.id, accessToken, new Date(activity.start_date));
+        
+        // Calculate normalized power from stream data
+        const normalizedPower = calculateNormalizedPower(streamData.powerData);
+        
+        // Update session with normalized power and max values from streams
+        await query(
+          `UPDATE sessions 
+           SET normalized_power = $1, max_heart_rate = $2, max_cadence = $3
+           WHERE id = $4`,
+          [normalizedPower, streamData.maxHeartRate, streamData.maxCadence, sessionId]
+        );
       } catch (streamError) {
-        console.error(`Failed to fetch streams for activity ${activity.id}:`, streamError.message);
+        console.error(`Failed to fetch streams for activity ${activity.id}:`, streamError);
+        console.error('Error details:', streamError.message);
         // Continue even if streams fail - we still have the summary
       }
       
@@ -364,12 +407,24 @@ router.post('/sync-streams/:sessionId', authenticateToken, async (req, res) => {
     }
     
     // Use the helper function
-    const dataPoints = await fetchAndStoreStreams(sessionId, stravaActivityId, accessToken, new Date(startTime));
+    const streamData = await fetchAndStoreStreams(sessionId, stravaActivityId, accessToken, new Date(startTime));
+    
+    // Calculate normalized power from stream data
+    const normalizedPower = calculateNormalizedPower(streamData.powerData);
+    
+    // Update session with normalized power and max values
+    await query(
+      `UPDATE sessions 
+       SET normalized_power = $1, max_heart_rate = $2, max_cadence = $3
+       WHERE id = $4`,
+      [normalizedPower, streamData.maxHeartRate, streamData.maxCadence, sessionId]
+    );
     
     res.json({ 
       success: true, 
-      dataPoints,
-      message: `Imported ${dataPoints} data points from Strava` 
+      dataPoints: streamData.dataLength,
+      normalizedPower: normalizedPower ? Math.round(normalizedPower) : null,
+      message: `Imported ${streamData.dataLength} data points from Strava` 
     });
   } catch (error) {
     console.error('Strava streams sync error:', error);
