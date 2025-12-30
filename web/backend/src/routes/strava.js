@@ -4,6 +4,67 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Helper function to fetch and store Strava activity streams
+async function fetchAndStoreStreams(sessionId, stravaActivityId, accessToken, startTime) {
+  const streamTypes = 'time,latlng,distance,altitude,velocity_smooth,heartrate,cadence,watts,grade_smooth';
+  const streamsResponse = await fetch(
+    `https://www.strava.com/api/v3/activities/${stravaActivityId}/streams?keys=${streamTypes}&key_by_type=true`,
+    {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    }
+  );
+  
+  if (!streamsResponse.ok) {
+    throw new Error('Failed to fetch Strava streams');
+  }
+  
+  const streams = await streamsResponse.json();
+  
+  // Check if streams exist
+  if (!streams.time || streams.time.data.length === 0) {
+    throw new Error('No stream data available');
+  }
+  
+  // Delete existing data points
+  await query('DELETE FROM session_data_points WHERE session_id = $1', [sessionId]);
+  
+  // Insert data points (batch insert for better performance)
+  const dataLength = streams.time.data.length;
+  const values = [];
+  const params = [];
+  let paramCount = 1;
+  
+  for (let i = 0; i < dataLength; i++) {
+    const timestamp = new Date(startTime.getTime() + streams.time.data[i] * 1000);
+    const lat = streams.latlng?.data[i]?.[0] || null;
+    const lng = streams.latlng?.data[i]?.[1] || null;
+    const distance = streams.distance?.data[i] || null;
+    const altitude = streams.altitude?.data[i] || null;
+    const speed = streams.velocity_smooth?.data[i] || null;
+    const heartRate = streams.heartrate?.data[i] || null;
+    const cadence = streams.cadence?.data[i] || null;
+    const power = streams.watts?.data[i] || null;
+    const grade = streams.grade_smooth?.data[i] || null;
+    
+    values.push(`($${paramCount}, $${paramCount+1}, $${paramCount+2}, $${paramCount+3}, $${paramCount+4}, $${paramCount+5}, $${paramCount+6}, $${paramCount+7}, $${paramCount+8}, $${paramCount+9}, $${paramCount+10})`);
+    params.push(sessionId, timestamp, lat, lng, distance, altitude, speed, heartRate, cadence, power, grade);
+    paramCount += 11;
+  }
+  
+  // Batch insert all data points
+  if (values.length > 0) {
+    await query(
+      `INSERT INTO session_data_points (
+        session_id, timestamp, latitude, longitude, distance, altitude, 
+        speed, heart_rate, cadence, power, grade
+      ) VALUES ${values.join(', ')}`,
+      params
+    );
+  }
+  
+  return dataLength;
+}
+
 // Strava OAuth callback handler
 router.get('/callback', async (req, res) => {
   try {
@@ -195,12 +256,13 @@ router.post('/sync', authenticateToken, async (req, res) => {
       }
       
       // Create session from Strava activity
-      await query(
+      const sessionResult = await query(
         `INSERT INTO sessions (
           user_id, name, start_time, end_time, distance, duration, 
           average_power, max_power, average_speed, max_speed, total_elevation_gain,
           strava_activity_id, source
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING id`,
         [
           req.user.id,
           activity.name,
@@ -218,6 +280,16 @@ router.post('/sync', authenticateToken, async (req, res) => {
         ]
       );
       
+      const sessionId = sessionResult.rows[0].id;
+      
+      // Fetch and store detailed activity streams
+      try {
+        await fetchAndStoreStreams(sessionId, activity.id, accessToken, new Date(activity.start_date));
+      } catch (streamError) {
+        console.error(`Failed to fetch streams for activity ${activity.id}:`, streamError.message);
+        // Continue even if streams fail - we still have the summary
+      }
+      
       imported++;
     }
     
@@ -233,14 +305,14 @@ router.post('/sync', authenticateToken, async (req, res) => {
   }
 });
 
-// Fetch detailed activity streams from Strava
+// Fetch detailed activity streams from Strava (manual trigger)
 router.post('/sync-streams/:sessionId', authenticateToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
     
     // Get session and strava activity ID
     const sessionResult = await query(
-      'SELECT strava_activity_id FROM sessions WHERE id = $1 AND user_id = $2',
+      'SELECT strava_activity_id, start_time FROM sessions WHERE id = $1 AND user_id = $2',
       [sessionId, req.user.id]
     );
     
@@ -248,7 +320,7 @@ router.post('/sync-streams/:sessionId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
     
-    const stravaActivityId = sessionResult.rows[0].strava_activity_id;
+    const { strava_activity_id: stravaActivityId, start_time: startTime } = sessionResult.rows[0];
     
     if (!stravaActivityId) {
       return res.status(400).json({ error: 'Session not from Strava' });
@@ -291,68 +363,13 @@ router.post('/sync-streams/:sessionId', authenticateToken, async (req, res) => {
       }
     }
     
-    // Fetch activity streams from Strava
-    // Available streams: time, latlng, distance, altitude, velocity_smooth, heartrate, cadence, watts, temp, moving, grade_smooth
-    const streamTypes = 'time,latlng,distance,altitude,velocity_smooth,heartrate,cadence,watts,grade_smooth';
-    const streamsResponse = await fetch(
-      `https://www.strava.com/api/v3/activities/${stravaActivityId}/streams?keys=${streamTypes}&key_by_type=true`,
-      {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      }
-    );
-    
-    if (!streamsResponse.ok) {
-      return res.status(400).json({ error: 'Failed to fetch Strava streams' });
-    }
-    
-    const streams = await streamsResponse.json();
-    
-    // Check if streams exist
-    if (!streams.time || streams.time.data.length === 0) {
-      return res.status(404).json({ error: 'No stream data available for this activity' });
-    }
-    
-    // Get session start time for timestamps
-    const sessionInfo = await query(
-      'SELECT start_time FROM sessions WHERE id = $1',
-      [sessionId]
-    );
-    const startTime = new Date(sessionInfo.rows[0].start_time);
-    
-    // Delete existing data points
-    await query('DELETE FROM session_data_points WHERE session_id = $1', [sessionId]);
-    
-    // Insert data points
-    const dataLength = streams.time.data.length;
-    let inserted = 0;
-    
-    for (let i = 0; i < dataLength; i++) {
-      const timestamp = new Date(startTime.getTime() + streams.time.data[i] * 1000);
-      const lat = streams.latlng?.data[i]?.[0] || null;
-      const lng = streams.latlng?.data[i]?.[1] || null;
-      const distance = streams.distance?.data[i] || null;
-      const altitude = streams.altitude?.data[i] || null;
-      const speed = streams.velocity_smooth?.data[i] || null;
-      const heartRate = streams.heartrate?.data[i] || null;
-      const cadence = streams.cadence?.data[i] || null;
-      const power = streams.watts?.data[i] || null;
-      const grade = streams.grade_smooth?.data[i] || null;
-      
-      await query(
-        `INSERT INTO session_data_points (
-          session_id, timestamp, latitude, longitude, distance, altitude, 
-          speed, heart_rate, cadence, power, grade
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [sessionId, timestamp, lat, lng, distance, altitude, speed, heartRate, cadence, power, grade]
-      );
-      
-      inserted++;
-    }
+    // Use the helper function
+    const dataPoints = await fetchAndStoreStreams(sessionId, stravaActivityId, accessToken, new Date(startTime));
     
     res.json({ 
       success: true, 
-      dataPoints: inserted,
-      message: `Imported ${inserted} data points from Strava` 
+      dataPoints,
+      message: `Imported ${dataPoints} data points from Strava` 
     });
   } catch (error) {
     console.error('Strava streams sync error:', error);
