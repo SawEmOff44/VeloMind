@@ -14,7 +14,7 @@ class AuthenticationManager: ObservableObject {
         #if DEBUG
         return "http://127.0.0.1:3001/api"
         #else
-        return "https://your-backend.vercel.app/api"
+        return "https://velomind.onrender.com/api"
         #endif
     }
     

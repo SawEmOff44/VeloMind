@@ -80,6 +80,13 @@ struct SettingsView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
+                        .onChange(of: ftp) { _, newValue in
+                            if let ftpValue = Double(newValue), ftpValue > 0 {
+                                coordinator.powerEngine.riderParameters.ftp = ftpValue
+                                coordinator.powerEngine.riderParameters.ftpLastUpdated = Date()
+                                coordinator.fitnessProfileManager.saveProfile()
+                            }
+                        }
                 }
                 
                 // Show estimated FTP if available
@@ -117,6 +124,12 @@ struct SettingsView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
+                        .onChange(of: maxHR) { _, newValue in
+                            if let maxHRValue = Int(newValue), maxHRValue > 0 {
+                                coordinator.powerEngine.riderParameters.maxHeartRate = maxHRValue
+                                coordinator.fitnessProfileManager.saveProfile()
+                            }
+                        }
                 }
                 
                 HStack {
@@ -125,8 +138,12 @@ struct SettingsView: View {
                     TextField("Resting HR", text: $restingHR)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                }
+                        .frame(width: 80)                        .onChange(of: restingHR) { _, newValue in
+                            if let restingHRValue = Int(newValue), restingHRValue > 0 {
+                                coordinator.powerEngine.riderParameters.restingHeartRate = restingHRValue
+                                coordinator.fitnessProfileManager.saveProfile()
+                            }
+                        }                }
             }
             
             // Strava Integration Section
@@ -369,6 +386,19 @@ struct SettingsView: View {
         mass = params.mass
         cda = params.cda
         crr = params.crr
+        
+        // Load FTP
+        if let ftpValue = params.ftp {
+            ftp = String(format: "%.0f", ftpValue)
+        }
+        
+        // Load heart rate values
+        if let maxHRValue = params.maxHeartRate {
+            maxHR = String(maxHRValue)
+        }
+        if let restingHRValue = params.restingHeartRate {
+            restingHR = String(restingHRValue)
+        }
     }
     
     private func applyParameters() {
@@ -376,7 +406,23 @@ struct SettingsView: View {
         coordinator.powerEngine.riderParameters.cda = cda
         coordinator.powerEngine.riderParameters.crr = crr
         
-        // TODO: Save to persistence
+        // Save FTP if provided
+        if let ftpValue = Double(ftp), ftpValue > 0 {
+            coordinator.powerEngine.riderParameters.ftp = ftpValue
+            coordinator.powerEngine.riderParameters.ftpLastUpdated = Date()
+        }
+        
+        // Save heart rate values if provided
+        if let maxHRValue = Int(maxHR), maxHRValue > 0 {
+            coordinator.powerEngine.riderParameters.maxHeartRate = maxHRValue
+        }
+        if let restingHRValue = Int(restingHR), restingHRValue > 0 {
+            coordinator.powerEngine.riderParameters.restingHeartRate = restingHRValue
+        }
+        
+        // Save to persistence
+        coordinator.fitnessProfileManager.currentProfile.mass = mass
+        coordinator.fitnessProfileManager.saveProfile()
     }
     
     private func applyFitnessProfile() {

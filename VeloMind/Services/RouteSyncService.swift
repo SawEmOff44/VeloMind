@@ -13,7 +13,7 @@ actor RouteSyncService {
         self.baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://127.0.0.1:3001/api"
         #else
         // Use production backend for TestFlight/App Store
-        self.baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "https://your-backend.vercel.app/api"
+        self.baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "https://velomind.onrender.com/api"
         #endif
     }
     

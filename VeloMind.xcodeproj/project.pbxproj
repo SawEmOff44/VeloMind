@@ -49,6 +49,8 @@
 		A9F5213F2EFE1F1C0018B014 /* IntelligenceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */; };
 		A9F521402EFE1F1C0018B014 /* FitnessProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */; };
 		A9F521412EFE1F1C0018B015 /* LearningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */; };
+		FE4155BC2F021BB800DE46B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FE4155BB2F021BB800DE46B0 /* Assets.xcassets */; };
+		FE5AE7C62F02163300A9432C /* Icon-120.png in Resources */ = {isa = PBXBuildFile; fileRef = FE5AE7C52F02163300A9432C /* Icon-120.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -96,6 +98,8 @@
 		A9F5213C2EFE1F1C0018B014 /* FitnessProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitnessProfileManager.swift; sourceTree = "<group>"; };
 		A9F5213D2EFE1F1C0018B014 /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
 		A9F5213E2EFE1F1C0018B015 /* LearningEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningEngine.swift; sourceTree = "<group>"; };
+		FE4155BB2F021BB800DE46B0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = VeloMind/Assets.xcassets; sourceTree = "<group>"; };
+		FE5AE7C52F02163300A9432C /* Icon-120.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Icon-120.png"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,6 +116,7 @@
 		0A000300 = {
 			isa = PBXGroup;
 			children = (
+				FE4155BB2F021BB800DE46B0 /* Assets.xcassets */,
 				0A000301 /* VeloMind */,
 				0A000302 /* Products */,
 			);
@@ -120,6 +125,7 @@
 		0A000301 /* VeloMind */ = {
 			isa = PBXGroup;
 			children = (
+				FE5AE7C52F02163300A9432C /* Icon-120.png */,
 				A9F5213E2EFE1F1C0018B014 /* Intelligence */,
 				0A000101 /* VeloMindApp.swift */,
 				0A000102 /* RideCoordinator.swift */,
@@ -337,6 +343,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FE4155BC2F021BB800DE46B0 /* Assets.xcassets in Resources */,
+				FE5AE7C62F02163300A9432C /* Icon-120.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -12,7 +12,7 @@ class APIService: ObservableObject {
         self.baseURL = "http://127.0.0.1:3001/api"
         #else
         // Use production backend for TestFlight/App Store
-        self.baseURL = "https://your-backend.vercel.app/api"
+        self.baseURL = "https://velomind.onrender.com/api"
         #endif
     }
     
