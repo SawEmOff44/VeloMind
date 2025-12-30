@@ -55,16 +55,29 @@ router.post('/', authenticateToken, async (req, res) => {
     const {
       name,
       mass,
+      total_mass_kg,
       cda,
+      frontal_area_m2,
+      drag_coefficient,
       crr,
+      rolling_resistance,
       drivetrainLoss,
+      drivetrain_loss,
       ftp,
       position,
-      isActive
+      isActive,
+      is_active
     } = req.body;
     
+    // Support both naming conventions
+    const massValue = mass || total_mass_kg;
+    const cdaValue = cda || (frontal_area_m2 && drag_coefficient ? frontal_area_m2 * drag_coefficient : null);
+    const crrValue = crr || rolling_resistance;
+    const drivetrainLossValue = drivetrainLoss || drivetrain_loss;
+    const isActiveValue = isActive !== undefined ? isActive : is_active;
+    
     // If this is set as active, deactivate others
-    if (isActive) {
+    if (isActiveValue) {
       await query(
         'UPDATE rider_parameters SET is_active = false WHERE user_id = $1',
         [req.user.id]
@@ -76,7 +89,7 @@ router.post('/', authenticateToken, async (req, res) => {
         user_id, name, mass, cda, crr, drivetrain_loss, ftp, position, is_active
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *`,
-      [req.user.id, name, mass, cda, crr, drivetrainLoss, ftp, position, isActive]
+      [req.user.id, name, massValue, cdaValue, crrValue, drivetrainLossValue, ftp, position || 'hoods', isActiveValue || false]
     );
     
     res.status(201).json({ parameters: result.rows[0] });
