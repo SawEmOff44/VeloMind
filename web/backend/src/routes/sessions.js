@@ -184,7 +184,15 @@ router.get('/:id/analytics', authenticateToken, async (req, res) => {
     const points = dataPointsResult.rows;
     
     if (points.length === 0) {
-      return res.status(404).json({ error: 'No data points found' });
+      // Return empty analytics instead of 404
+      return res.json({
+        powerCurve: [],
+        elevationProfile: [],
+        speedProfile: [],
+        cadenceProfile: [],
+        heartRateZones: { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 },
+        powerZones: { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 }
+      });
     }
     
     // Calculate analytics
