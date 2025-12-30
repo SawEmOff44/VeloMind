@@ -51,26 +51,6 @@ export default function SessionDetail() {
     }
   }
   
-  const handleSyncStreams = async () => {
-    if (!session?.strava_activity_id) {
-      alert('This session is not from Strava')
-      return
-    }
-    
-    setSyncing(true)
-    try {
-      const response = await syncStravaStreams(id)
-      alert(`Successfully synced ${response.data.dataPoints} data points!`)
-      // Reload the session data
-      await loadSession()
-    } catch (error) {
-      console.error('Failed to sync streams:', error)
-      alert('Failed to sync Strava data. ' + (error.response?.data?.error || error.message))
-    } finally {
-      setSyncing(false)
-    }
-  }
-  
   const handleExport = (format) => {
     const apiBase = import.meta.env.VITE_API_BASE || '/api'
     const token = localStorage.getItem('token')
