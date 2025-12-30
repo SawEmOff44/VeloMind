@@ -51,38 +51,43 @@ async function fetchAndStoreStreams(sessionId, stravaActivityId, accessToken, st
   // Delete existing data points
   await query('DELETE FROM session_data_points WHERE session_id = $1', [sessionId]);
   
-  // Insert data points (batch insert for better performance)
+  // Insert data points in batches to avoid parameter limit
   const dataLength = streams.time.data.length;
-  const values = [];
-  const params = [];
-  let paramCount = 1;
+  const BATCH_SIZE = 1000; // Insert 1000 points at a time (11 params each = 11000 params per batch)
   
-  for (let i = 0; i < dataLength; i++) {
-    const timestamp = new Date(startTime.getTime() + streams.time.data[i] * 1000);
-    const lat = streams.latlng?.data[i]?.[0] || null;
-    const lng = streams.latlng?.data[i]?.[1] || null;
-    const distance = streams.distance?.data[i] || null;
-    const altitude = streams.altitude?.data[i] || null;
-    const speed = streams.velocity_smooth?.data[i] || null;
-    const heartRate = streams.heartrate?.data[i] || null;
-    const cadence = streams.cadence?.data[i] || null;
-    const power = streams.watts?.data[i] || null;
-    const grade = streams.grade_smooth?.data[i] || null;
+  for (let batchStart = 0; batchStart < dataLength; batchStart += BATCH_SIZE) {
+    const batchEnd = Math.min(batchStart + BATCH_SIZE, dataLength);
+    const values = [];
+    const params = [];
+    let paramCount = 1;
     
-    values.push(`($${paramCount}, $${paramCount+1}, $${paramCount+2}, $${paramCount+3}, $${paramCount+4}, $${paramCount+5}, $${paramCount+6}, $${paramCount+7}, $${paramCount+8}, $${paramCount+9}, $${paramCount+10})`);
-    params.push(sessionId, timestamp, lat, lng, distance, altitude, speed, heartRate, cadence, power, grade);
-    paramCount += 11;
-  }
-  
-  // Batch insert all data points
-  if (values.length > 0) {
-    await query(
-      `INSERT INTO session_data_points (
-        session_id, timestamp, latitude, longitude, distance, altitude, 
-        speed, heart_rate, cadence, power, grade
-      ) VALUES ${values.join(', ')}`,
-      params
-    );
+    for (let i = batchStart; i < batchEnd; i++) {
+      const timestamp = new Date(startTime.getTime() + streams.time.data[i] * 1000);
+      const lat = streams.latlng?.data[i]?.[0] || null;
+      const lng = streams.latlng?.data[i]?.[1] || null;
+      const distance = streams.distance?.data[i] || null;
+      const altitude = streams.altitude?.data[i] || null;
+      const speed = streams.velocity_smooth?.data[i] || null;
+      const heartRate = streams.heartrate?.data[i] || null;
+      const cadence = streams.cadence?.data[i] || null;
+      const power = streams.watts?.data[i] || null;
+      const grade = streams.grade_smooth?.data[i] || null;
+      
+      values.push(`($${paramCount}, $${paramCount+1}, $${paramCount+2}, $${paramCount+3}, $${paramCount+4}, $${paramCount+5}, $${paramCount+6}, $${paramCount+7}, $${paramCount+8}, $${paramCount+9}, $${paramCount+10})`);
+      params.push(sessionId, timestamp, lat, lng, distance, altitude, speed, heartRate, cadence, power, grade);
+      paramCount += 11;
+    }
+    
+    // Batch insert
+    if (values.length > 0) {
+      await query(
+        `INSERT INTO session_data_points (
+          session_id, timestamp, latitude, longitude, distance, altitude, 
+          speed, heart_rate, cadence, power, grade
+        ) VALUES ${values.join(', ')}`,
+        params
+      );
+    }
   }
   
   // Return analytics data
