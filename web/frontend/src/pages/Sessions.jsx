@@ -106,16 +106,17 @@ export default function Sessions() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 Syncing...
-            </>
-          ) : (
-            <>
-              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
-              </svg>
-              Sync from Strava
-            </>
-          )}
-        </button>
+              </>
+            ) : (
+              <>
+                <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
+                </svg>
+                Sync from Strava
+              </>
+            )}
+          </button>
+        </div>
       </div>
       
       {loading ? (
