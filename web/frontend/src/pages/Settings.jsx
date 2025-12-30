@@ -352,13 +352,6 @@ export default function Settings() {
             </div>
           </div>
         )}
-        
-        <div className="mt-4 p-4 bg-velo-cyan-50 rounded-md">
-          <p className="text-sm text-velo-cyan-900">
-            <strong>💡 Tip:</strong> This profile is used for route predictions and iOS ride intelligence. 
-            Update your FTP regularly after fitness tests for accurate pacing recommendations.
-          </p>
-        </div>
       </div>
 
       {/* Strava Integration */}
