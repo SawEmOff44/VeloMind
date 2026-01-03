@@ -5,6 +5,8 @@ import compression from 'compression';
 import dotenv from 'dotenv';
 import { rateLimit } from 'express-rate-limit';
 
+import { query } from './db.js';
+
 // Routes
 import authRoutes from './routes/auth.js';
 import sessionRoutes from './routes/sessions.js';
@@ -101,9 +103,35 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚴 VeloMind API server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-});
+async function warnIfSchemaMismatch() {
+  try {
+    const result = await query(
+      `SELECT 1
+       FROM information_schema.columns
+       WHERE table_schema = 'public'
+         AND table_name = 'session_data_points'
+         AND column_name = 'distance'
+       LIMIT 1`
+    );
+
+    if (result.rowCount === 0) {
+      console.warn(
+        '⚠️ DB schema mismatch: public.session_data_points.distance is missing. ' +
+          'Run: ALTER TABLE public.session_data_points ADD COLUMN IF NOT EXISTS distance DECIMAL(10,2);'
+      );
+    }
+  } catch (err) {
+    console.warn('⚠️ DB schema check failed (continuing anyway):', err?.message || err);
+  }
+}
+
+(async () => {
+  await warnIfSchemaMismatch();
+
+  app.listen(PORT, () => {
+    console.log(`🚴 VeloMind API server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV}`);
+  });
+})();
 
 export default app;
