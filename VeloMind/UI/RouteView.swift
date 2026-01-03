@@ -101,7 +101,7 @@ struct RouteView: View {
         Task {
             do {
                 let route = try await apiService.downloadRouteWithWaypoints(id: routeInfo.id)
-                await coordinator.routeManager.loadRemoteRoute(route)
+                coordinator.routeManager.loadRemoteRoute(route)
             } catch {
                 errorMessage = "Failed to load route: \(error.localizedDescription)"
             }

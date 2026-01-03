@@ -241,7 +241,7 @@ extension BLEManager: CBCentralManagerDelegate {
             if error != nil {
                 Task {
                     try? await Task.sleep(for: .seconds(2))
-                    await connect(to: peripheral)
+                    await MainActor.run { connect(to: peripheral) }
                 }
             }
         }

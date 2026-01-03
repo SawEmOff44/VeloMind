@@ -272,7 +272,7 @@ class IntelligenceEngine: ObservableObject {
         let windEffect = windSpeed * 0.3  // Simplified wind impact
         let predictedSpeed = max(0, estimatedSpeed - abs(windEffect))
         
-        let speedMph = estimatedSpeed * 2.23694
+        let speedMph = predictedSpeed * 2.23694
         let windDescription = windSpeed > 0 ? "headwind" : (windSpeed < 0 ? "tailwind" : "calm")
         
         predictedSpeedValue = PredictedSpeed(

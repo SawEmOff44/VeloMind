@@ -170,7 +170,6 @@ class FitnessProfileManager: ObservableObject {
         
         let avgFatigueRate = longRides.map { ride in
             // Estimate: assume 10% power decay over 3 hours for average rider
-            let hours = ride.duration / 3600.0
             return ride.avgPower / ride.normalizedPower
         }.reduce(0, +) / Double(longRides.count)
         

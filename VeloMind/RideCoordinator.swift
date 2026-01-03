@@ -46,7 +46,7 @@ class RideCoordinator: ObservableObject {
         let riderParams = persistenceManager.loadRiderParameters() ?? RiderParameters.default
         
         // Load learned parameters
-        let learnedParams = Task {
+        _ = Task {
             await SegmentStore.shared.loadLearnedParameters() ?? LearnedParameters()
         }
         
@@ -184,7 +184,10 @@ class RideCoordinator: ObservableObject {
             let hrValues = rideDataPoints.compactMap { $0.heartRate }.filter { $0 > 0 }
             let avgHeartRate: Int? = hrValues.isEmpty ? nil : Int(Double(hrValues.reduce(0, +)) / Double(hrValues.count))
 
+            let backendRouteId = (routeManager.currentRoute?.id ?? 0) > 0 ? routeManager.currentRoute?.id : nil
+
             var session = RideSession(
+                backendRouteId: backendRouteId,
                 startTime: startTime,
                 endTime: endTime,
                 duration: rideDuration,
@@ -203,9 +206,8 @@ class RideCoordinator: ObservableObject {
 
             Task {
                 do {
-                    let routeId = (routeManager.currentRoute?.id ?? 0) > 0 ? routeManager.currentRoute?.id : nil
                     let ftp = powerEngine.riderParameters.ftp
-                    let backendId = try await apiService.uploadSession(session, routeId: routeId, ftp: ftp)
+                    let backendId = try await apiService.uploadSession(session, routeId: backendRouteId, ftp: ftp)
                     session.backendSessionId = backendId
                     persistenceManager.updateRideSession(session)
                     print("✅ Uploaded session to backend: \(backendId)")
@@ -241,7 +243,7 @@ class RideCoordinator: ObservableObject {
             for var session in pending {
                 if uploaded >= maxSessions { break }
                 do {
-                    let backendId = try await apiService.uploadSession(session, routeId: session.routeID, ftp: ftp)
+                    let backendId = try await apiService.uploadSession(session, routeId: session.backendRouteId, ftp: ftp)
                     session.backendSessionId = backendId
                     persistenceManager.updateRideSession(session)
                     uploaded += 1

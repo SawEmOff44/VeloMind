@@ -5,6 +5,7 @@ import CoreData
 struct RideSession: Codable, Identifiable {
     let id: UUID
     var backendSessionId: Int?
+    var backendRouteId: Int?
     let startTime: Date
     let endTime: Date?
     let duration: TimeInterval
@@ -18,12 +19,13 @@ struct RideSession: Codable, Identifiable {
     let routeID: UUID?
     let dataPoints: [RideDataPoint]
     
-    init(id: UUID = UUID(), backendSessionId: Int? = nil, startTime: Date, endTime: Date? = nil, duration: TimeInterval,
+    init(id: UUID = UUID(), backendSessionId: Int? = nil, backendRouteId: Int? = nil, startTime: Date, endTime: Date? = nil, duration: TimeInterval,
          distance: Double, averagePower: Double, normalizedPower: Double, averageSpeed: Double,
          averageCadence: Double, averageHeartRate: Int? = nil, totalElevationGain: Double,
          routeID: UUID? = nil, dataPoints: [RideDataPoint] = []) {
         self.id = id
         self.backendSessionId = backendSessionId
+        self.backendRouteId = backendRouteId
         self.startTime = startTime
         self.endTime = endTime
         self.duration = duration

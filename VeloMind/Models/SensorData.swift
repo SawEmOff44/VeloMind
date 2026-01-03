@@ -13,6 +13,7 @@ struct SensorData {
 }
 
 /// Protocol for sensor data updates
+@MainActor
 protocol SensorDataDelegate: AnyObject {
     func didUpdateSpeed(_ speed: Double, timestamp: Date)
     func didUpdateCadence(_ cadence: Double, timestamp: Date)
