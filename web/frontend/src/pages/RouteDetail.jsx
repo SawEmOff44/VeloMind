@@ -252,7 +252,7 @@ export default function RouteDetail() {
   }
   
   // Calculate speed/time predictions
-  const totalTimeMinutes = displayPoints && displayPoints.length > 1
+  const totalTimeSeconds = displayPoints && displayPoints.length > 1
     ? displayPoints.slice(1).reduce((total, point, index) => {
         const prev = displayPoints[index]
         const distanceDiff = point.distance - prev.distance
@@ -268,9 +268,11 @@ export default function RouteDetail() {
         return total + segmentTime
       }, 0)
     : 0
+
+  const totalTimeMinutes = totalTimeSeconds / 60
   
-  const avgSpeed = totalTimeMinutes > 0 
-    ? (parseFloat(stats.distance) / (totalTimeMinutes / 60)).toFixed(1)
+  const avgSpeed = totalTimeSeconds > 0 
+    ? (parseFloat(stats.distance) / (totalTimeSeconds / 3600)).toFixed(1)
     : 0
   
   return (
