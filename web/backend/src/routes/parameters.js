@@ -75,9 +75,10 @@ router.post('/', authenticateToken, async (req, res) => {
     const crrValue = crr || rolling_resistance;
     const drivetrainLossValue = drivetrainLoss || drivetrain_loss;
     const isActiveValue = isActive !== undefined ? isActive : is_active;
+    const shouldBeActive = isActiveValue !== undefined ? !!isActiveValue : true;
     
     // If this is set as active, deactivate others
-    if (isActiveValue) {
+    if (shouldBeActive) {
       await query(
         'UPDATE rider_parameters SET is_active = false WHERE user_id = $1',
         [req.user.id]
@@ -89,7 +90,7 @@ router.post('/', authenticateToken, async (req, res) => {
         user_id, name, mass, cda, crr, drivetrain_loss, ftp, position, is_active
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *`,
-      [req.user.id, name, massValue, cdaValue, crrValue, drivetrainLossValue, ftp, position || 'hoods', isActiveValue || false]
+      [req.user.id, name, massValue, cdaValue, crrValue, drivetrainLossValue, ftp, position || 'hoods', shouldBeActive]
     );
     
     res.status(201).json({ parameters: result.rows[0] });
@@ -110,11 +111,26 @@ router.put('/:id', authenticateToken, async (req, res) => {
       drivetrainLoss,
       ftp,
       position,
-      isActive
+      isActive,
+      is_active
     } = req.body;
+
+    // Preserve is_active unless explicitly provided
+    const existingResult = await query(
+      'SELECT is_active FROM rider_parameters WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+
+    if (existingResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Parameters not found' });
+    }
+
+    const existingIsActive = !!existingResult.rows[0].is_active;
+    const requestedIsActive = isActive !== undefined ? isActive : is_active;
+    const isActiveValue = requestedIsActive !== undefined ? !!requestedIsActive : existingIsActive;
     
     // If this is set as active, deactivate others
-    if (isActive) {
+    if (isActiveValue) {
       await query(
         'UPDATE rider_parameters SET is_active = false WHERE user_id = $1 AND id != $2',
         [req.user.id, req.params.id]
@@ -127,12 +143,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
            ftp = $6, position = $7, is_active = $8
        WHERE id = $9 AND user_id = $10
        RETURNING *`,
-      [name, mass, cda, crr, drivetrainLoss, ftp, position, isActive, req.params.id, req.user.id]
+      [name, mass, cda, crr, drivetrainLoss, ftp, position, isActiveValue, req.params.id, req.user.id]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Parameters not found' });
-    }
     
     res.json({ parameters: result.rows[0] });
   } catch (error) {

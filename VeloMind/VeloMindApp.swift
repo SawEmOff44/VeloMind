@@ -4,6 +4,7 @@ import SwiftUI
 struct VeloMindApp: App {
     @StateObject private var authManager = AuthenticationManager()
     @StateObject private var rideCoordinator = RideCoordinator()
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some Scene {
         WindowGroup {
@@ -16,6 +17,14 @@ struct VeloMindApp: App {
                     .onAppear {
                         if let userId = authManager.currentUser?.id {
                             rideCoordinator.persistenceManager.setCurrentUser(String(userId))
+                        }
+                        rideCoordinator.authManager = authManager
+                        rideCoordinator.retryPendingSessionUploads()
+                    }
+                    .onChange(of: scenePhase) { phase in
+                        guard authManager.isAuthenticated else { return }
+                        if phase == .active {
+                            rideCoordinator.retryPendingSessionUploads()
                         }
                     }
                     .onOpenURL { url in

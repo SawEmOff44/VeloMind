@@ -42,6 +42,25 @@ class PersistenceManager: ObservableObject {
             logger.error("Failed to save ride session: \(error.localizedDescription)")
         }
     }
+
+    func updateRideSession(_ session: RideSession) {
+        do {
+            var sessions = loadRideSessions()
+            if let idx = sessions.firstIndex(where: { $0.id == session.id }) {
+                sessions[idx] = session
+            } else {
+                sessions.append(session)
+            }
+
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(sessions)
+            UserDefaults.standard.set(data, forKey: rideSessions)
+            logger.info("Updated ride session: \(session.id)")
+        } catch {
+            logger.error("Failed to update ride session: \(error.localizedDescription)")
+        }
+    }
     
     func loadRideSessions() -> [RideSession] {
         guard let data = UserDefaults.standard.data(forKey: rideSessions) else {

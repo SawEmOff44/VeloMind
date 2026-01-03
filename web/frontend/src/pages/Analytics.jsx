@@ -87,11 +87,27 @@ export default function Analytics() {
     duration: parseInt(pz.total_duration)
   })) || []
 
-  const trendData = trends?.data?.map(t => ({
-    date: format(new Date(t.date), 'MMM d'),
-    value: parseFloat(t.avg_value).toFixed(1),
-    max: parseFloat(t.max_value).toFixed(1)
-  })) || []
+  const trendData = (trends?.data || [])
+    .map(t => {
+      const value = Number(t.avg_value)
+      const max = Number(t.max_value)
+      return {
+        date: format(new Date(t.date), 'MMM d'),
+        value: Number.isFinite(value) ? value : null,
+        max: Number.isFinite(max) ? max : null
+      }
+    })
+    .filter(d => d.value !== null || d.max !== null)
+
+  const trendUnit = trendMetric === 'power'
+    ? 'W'
+    : trendMetric === 'speed'
+      ? 'mph'
+      : trendMetric === 'hr'
+        ? 'bpm'
+        : trendMetric === 'cadence'
+          ? 'rpm'
+          : ''
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -369,8 +385,8 @@ export default function Analytics() {
             <LineChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
+              <YAxis domain={['auto', 'auto']} tickFormatter={(v) => `${Number(v).toFixed(0)}${trendUnit ? ` ${trendUnit}` : ''}`} />
+              <Tooltip formatter={(v) => (v === null || v === undefined ? 'N/A' : `${Number(v).toFixed(1)}${trendUnit ? ` ${trendUnit}` : ''}`)} />
               <Legend />
               <Line 
                 type="monotone" 
@@ -379,6 +395,7 @@ export default function Analytics() {
                 strokeWidth={2}
                 name="Average"
                 dot={false}
+                connectNulls
               />
               <Line 
                 type="monotone" 
@@ -387,6 +404,7 @@ export default function Analytics() {
                 strokeWidth={2}
                 name="Maximum"
                 dot={false}
+                connectNulls
               />
             </LineChart>
           </ResponsiveContainer>

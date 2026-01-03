@@ -105,37 +105,28 @@ router.post('/', authenticateToken, async (req, res) => {
     
     // Insert data points if provided
     if (dataPoints && dataPoints.length > 0) {
-      const values = dataPoints.map((dp, i) => {
-        const params = [
-          session.id,
-          dp.timestamp,
-          dp.latitude,
-          dp.longitude,
-          dp.altitude,
-          dp.speed,
-          dp.cadence,
-          dp.heartRate,
-          dp.power,
-          dp.grade,
-          dp.windSpeed,
-          dp.windDirection
-        ];
-        const placeholders = params.map((_, idx) => `$${idx + 1 + i * 12}`).join(',');
-        return { params, placeholders };
-      });
-      
-      // Batch insert (simplified - in production, use proper batch insert)
+      // Insert one-by-one (simplified - in production, use proper batch insert)
       for (const dp of dataPoints) {
         await query(
           `INSERT INTO session_data_points (
-            session_id, timestamp, latitude, longitude, altitude,
+            session_id, timestamp, latitude, longitude, distance, altitude,
             speed, cadence, heart_rate, power, grade,
             wind_speed, wind_direction
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
           [
-            session.id, dp.timestamp, dp.latitude, dp.longitude, dp.altitude,
-            dp.speed, dp.cadence, dp.heartRate, dp.power, dp.grade,
-            dp.windSpeed, dp.windDirection
+            session.id,
+            dp.timestamp,
+            dp.latitude,
+            dp.longitude,
+            dp.distance ?? null,
+            dp.altitude,
+            dp.speed,
+            dp.cadence,
+            dp.heartRate,
+            dp.power,
+            dp.grade,
+            dp.windSpeed,
+            dp.windDirection
           ]
         );
       }
@@ -174,6 +165,21 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 // Get session analytics
 router.get('/:id/analytics', authenticateToken, async (req, res) => {
   try {
+    // Load active rider parameters for FTP + physics fallback
+    const paramsResult = await query(
+      `SELECT ftp, mass, cda, crr, drivetrain_loss
+       FROM rider_parameters
+       WHERE user_id = $1 AND is_active = true
+       LIMIT 1`,
+      [req.user.id]
+    );
+    const riderParams = paramsResult.rows?.[0] || {};
+    const ftp = asNumber(riderParams.ftp, 250);
+    const mass = asNumber(riderParams.mass, 85.0);
+    const cda = asNumber(riderParams.cda, 0.32);
+    const crr = asNumber(riderParams.crr, 0.0045);
+    const drivetrainLoss = asNumber(riderParams.drivetrain_loss, 0.03);
+
     const dataPointsResult = await query(
       `SELECT * FROM session_data_points
        WHERE session_id = $1
@@ -195,9 +201,11 @@ router.get('/:id/analytics', authenticateToken, async (req, res) => {
       });
     }
     
+    const powerSeries = buildPowerSeries(points, { mass, cda, crr, drivetrainLoss });
+
     // Calculate analytics
     const analytics = {
-      powerCurve: calculatePowerCurve(points),
+      powerCurve: calculatePowerCurve(powerSeries),
       elevationProfile: points.map(p => ({ 
         distance: p.distance,
         altitude: parseFloat(p.altitude),
@@ -212,7 +220,7 @@ router.get('/:id/analytics', authenticateToken, async (req, res) => {
         cadence: parseFloat(p.cadence)
       })),
       heartRateZones: calculateHeartRateZones(points),
-      powerZones: calculatePowerZones(points)
+      powerZones: calculatePowerZones(powerSeries, ftp)
     };
     
     res.json(analytics);
@@ -222,23 +230,105 @@ router.get('/:id/analytics', authenticateToken, async (req, res) => {
   }
 });
 
-// Helper: Calculate power curve (best power for durations)
-function calculatePowerCurve(points) {
-  const durations = [5, 10, 20, 30, 60, 120, 300, 600, 1200, 1800, 3600]; // seconds
-  const curve = [];
-  
-  for (const duration of durations) {
-    let maxAvg = 0;
-    
-    for (let i = 0; i <= points.length - duration; i++) {
-      const slice = points.slice(i, i + duration);
-      const avg = slice.reduce((sum, p) => sum + parseFloat(p.power || 0), 0) / slice.length;
-      maxAvg = Math.max(maxAvg, avg);
+function asNumber(value, fallback = 0) {
+  const n = typeof value === 'string' ? parseFloat(value) : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function median(values) {
+  const sorted = values.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length === 0) return null;
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+function inferSampleIntervalSeconds(points) {
+  if (!points || points.length < 3) return 1;
+  const deltas = [];
+  for (let i = 1; i < points.length; i++) {
+    const t0 = new Date(points[i - 1].timestamp).getTime();
+    const t1 = new Date(points[i].timestamp).getTime();
+    const dt = (t1 - t0) / 1000;
+    if (Number.isFinite(dt) && dt > 0 && dt < 30) {
+      deltas.push(dt);
     }
-    
-    curve.push({ duration, power: Math.round(maxAvg) });
   }
-  
+  return median(deltas) || 1;
+}
+
+function estimatePowerWatts({ speedMS, grade, massKG, cda, crr, drivetrainLoss }) {
+  // Very lightweight physics model (no wind, constant air density)
+  // speedMS from Strava velocity_smooth is m/s.
+  if (!Number.isFinite(speedMS) || speedMS <= 0) return 0;
+  const g = 9.81;
+  const rho = 1.225;
+  const slope = Number.isFinite(grade) ? grade : 0;
+  const angle = Math.atan(slope);
+
+  const pRoll = crr * massKG * g * speedMS * Math.cos(angle);
+  const pGrav = massKG * g * slope * speedMS;
+  const pAero = 0.5 * rho * cda * Math.pow(speedMS, 3);
+
+  const mechanical = Math.max(0, pRoll + pGrav + pAero);
+  const loss = Number.isFinite(drivetrainLoss) ? drivetrainLoss : 0;
+  const total = mechanical / Math.max(0.01, (1 - loss));
+  return Math.max(0, total);
+}
+
+function buildPowerSeries(points, { mass, cda, crr, drivetrainLoss }) {
+  const massKG = asNumber(mass, 85);
+  const series = [];
+  for (const p of points) {
+    const powerRaw = asNumber(p.power, 0);
+    const power = powerRaw > 0
+      ? powerRaw
+      : estimatePowerWatts({
+          speedMS: asNumber(p.speed, 0),
+          grade: asNumber(p.grade, 0),
+          massKG,
+          cda: asNumber(cda, 0.32),
+          crr: asNumber(crr, 0.0045),
+          drivetrainLoss: asNumber(drivetrainLoss, 0.03)
+        });
+
+    series.push({
+      timestamp: p.timestamp,
+      power
+    });
+  }
+  return series;
+}
+
+// Helper: Calculate power curve (best power for durations)
+function calculatePowerCurve(powerSeries) {
+  const durations = [5, 10, 20, 30, 60, 120, 300, 600, 1200, 1800, 3600]; // seconds
+  if (!powerSeries || powerSeries.length === 0) return [];
+
+  const sampleInterval = inferSampleIntervalSeconds(powerSeries);
+  const powers = powerSeries.map(p => asNumber(p.power, 0));
+  const curve = [];
+
+  for (const durationSec of durations) {
+    const windowSize = Math.max(1, Math.ceil(durationSec / sampleInterval));
+    if (powers.length < windowSize) {
+      curve.push({ duration: durationSec, power: 0 });
+      continue;
+    }
+
+    // Sliding window sum for max average
+    let sum = 0;
+    for (let i = 0; i < windowSize; i++) sum += powers[i];
+    let maxAvg = sum / windowSize;
+
+    for (let i = windowSize; i < powers.length; i++) {
+      sum += powers[i] - powers[i - windowSize];
+      const avg = sum / windowSize;
+      if (avg > maxAvg) maxAvg = avg;
+    }
+
+    curve.push({ duration: durationSec, power: Math.round(maxAvg) });
+  }
+
   return curve;
 }
 
@@ -261,21 +351,40 @@ function calculateHeartRateZones(points) {
 }
 
 // Helper: Calculate power zones
-function calculatePowerZones(points) {
+function calculatePowerZones(powerSeries, ftp) {
   const zones = { z1: 0, z2: 0, z3: 0, z4: 0, z5: 0 };
-  const ftp = 250; // TODO: Get from user parameters
-  
-  for (const point of points) {
-    const power = parseFloat(point.power);
-    if (!power) continue;
-    
-    if (power < ftp * 0.55) zones.z1++;
-    else if (power < ftp * 0.75) zones.z2++;
-    else if (power < ftp * 0.90) zones.z3++;
-    else if (power < ftp * 1.05) zones.z4++;
-    else zones.z5++;
+  if (!powerSeries || powerSeries.length === 0) return zones;
+  const ftpValue = asNumber(ftp, 250);
+  if (!Number.isFinite(ftpValue) || ftpValue <= 0) return zones;
+
+  const fallbackDt = inferSampleIntervalSeconds(powerSeries);
+
+  for (let i = 0; i < powerSeries.length; i++) {
+    const power = asNumber(powerSeries[i].power, 0);
+    if (!Number.isFinite(power) || power <= 0) continue;
+
+    let dt = fallbackDt;
+    if (i < powerSeries.length - 1) {
+      const t0 = new Date(powerSeries[i].timestamp).getTime();
+      const t1 = new Date(powerSeries[i + 1].timestamp).getTime();
+      const d = (t1 - t0) / 1000;
+      if (Number.isFinite(d) && d > 0 && d < 30) dt = d;
+    }
+
+    if (power < ftpValue * 0.55) zones.z1 += dt;
+    else if (power < ftpValue * 0.75) zones.z2 += dt;
+    else if (power < ftpValue * 0.90) zones.z3 += dt;
+    else if (power < ftpValue * 1.05) zones.z4 += dt;
+    else zones.z5 += dt;
   }
-  
+
+  // Keep output stable for charts
+  zones.z1 = Math.round(zones.z1);
+  zones.z2 = Math.round(zones.z2);
+  zones.z3 = Math.round(zones.z3);
+  zones.z4 = Math.round(zones.z4);
+  zones.z5 = Math.round(zones.z5);
+
   return zones;
 }
 

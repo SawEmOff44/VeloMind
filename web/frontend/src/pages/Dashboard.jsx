@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getSessions } from '../services/api'
+import { getSessions, getIntelligenceSummary } from '../services/api'
 import { format } from 'date-fns'
 import IntelligenceDashboard from '../components/IntelligenceDashboard'
 import ActivityFeed from '../components/ActivityFeed'
@@ -22,6 +22,9 @@ import {
 export default function Dashboard() {
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [intelligenceTimeframe, setIntelligenceTimeframe] = useState(30)
+  const [intelligenceSummary, setIntelligenceSummary] = useState(null)
+  const [intelligenceLoading, setIntelligenceLoading] = useState(false)
   const [userProfile, setUserProfile] = useState({
     name: 'Cyclist',
     email: '',
@@ -40,17 +43,39 @@ export default function Dashboard() {
     loadSessions()
     loadUserProfile()
   }, [])
+
+  const persistUserProfile = (profile) => {
+    try {
+      localStorage.setItem('userProfile', JSON.stringify(profile))
+      return true
+    } catch (e) {
+      console.error('Failed to persist userProfile to localStorage:', e)
+      return false
+    }
+  }
+
+  useEffect(() => {
+    loadIntelligenceSummary(intelligenceTimeframe)
+  }, [intelligenceTimeframe])
   
   const loadUserProfile = () => {
     // Load from localStorage for now
     const saved = localStorage.getItem('userProfile')
     if (saved) {
-      setUserProfile(JSON.parse(saved))
+      try {
+        setUserProfile(JSON.parse(saved))
+      } catch (e) {
+        console.error('Failed to parse saved userProfile:', e)
+      }
     }
   }
   
   const saveUserProfile = () => {
-    localStorage.setItem('userProfile', JSON.stringify(userProfile))
+    const ok = persistUserProfile(userProfile)
+    if (!ok) {
+      alert('Could not save profile (storage full). Try a smaller photo.')
+      return
+    }
     setEditingProfile(false)
   }
   
@@ -58,8 +83,39 @@ export default function Dashboard() {
     const file = e.target.files[0]
     if (file) {
       const reader = new FileReader()
-      reader.onloadend = () => {
-        setUserProfile({ ...userProfile, photo: reader.result })
+      reader.onloadend = async () => {
+        try {
+          const dataUrl = reader.result
+
+          // Resize/compress to avoid exceeding localStorage quota
+          const img = new Image()
+          img.onload = () => {
+            const MAX_SIZE = 256
+            const scale = Math.min(1, MAX_SIZE / Math.max(img.width, img.height))
+            const w = Math.max(1, Math.round(img.width * scale))
+            const h = Math.max(1, Math.round(img.height * scale))
+
+            const canvas = document.createElement('canvas')
+            canvas.width = w
+            canvas.height = h
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0, w, h)
+
+            const compressed = canvas.toDataURL('image/jpeg', 0.85)
+            const updated = { ...userProfile, photo: compressed }
+            setUserProfile(updated)
+
+            // Persist immediately so photo doesn't disappear on reload
+            const ok = persistUserProfile(updated)
+            if (!ok) {
+              alert('Photo too large to save. Try a smaller image.')
+            }
+          }
+          img.src = dataUrl
+        } catch (err) {
+          console.error('Photo upload failed:', err)
+          alert('Failed to process photo')
+        }
       }
       reader.readAsDataURL(file)
     }
@@ -73,6 +129,19 @@ export default function Dashboard() {
       console.error('Failed to load sessions:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadIntelligenceSummary = async (timeframe) => {
+    setIntelligenceLoading(true)
+    try {
+      const response = await getIntelligenceSummary(timeframe)
+      setIntelligenceSummary(response.data)
+    } catch (error) {
+      console.error('Failed to load intelligence summary:', error)
+      setIntelligenceSummary(null)
+    } finally {
+      setIntelligenceLoading(false)
     }
   }
   
@@ -363,28 +432,48 @@ export default function Dashboard() {
       {/* Intelligence Dashboard Section */}
       {sessions.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <ChartBarIcon className="h-7 w-7 text-velo-teal" />
-            Performance Intelligence
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <ChartBarIcon className="h-7 w-7 text-velo-teal" />
+              Performance Intelligence
+            </h2>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIntelligenceTimeframe(7)}
+                className={`px-3 py-1 rounded-lg text-sm font-semibold border transition-colors ${
+                  intelligenceTimeframe === 7
+                    ? 'bg-velo-teal text-white border-velo-teal'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                7d
+              </button>
+              <button
+                onClick={() => setIntelligenceTimeframe(30)}
+                className={`px-3 py-1 rounded-lg text-sm font-semibold border transition-colors ${
+                  intelligenceTimeframe === 30
+                    ? 'bg-velo-teal text-white border-velo-teal'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                30d
+              </button>
+            </div>
+          </div>
+
           <IntelligenceDashboard 
             rideData={{ 
               ftp: userProfile.ftp,
               recentSessions: sessions.slice(0, 5)
             }}
-            intelligenceData={{
-              environmentalLoad: 8.5,
-              effortBudget: 67,
-              tss: 142,
-              caloriesBurned: 1850,
-              alerts: []
-            }}
+            intelligenceData={intelligenceLoading ? null : intelligenceSummary}
           />
         </div>
       )}
       
       {/* Recent Activity & Intelligence */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 gap-8 mb-8">
         {/* Recent Activity Feed */}
         <div className="bg-white rounded-2xl shadow-xl p-6">
           <div className="flex items-center justify-between mb-6">
@@ -397,12 +486,6 @@ export default function Dashboard() {
             </Link>
           </div>
           <ActivityFeed limit={5} />
-        </div>
-
-        {/* Intelligence Dashboard */}
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">AI Intelligence</h2>
-          <IntelligenceDashboard />
         </div>
       </div>
     </div>

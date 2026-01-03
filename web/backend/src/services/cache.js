@@ -135,6 +135,7 @@ export const cacheKeys = {
   parameters: (userId) => `parameters:${userId}`,
   activeParameters: (userId) => `parameters:active:${userId}`,
   analyticsOverview: (userId, timeframe) => `analytics:overview:${userId}:${timeframe}`,
+  analyticsIntelligence: (userId, timeframe) => `analytics:intelligence:${userId}:${timeframe}`,
   analyticsTrends: (userId, metric, timeframe) => `analytics:trends:${userId}:${metric}:${timeframe}`,
   analyticsRecords: (userId) => `analytics:records:${userId}`,
   waypoints: (routeId) => `waypoints:${routeId}`,

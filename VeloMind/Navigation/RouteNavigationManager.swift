@@ -247,15 +247,30 @@ class RouteNavigationManager: NSObject, ObservableObject {
 
 // MARK: - Route Download Extension
 extension RouteNavigationManager {
+
+    private var backendBaseURL: String {
+        #if DEBUG
+        return "http://127.0.0.1:3001/api"
+        #else
+        return "https://velomind.onrender.com/api"
+        #endif
+    }
     
     /// Download route from backend with waypoints
     func downloadRoute(id: Int, token: String) async throws -> Route {
-        let url = URL(string: "https://your-api-url.com/api/gpx/\(id)/download")!
+        let url = URL(string: "\(backendBaseURL)/gpx/\(id)/download")!
         var request = URLRequest(url: url)
+        request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let route = try JSONDecoder().decode(Route.self, from: data)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+            throw URLError(.badServerResponse)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let route = try decoder.decode(Route.self, from: data)
         
         // Save to local storage
         saveRouteLocally(route)

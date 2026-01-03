@@ -311,7 +311,7 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
       id: route.id,
       name: route.name,
       total_distance: route.total_distance,
-      total_elevation_gain: route.total_elevation_gain,
+      total_elevation_gain: route.total_elevation_gain ?? 0,
       points: parsed.points,
       waypoints: waypointsResult.rows
     });

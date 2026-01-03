@@ -422,7 +422,21 @@ struct SettingsView: View {
         
         // Save to persistence
         coordinator.fitnessProfileManager.currentProfile.mass = mass
+        coordinator.fitnessProfileManager.currentProfile.cda = cda
+        coordinator.fitnessProfileManager.currentProfile.crr = crr
+        coordinator.fitnessProfileManager.currentProfile.drivetrainLoss = coordinator.powerEngine.riderParameters.drivetrainLoss
+        coordinator.fitnessProfileManager.currentProfile.ftp = coordinator.powerEngine.riderParameters.ftp
         coordinator.fitnessProfileManager.saveProfile()
+
+        // Sync to backend (best-effort)
+        Task {
+            do {
+                let position = selectedPosition.lowercased()
+                try await coordinator.apiService.syncActiveRiderParameters(profile: coordinator.fitnessProfileManager.currentProfile, position: position)
+            } catch {
+                print("⚠️ Failed to sync rider parameters: \(error.localizedDescription)")
+            }
+        }
     }
     
     private func applyFitnessProfile() {
@@ -442,6 +456,18 @@ struct SettingsView: View {
         
         // Update intelligence engine with new parameters
         coordinator.intelligenceEngine.updateRiderParameters(profile)
+
+        coordinator.fitnessProfileManager.currentProfile = profile
+        coordinator.fitnessProfileManager.saveProfile()
+
+        Task {
+            do {
+                let position = selectedPosition.lowercased()
+                try await coordinator.apiService.syncActiveRiderParameters(profile: coordinator.fitnessProfileManager.currentProfile, position: position)
+            } catch {
+                print("⚠️ Failed to sync fitness profile: \(error.localizedDescription)")
+            }
+        }
         
         // Show confirmation
         showFTPAlert = true

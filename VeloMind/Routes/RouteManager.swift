@@ -17,6 +17,13 @@ class RouteManager: ObservableObject {
     private var routeIdMap: [String: URL] = [:]
     
     // MARK: - Route Loading
+
+    func loadRemoteRoute(_ route: Route) {
+        currentRoute = route
+        processedPoints = route.points
+        turns = detectTurns(in: route.points)
+        logger.info("Loaded remote route '\(route.name)' with \(route.points.count) points, \(route.totalDistance / 1609.34, privacy: .public) mi, \(self.turns.count) turns")
+    }
     
     func hasRoute(withId id: String) -> Bool {
         return routeIdMap[id] != nil

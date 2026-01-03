@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS session_data_points (
     timestamp TIMESTAMP NOT NULL,
     latitude DECIMAL(10,7),
     longitude DECIMAL(10,7),
+    distance DECIMAL(10,2),
     altitude DECIMAL(8,2),
     speed DECIMAL(6,2),
     cadence DECIMAL(6,2),

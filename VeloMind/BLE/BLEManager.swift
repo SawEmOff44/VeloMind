@@ -84,8 +84,10 @@ class BLEManager: NSObject, ObservableObject {
     
     // MARK: - Private Methods
     private func parseCSCData(_ data: Data) {
-        guard data.count >= 11 else {
-            logger.warning("CSC data too short: \(data.count) bytes")
+        // CSC Measurement (0x2A5B) is variable-length:
+        // Flags (1 byte) + optional wheel data (6 bytes) + optional crank data (4 bytes)
+        guard !data.isEmpty else {
+            logger.warning("CSC data empty")
             return
         }
         
@@ -97,8 +99,8 @@ class BLEManager: NSObject, ObservableObject {
         
         // Parse wheel data (speed)
         if hasWheelData && data.count >= index + 6 {
-            let wheelRevolutions = data.withUnsafeBytes { $0.load(fromByteOffset: index, as: UInt32.self) }
-            let wheelEventTime = data.withUnsafeBytes { $0.load(fromByteOffset: index + 4, as: UInt16.self) }
+            let wheelRevolutions = readUInt32LE(data, offset: index)
+            let wheelEventTime = readUInt16LE(data, offset: index + 4)
             index += 6
             
             if let lastRev = lastWheelRevolutions, let lastTime = lastWheelEventTime {
@@ -127,8 +129,8 @@ class BLEManager: NSObject, ObservableObject {
         
         // Parse crank data (cadence)
         if hasCrankData && data.count >= index + 4 {
-            let crankRevolutions = data.withUnsafeBytes { $0.load(fromByteOffset: index, as: UInt16.self) }
-            let crankEventTime = data.withUnsafeBytes { $0.load(fromByteOffset: index + 2, as: UInt16.self) }
+            let crankRevolutions = readUInt16LE(data, offset: index)
+            let crankEventTime = readUInt16LE(data, offset: index + 2)
             
             if let lastRev = lastCrankRevolutions, let lastTime = lastCrankEventTime {
                 let revDiff = Int(crankRevolutions) - Int(lastRev)
@@ -152,6 +154,19 @@ class BLEManager: NSObject, ObservableObject {
             lastCrankRevolutions = crankRevolutions
             lastCrankEventTime = crankEventTime
         }
+    }
+
+    private func readUInt16LE(_ data: Data, offset: Int) -> UInt16 {
+        guard offset + 1 < data.count else { return 0 }
+        return UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
+    }
+
+    private func readUInt32LE(_ data: Data, offset: Int) -> UInt32 {
+        guard offset + 3 < data.count else { return 0 }
+        return UInt32(data[offset]) |
+        (UInt32(data[offset + 1]) << 8) |
+        (UInt32(data[offset + 2]) << 16) |
+        (UInt32(data[offset + 3]) << 24)
     }
     
     private func parseHeartRateData(_ data: Data) {

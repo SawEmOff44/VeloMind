@@ -100,8 +100,8 @@ struct RouteView: View {
     private func loadRouteFromBackend(_ routeInfo: RouteInfo) {
         Task {
             do {
-                let gpxData = try await apiService.downloadRoute(id: routeInfo.id)
-                try await coordinator.routeManager.loadRoute(from: gpxData, name: routeInfo.name)
+                let route = try await apiService.downloadRouteWithWaypoints(id: routeInfo.id)
+                await coordinator.routeManager.loadRemoteRoute(route)
             } catch {
                 errorMessage = "Failed to load route: \(error.localizedDescription)"
             }

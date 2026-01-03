@@ -24,7 +24,7 @@ class ExportManager {
                 String(format: "%.6f", point.longitude),
                 String(format: "%.1f", point.altitude),
                 String(format: "%.2f", point.speed),
-                String(format: "%.2f", point.speed * 3.6),
+                String(format: "%.2f", point.speed * 2.23694),
                 String(format: "%.0f", point.cadence),
                 point.heartRate.map { String($0) } ?? "",
                 String(format: "%.1f", point.power),

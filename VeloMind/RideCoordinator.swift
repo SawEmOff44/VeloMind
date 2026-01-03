@@ -17,6 +17,7 @@ class RideCoordinator: ObservableObject {
     let navigationManager: RouteNavigationManager
     let backgroundTaskManager = BackgroundTaskManager()
     let watchConnectivityManager = WatchConnectivityManager.shared
+    let apiService = APIService()
     
     // Intelligence & Fitness
     let intelligenceEngine: IntelligenceEngine
@@ -33,6 +34,12 @@ class RideCoordinator: ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private var updateTimer: Timer?
+
+    private var rideDataPoints: [RideDataPoint] = []
+    private var totalElevationGain: Double = 0.0
+    private var lastAltitude: Double?
+
+    private var isRetryingBackendUploads = false
     
     init() {
         // Initialize intelligence components
@@ -105,6 +112,9 @@ class RideCoordinator: ObservableObject {
         rideStartTime = Date()
         rideDuration = 0
         rideDistance = 0
+        rideDataPoints = []
+        totalElevationGain = 0
+        lastAltitude = nil
         
         // Configure background support
         backgroundTaskManager.configureAudioSession()
@@ -136,6 +146,8 @@ class RideCoordinator: ObservableObject {
     
     func stopRide() {
         isRiding = false
+
+        let endTime = Date()
         
         // Stop navigation if active
         if isNavigating {
@@ -159,6 +171,86 @@ class RideCoordinator: ObservableObject {
         
         // Deactivate background support
         backgroundTaskManager.deactivateAudioSession()
+
+        // Persist + upload completed session
+        if let startTime = rideStartTime {
+            let avgSpeed = rideDistance / max(rideDuration, 1)
+            let avgCadence: Double = {
+                let values = rideDataPoints.map { $0.cadence }.filter { $0 > 0 }
+                guard !values.isEmpty else { return 0 }
+                return values.reduce(0, +) / Double(values.count)
+            }()
+
+            let hrValues = rideDataPoints.compactMap { $0.heartRate }.filter { $0 > 0 }
+            let avgHeartRate: Int? = hrValues.isEmpty ? nil : Int(Double(hrValues.reduce(0, +)) / Double(hrValues.count))
+
+            var session = RideSession(
+                startTime: startTime,
+                endTime: endTime,
+                duration: rideDuration,
+                distance: rideDistance,
+                averagePower: powerEngine.averagePower,
+                normalizedPower: powerEngine.normalizedPower,
+                averageSpeed: avgSpeed,
+                averageCadence: avgCadence,
+                averageHeartRate: avgHeartRate,
+                totalElevationGain: totalElevationGain,
+                routeID: nil,
+                dataPoints: rideDataPoints
+            )
+
+            persistenceManager.saveRideSession(session)
+
+            Task {
+                do {
+                    let routeId = (routeManager.currentRoute?.id ?? 0) > 0 ? routeManager.currentRoute?.id : nil
+                    let ftp = powerEngine.riderParameters.ftp
+                    let backendId = try await apiService.uploadSession(session, routeId: routeId, ftp: ftp)
+                    session.backendSessionId = backendId
+                    persistenceManager.updateRideSession(session)
+                    print("✅ Uploaded session to backend: \(backendId)")
+                } catch {
+                    // Keep session locally; it can be retried later.
+                    print("⚠️ Failed to upload session: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    // MARK: - Backend Sync
+
+    /// Best-effort retry of any locally saved sessions that haven't been uploaded.
+    /// Call this when the app becomes active and the user is authenticated.
+    func retryPendingSessionUploads(maxSessions: Int = 3) {
+        guard !isRetryingBackendUploads else { return }
+        isRetryingBackendUploads = true
+
+        Task {
+            defer { self.isRetryingBackendUploads = false }
+
+            let ftp = persistenceManager.loadRiderParameters()?.ftp
+
+            let pending = persistenceManager
+                .loadRideSessions()
+                .filter { !$0.isUploadedToBackend }
+                .sorted { $0.startTime < $1.startTime }
+
+            guard !pending.isEmpty else { return }
+
+            var uploaded = 0
+            for var session in pending {
+                if uploaded >= maxSessions { break }
+                do {
+                    let backendId = try await apiService.uploadSession(session, routeId: session.routeID, ftp: ftp)
+                    session.backendSessionId = backendId
+                    persistenceManager.updateRideSession(session)
+                    uploaded += 1
+                    print("✅ Retried upload succeeded: \(backendId)")
+                } catch {
+                    print("⚠️ Retried upload failed: \(error.localizedDescription)")
+                }
+            }
+        }
     }
     
     func pauseRide() {
@@ -210,6 +302,15 @@ class RideCoordinator: ObservableObject {
         
         // Get current location
         guard let location = locationManager.currentLocation else { return }
+
+        // Elevation gain (positive deltas)
+        if let lastAlt = lastAltitude {
+            let delta = location.altitude - lastAlt
+            if delta > 0 {
+                totalElevationGain += delta
+            }
+        }
+        lastAltitude = location.altitude
         
         // Fetch weather if needed
         await weatherManager.fetchWeather(at: location)
@@ -288,6 +389,25 @@ class RideCoordinator: ObservableObject {
         // Update distance
         // This is simplified - should track actual distance traveled
         rideDistance += speed * 1.0  // 1 second interval
+
+        // Record datapoint for persistence/backend
+        let windSpeed = weatherManager.currentWind?.speed ?? 0.0
+        let windDirection = weatherManager.currentWind?.direction ?? 0.0
+        let dp = RideDataPoint(
+            timestamp: Date(),
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            distance: rideDistance,
+            altitude: location.altitude,
+            speed: speed,
+            cadence: bleManager.currentCadence,
+            heartRate: bleManager.currentHeartRate > 0 ? bleManager.currentHeartRate : nil,
+            power: powerResult.totalPower,
+            grade: grade,
+            windSpeed: windSpeed,
+            windDirection: windDirection
+        )
+        rideDataPoints.append(dp)
         
         // Sync data to Apple Watch
         syncToWatch(speed: speed, powerResult: powerResult)

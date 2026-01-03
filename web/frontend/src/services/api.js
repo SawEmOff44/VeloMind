@@ -122,6 +122,10 @@ export const getAnalyticsCalendar = (year = new Date().getFullYear()) =>
 export const getAnalyticsComparison = (sessionId) =>
   api.get(`/analytics/comparison/${sessionId}`)
 
+// Dashboard Intelligence
+export const getIntelligenceSummary = (timeframe = 30) =>
+  api.get(`/analytics/intelligence?timeframe=${timeframe}`)
+
 // Strava
 export const syncStravaActivities = () =>
   api.post('/strava/sync')

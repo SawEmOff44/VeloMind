@@ -4,6 +4,7 @@ import CoreData
 /// Ride session for persistence
 struct RideSession: Codable, Identifiable {
     let id: UUID
+    var backendSessionId: Int?
     let startTime: Date
     let endTime: Date?
     let duration: TimeInterval
@@ -17,11 +18,12 @@ struct RideSession: Codable, Identifiable {
     let routeID: UUID?
     let dataPoints: [RideDataPoint]
     
-    init(id: UUID = UUID(), startTime: Date, endTime: Date? = nil, duration: TimeInterval,
+    init(id: UUID = UUID(), backendSessionId: Int? = nil, startTime: Date, endTime: Date? = nil, duration: TimeInterval,
          distance: Double, averagePower: Double, normalizedPower: Double, averageSpeed: Double,
          averageCadence: Double, averageHeartRate: Int? = nil, totalElevationGain: Double,
          routeID: UUID? = nil, dataPoints: [RideDataPoint] = []) {
         self.id = id
+        self.backendSessionId = backendSessionId
         self.startTime = startTime
         self.endTime = endTime
         self.duration = duration
@@ -35,6 +37,10 @@ struct RideSession: Codable, Identifiable {
         self.routeID = routeID
         self.dataPoints = dataPoints
     }
+
+    var isUploadedToBackend: Bool {
+        backendSessionId != nil
+    }
 }
 
 /// Individual data point during a ride
@@ -42,6 +48,7 @@ struct RideDataPoint: Codable {
     let timestamp: Date
     let latitude: Double
     let longitude: Double
+    let distance: Double?
     let altitude: Double
     let speed: Double
     let cadence: Double
