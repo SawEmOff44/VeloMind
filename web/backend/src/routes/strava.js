@@ -159,6 +159,22 @@ router.get('/callback', async (req, res) => {
 });
 
 // Get Strava activities
+router.get('/status', authenticateToken, async (req, res) => {
+  try {
+    const userResult = await query(
+      'SELECT strava_access_token FROM users WHERE id = $1',
+      [req.user.id]
+    );
+
+    const connected = userResult.rows.length > 0 && !!userResult.rows[0].strava_access_token;
+    res.json({ connected });
+  } catch (error) {
+    console.error('Get Strava status error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Strava activities
 router.get('/activities', authenticateToken, async (req, res) => {
   try {
     const userResult = await query(

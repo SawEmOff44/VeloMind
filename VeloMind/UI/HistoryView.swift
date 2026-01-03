@@ -3,12 +3,16 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject var coordinator: RideCoordinator
     @State private var showStravaAuth = false
+    @State private var backendConnected: Bool?
+    @State private var activities: [StravaActivity] = []
     
     var body: some View {
         List {
-                if coordinator.stravaManager.isAuthenticated {
+                let isConnected = (backendConnected == true) || coordinator.stravaManager.isAuthenticated
+
+                if isConnected {
                     Section("Strava Activities") {
-                        ForEach(coordinator.stravaManager.recentActivities) { activity in
+                        ForEach(activities.isEmpty ? coordinator.stravaManager.recentActivities : activities) { activity in
                             ActivityRow(activity: activity)
                         }
                     }
@@ -35,8 +39,27 @@ struct HistoryView: View {
             StravaAuthView()
                 .environmentObject(coordinator.stravaManager)
         }
+        .task {
+            do {
+                backendConnected = try await coordinator.apiService.fetchStravaStatus()
+                if backendConnected == true {
+                    activities = try await coordinator.apiService.fetchStravaActivities()
+                }
+            } catch {
+                backendConnected = false
+            }
+        }
         .refreshable {
-            await coordinator.stravaManager.fetchRecentActivities()
+            do {
+                backendConnected = try await coordinator.apiService.fetchStravaStatus()
+                if backendConnected == true {
+                    activities = try await coordinator.apiService.fetchStravaActivities()
+                } else {
+                    await coordinator.stravaManager.fetchRecentActivities()
+                }
+            } catch {
+                await coordinator.stravaManager.fetchRecentActivities()
+            }
         }
     }
 }

@@ -129,11 +129,19 @@ class AuthenticationManager: ObservableObject {
     }
     
     private func loadSavedUser() {
-        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
-              let user = try? JSONDecoder().decode(User.self, from: data) else {
+        guard let token = UserDefaults.standard.string(forKey: tokenKey), !token.isEmpty else {
+            // Avoid a "half-authenticated" state where the UI shows logged in but API calls fail.
+            clearSavedUser()
             return
         }
-        
+
+        guard let data = UserDefaults.standard.data(forKey: userDefaultsKey),
+              let user = try? JSONDecoder().decode(User.self, from: data) else {
+            // Token exists but no user payload; force login again.
+            UserDefaults.standard.removeObject(forKey: tokenKey)
+            return
+        }
+
         self.currentUser = user
         self.isAuthenticated = true
     }

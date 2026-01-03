@@ -5,22 +5,22 @@ struct ContentView: View {
     @State private var showMenu = false
     
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack(alignment: .topTrailing) {
             RideView()
-            
-            // Burger menu button
+
+            // Menu button (more visible, top-right)
             Button(action: {
                 showMenu = true
             }) {
-                Image(systemName: "line.3.horizontal")
-                    .font(.title2)
+                Image(systemName: "gearshape.fill")
+                    .font(.title3)
                     .foregroundColor(.white)
-                    .padding(16)
+                    .padding(14)
                     .background(Color.black.opacity(0.5))
                     .clipShape(Circle())
             }
-            .padding(.bottom, 40)
-            .padding(.leading, 12)
+            .padding(.top, 56)
+            .padding(.trailing, 14)
         }
         .sheet(isPresented: $showMenu) {
             MenuView()

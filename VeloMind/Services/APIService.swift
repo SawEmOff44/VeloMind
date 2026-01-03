@@ -37,6 +37,74 @@ class APIService: ObservableObject {
         request.httpBody = body
         return request
     }
+
+    // MARK: - Strava (via backend)
+
+    struct StravaStatusResponse: Codable {
+        let connected: Bool
+    }
+
+    struct StravaActivitiesResponse: Codable {
+        let activities: [StravaActivity]
+    }
+
+    func fetchStravaStatus() async throws -> Bool {
+        guard let url = URL(string: "\(baseURL)/strava/status") else {
+            throw APIError.invalidURL
+        }
+
+        let request = authorizedRequest(url: url)
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let decoded = try decoder.decode(StravaStatusResponse.self, from: data)
+        return decoded.connected
+    }
+
+    func fetchStravaActivities() async throws -> [StravaActivity] {
+        guard let url = URL(string: "\(baseURL)/strava/activities") else {
+            throw APIError.invalidURL
+        }
+
+        let request = authorizedRequest(url: url)
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(StravaActivitiesResponse.self, from: data)
+        return decoded.activities
+    }
+
+    func syncStrava() async throws {
+        guard let url = URL(string: "\(baseURL)/strava/sync") else {
+            throw APIError.invalidURL
+        }
+
+        var request = authorizedRequest(url: url, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw APIError.serverError
+        }
+    }
     
     // MARK: - Routes
     

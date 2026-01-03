@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var restingHR: String = ""
     @State private var showFTPAlert = false
     @State private var showStravaAuth = false
+    @State private var backendStravaConnected: Bool? = nil
     
     let positions = ["Hoods", "Drops"]
     
@@ -148,7 +149,9 @@ struct SettingsView: View {
             
             // Strava Integration Section
             Section("Strava Integration") {
-                if coordinator.stravaManager.isAuthenticated {
+                let isConnected = (backendStravaConnected == true) || coordinator.stravaManager.isAuthenticated
+
+                if isConnected {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
@@ -168,7 +171,11 @@ struct SettingsView: View {
                     
                     Button("Sync Activities") {
                         Task {
-                            await coordinator.fitnessProfileManager.importStravaActivities()
+                            if coordinator.stravaManager.isAuthenticated {
+                                await coordinator.fitnessProfileManager.importStravaActivities()
+                            } else {
+                                try? await coordinator.apiService.syncStrava()
+                            }
                         }
                     }
                     .buttonStyle(.bordered)
@@ -190,11 +197,15 @@ struct SettingsView: View {
                 
                 Button("Sync Strava Activities") {
                     Task {
-                        await coordinator.fitnessProfileManager.importStravaActivities()
+                        if coordinator.stravaManager.isAuthenticated {
+                            await coordinator.fitnessProfileManager.importStravaActivities()
+                        } else {
+                            try? await coordinator.apiService.syncStrava()
+                        }
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(!coordinator.stravaManager.isAuthenticated)
+                .disabled(!((backendStravaConnected == true) || coordinator.stravaManager.isAuthenticated))
                 
                 Button("Update Fitness Profile") {
                     applyFitnessProfile()
@@ -333,7 +344,9 @@ struct SettingsView: View {
                 }
                 
                 Section("Strava") {
-                    if coordinator.stravaManager.isAuthenticated {
+                    let isConnected = (backendStravaConnected == true) || coordinator.stravaManager.isAuthenticated
+
+                    if isConnected {
                         HStack {
                             Text("Status")
                             Spacer()
@@ -372,6 +385,9 @@ struct SettingsView: View {
             }
             .onAppear {
                 loadParameters()
+            }
+            .task {
+                backendStravaConnected = try? await coordinator.apiService.fetchStravaStatus()
             }
             .scrollContentBackground(.hidden)
         }
