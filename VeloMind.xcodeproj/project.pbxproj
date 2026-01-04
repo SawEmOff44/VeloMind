@@ -14,6 +14,7 @@
 		0A000005 /* RiderParameters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000105 /* RiderParameters.swift */; };
 		0A000006 /* RideSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000106 /* RideSession.swift */; };
 		0A000007 /* Route.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000107 /* Route.swift */; };
+		0A00002A /* LossyDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00012A /* LossyDecoding.swift */; };
 		0A000008 /* SensorData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000108 /* SensorData.swift */; };
 		0A000009 /* StravaModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000109 /* StravaModels.swift */; };
 		0A00000A /* WindData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A00010A /* WindData.swift */; };
@@ -62,6 +63,7 @@
 		0A000105 /* RiderParameters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiderParameters.swift; sourceTree = "<group>"; };
 		0A000106 /* RideSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideSession.swift; sourceTree = "<group>"; };
 		0A000107 /* Route.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Route.swift; sourceTree = "<group>"; };
+		0A00012A /* LossyDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LossyDecoding.swift; sourceTree = "<group>"; };
 		0A000108 /* SensorData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorData.swift; sourceTree = "<group>"; };
 		0A000109 /* StravaModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StravaModels.swift; sourceTree = "<group>"; };
 		0A00010A /* WindData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindData.swift; sourceTree = "<group>"; };
@@ -176,6 +178,7 @@
 				0A000105 /* RiderParameters.swift */,
 				0A000106 /* RideSession.swift */,
 				0A000107 /* Route.swift */,
+				0A00012A /* LossyDecoding.swift */,
 				0A000108 /* SensorData.swift */,
 				0A000109 /* StravaModels.swift */,
 				0A00010A /* WindData.swift */,
@@ -369,6 +372,7 @@
 				0A000005 /* RiderParameters.swift in Sources */,
 				0A000006 /* RideSession.swift in Sources */,
 				0A000007 /* Route.swift in Sources */,
+				0A00002A /* LossyDecoding.swift in Sources */,
 				0A000008 /* SensorData.swift in Sources */,
 				0A000009 /* StravaModels.swift in Sources */,
 				0A00000A /* WindData.swift in Sources */,

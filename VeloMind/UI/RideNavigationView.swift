@@ -238,5 +238,5 @@ struct StatCard: View {
         ]
     )
     
-    return RideNavigationView(route: sampleRoute, locationManager: locationManager)
+    RideNavigationView(route: sampleRoute, locationManager: locationManager)
 }

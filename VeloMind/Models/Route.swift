@@ -69,6 +69,28 @@ struct RouteWaypoint: Codable, Identifiable {
         distanceFromStart = container.decodeLossyDoubleIfPresent(forKey: .distanceFromStart)
         alertDistance = container.decodeLossyIntIfPresent(forKey: .alertDistance) ?? 0
     }
+
+    init(
+        id: Int,
+        routeId: Int? = nil,
+        latitude: Double,
+        longitude: Double,
+        type: WaypointType,
+        label: String? = nil,
+        notes: String? = nil,
+        distanceFromStart: Double? = nil,
+        alertDistance: Int
+    ) {
+        self.id = id
+        self.routeId = routeId
+        self.latitude = latitude
+        self.longitude = longitude
+        self.type = type
+        self.label = label
+        self.notes = notes
+        self.distanceFromStart = distanceFromStart
+        self.alertDistance = alertDistance
+    }
 }
 
 /// Represents a point on a route
