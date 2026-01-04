@@ -17,6 +17,8 @@ class BLEManager: NSObject, ObservableObject {
     // MARK: - Private Properties
     private var centralManager: CBCentralManager!
     private let logger = Logger(subsystem: "com.velomind.app", category: "BLE")
+
+    private var pendingScanRequest = false
     
     // Wheel parameters for speed calculation
     private let wheelCircumference: Double = 2.105  // meters (700x25c default)
@@ -44,11 +46,13 @@ class BLEManager: NSObject, ObservableObject {
     // MARK: - Public Methods
     func startScanning() {
         guard centralManager.state == .poweredOn else {
-            logger.warning("Cannot start scanning - Bluetooth not powered on")
+            pendingScanRequest = true
+            logger.warning("Scan requested but Bluetooth not ready (state=\(self.centralManager.state.rawValue, privacy: .public)). Will start when powered on.")
             return
         }
         
         isScanning = true
+        pendingScanRequest = false
         discoveredDevices.removeAll()
         
         let services = [cscServiceUUID, hrServiceUUID]
@@ -61,6 +65,7 @@ class BLEManager: NSObject, ObservableObject {
     
     func stopScanning() {
         isScanning = false
+        pendingScanRequest = false
         centralManager.stopScan()
         logger.info("Stopped scanning for BLE sensors")
     }
@@ -195,12 +200,22 @@ extension BLEManager: CBCentralManagerDelegate {
             switch central.state {
             case .poweredOn:
                 logger.info("Bluetooth powered on")
+                if pendingScanRequest {
+                    logger.info("Starting pending BLE scan request")
+                    startScanning()
+                }
             case .poweredOff:
                 logger.warning("Bluetooth powered off")
+                pendingScanRequest = false
+                isScanning = false
             case .unsupported:
                 logger.error("Bluetooth not supported")
+                pendingScanRequest = false
+                isScanning = false
             case .unauthorized:
                 logger.error("Bluetooth unauthorized")
+                pendingScanRequest = false
+                isScanning = false
             case .resetting:
                 logger.info("Bluetooth resetting")
             case .unknown:
