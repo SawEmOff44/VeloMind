@@ -53,6 +53,22 @@ struct RouteWaypoint: Codable, Identifiable {
         case distanceFromStart = "distance_from_start"
         case alertDistance = "alert_distance"
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        routeId = try? container.decodeIfPresent(Int.self, forKey: .routeId)
+
+        // Postgres NUMERIC may arrive as string; accept either.
+        latitude = container.decodeLossyDoubleIfPresent(forKey: .latitude) ?? 0
+        longitude = container.decodeLossyDoubleIfPresent(forKey: .longitude) ?? 0
+
+        type = (try? container.decode(WaypointType.self, forKey: .type)) ?? .alert
+        label = try? container.decodeIfPresent(String.self, forKey: .label)
+        notes = try? container.decodeIfPresent(String.self, forKey: .notes)
+        distanceFromStart = container.decodeLossyDoubleIfPresent(forKey: .distanceFromStart)
+        alertDistance = container.decodeLossyIntIfPresent(forKey: .alertDistance) ?? 0
+    }
 }
 
 /// Represents a point on a route

@@ -161,6 +161,7 @@ class APIService: ObservableObject {
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(Route.self, from: data)
     }
     
@@ -416,6 +417,23 @@ struct RouteInfo: Codable, Identifiable {
     let totalDistance: Double?
     let totalElevationGain: Double?
     let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case totalDistance = "total_distance"
+        case totalElevationGain = "total_elevation_gain"
+        case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        totalDistance = container.decodeLossyDoubleIfPresent(forKey: .totalDistance)
+        totalElevationGain = container.decodeLossyDoubleIfPresent(forKey: .totalElevationGain)
+        createdAt = (try? container.decode(String.self, forKey: .createdAt)) ?? ""
+    }
     
     var distanceMiles: Double {
         (totalDistance ?? 0) * 0.000621371

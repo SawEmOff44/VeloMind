@@ -55,10 +55,10 @@ struct HistoryView: View {
                 if backendConnected == true {
                     activities = try await coordinator.apiService.fetchStravaActivities()
                 } else {
-                    await coordinator.stravaManager.fetchRecentActivities()
+                    await coordinator.stravaManager.fetchRecentActivities(limit: 30)
                 }
             } catch {
-                await coordinator.stravaManager.fetchRecentActivities()
+                await coordinator.stravaManager.fetchRecentActivities(limit: 30)
             }
         }
     }
