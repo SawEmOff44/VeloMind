@@ -21,7 +21,7 @@ struct VeloMindApp: App {
                         rideCoordinator.authManager = authManager
                         rideCoordinator.retryPendingSessionUploads()
                     }
-                    .onChange(of: scenePhase) { phase in
+                    .onChange(of: scenePhase) { _, phase in
                         guard authManager.isAuthenticated else { return }
                         if phase == .active {
                             rideCoordinator.retryPendingSessionUploads()

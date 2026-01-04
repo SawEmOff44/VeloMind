@@ -78,8 +78,7 @@ class RouteManager: ObservableObject {
         guard let route = currentRoute, !route.points.isEmpty else {
             return nil
         }
-        
-        let userCoord = location.coordinate
+
         var closestPoint: RoutePoint?
         var minDistance = Double.infinity
         var closestIndex = 0
@@ -223,7 +222,7 @@ class RouteManager: ObservableObject {
         var cumulativeDistance = 0.0
         
         // First point
-        var smoothedElevations = smoothElevation(points.compactMap { $0.elevation })
+        let smoothedElevations = smoothElevation(points.compactMap { $0.elevation })
         
         for (index, point) in points.enumerated() {
             // Calculate distance from previous point

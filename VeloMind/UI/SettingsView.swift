@@ -164,7 +164,7 @@ struct SettingsView: View {
                         HStack {
                             Text("Athlete")
                             Spacer()
-                            Text("\\(athlete.firstname) \\(athlete.lastname)")
+                            Text("\(athlete.firstname) \(athlete.lastname)")
                                 .foregroundColor(.secondary)
                         }
                     }

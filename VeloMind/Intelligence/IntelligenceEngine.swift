@@ -227,7 +227,6 @@ class IntelligenceEngine: ObservableObject {
         // Simplified: IF = currentPower / FTP
         
         let intensityFactor = currentPower / ftp
-        let normalizedPower = currentPower  // Simplified for real-time
         
         // Incremental TSS for this update
         let hours = rideDuration / 3600.0
@@ -313,7 +312,7 @@ class IntelligenceEngine: ObservableObject {
     // MARK: - Pacing Recommendation
     
     private func generatePacingRecommendation(currentPower: Double, routeAhead: Route?, effortBudget: Double) {
-        guard let route = routeAhead else { return }
+        guard routeAhead != nil else { return }
         guard let ftp = riderParameters.ftp, ftp > 0 else { return }
         
         // Look ahead 2-5 minutes
@@ -334,7 +333,7 @@ class IntelligenceEngine: ObservableObject {
     // MARK: - Climb Preview
     
     private func previewUpcomingClimbs(routeAhead: Route?) {
-        guard let route = routeAhead else { 
+        guard routeAhead != nil else {
             upcomingClimb = nil
             return 
         }
@@ -541,7 +540,6 @@ class IntelligenceEngine: ObservableObject {
     private func estimateSegmentTime(distance: Double, avgGrade: Double, targetPower: Double) -> TimeInterval {
         // Simple speed estimation based on power and grade
         let mass = riderParameters.mass
-        let cda = riderParameters.cda
         
         // Rough speed calculation (simplified physics)
         var speed: Double

@@ -127,7 +127,6 @@ class PowerEngine: ObservableObject {
         
         // Take last 30 seconds
         let recent = Array(powerHistory.suffix(30))
-        let avgPower = recent.map { $0.totalPower }.reduce(0, +) / Double(recent.count)
         
         // NP = (average of 4th power)^(1/4)
         let fourthPowers = recent.map { pow($0.totalPower, 4) }
