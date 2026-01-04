@@ -38,6 +38,17 @@ class APIService: ObservableObject {
         return request
     }
 
+    private func validateHTTPResponse(_ response: URLResponse, data: Data, acceptable: ClosedRange<Int> = 200...299) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        guard acceptable.contains(httpResponse.statusCode) else {
+            let bodyString = String(data: data, encoding: .utf8)
+            throw APIError.httpError(statusCode: httpResponse.statusCode, body: bodyString)
+        }
+    }
+
     // MARK: - Strava (via backend)
 
     struct StravaStatusResponse: Codable {
@@ -56,12 +67,7 @@ class APIService: ObservableObject {
         let request = authorizedRequest(url: url)
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.serverError
-        }
-        guard httpResponse.statusCode == 200 else {
-            throw APIError.serverError
-        }
+        try validateHTTPResponse(response, data: data, acceptable: 200...200)
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -77,12 +83,7 @@ class APIService: ObservableObject {
         let request = authorizedRequest(url: url)
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.serverError
-        }
-        guard httpResponse.statusCode == 200 else {
-            throw APIError.serverError
-        }
+        try validateHTTPResponse(response, data: data, acceptable: 200...200)
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -99,11 +100,8 @@ class APIService: ObservableObject {
         var request = authorizedRequest(url: url, method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw APIError.serverError
-        }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateHTTPResponse(response, data: data, acceptable: 200...200)
     }
     
     // MARK: - Routes
@@ -116,11 +114,8 @@ class APIService: ObservableObject {
         let request = authorizedRequest(url: url)
         
         let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw APIError.serverError
-        }
+
+                try validateHTTPResponse(response, data: data, acceptable: 200...200)
         
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -137,11 +132,8 @@ class APIService: ObservableObject {
         let request = authorizedRequest(url: url)
         
         let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw APIError.serverError
-        }
+
+                try validateHTTPResponse(response, data: data, acceptable: 200...200)
         
         return data
     }
@@ -154,10 +146,7 @@ class APIService: ObservableObject {
         let request = authorizedRequest(url: url)
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw APIError.serverError
-        }
+                try validateHTTPResponse(response, data: data, acceptable: 200...200)
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -194,12 +183,9 @@ class APIService: ObservableObject {
         
         request.httpBody = body
         
-        let (_, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw APIError.serverError
-        }
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        try validateHTTPResponse(response, data: data, acceptable: 200...299)
     }
 
     // MARK: - Rider Parameters
@@ -239,10 +225,7 @@ class APIService: ObservableObject {
         let request = authorizedRequest(url: url)
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw APIError.serverError
-        }
+                try validateHTTPResponse(response, data: data, acceptable: 200...200)
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -259,12 +242,9 @@ class APIService: ObservableObject {
         let body = try encoder.encode(payload)
         let request = jsonRequest(url: url, method: "PUT", body: body)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw APIError.serverError
-        }
+        try validateHTTPResponse(response, data: data, acceptable: 200...299)
     }
 
     func syncActiveRiderParameters(profile: RiderParameters, position: String) async throws {
@@ -393,10 +373,7 @@ class APIService: ObservableObject {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 201 else {
-            throw APIError.serverError
-        }
+                try validateHTTPResponse(response, data: data, acceptable: 201...201)
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -444,8 +421,26 @@ struct RouteInfo: Codable, Identifiable {
     }
 }
 
-enum APIError: Error {
+enum APIError: LocalizedError {
     case invalidURL
-    case serverError
+    case invalidResponse
+    case httpError(statusCode: Int, body: String?)
     case decodingError
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Invalid URL"
+        case .invalidResponse:
+            return "Invalid response from server"
+        case .httpError(let statusCode, let body):
+            let trimmedBody = body?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let trimmedBody, !trimmedBody.isEmpty {
+                return "Server error: \(statusCode)\n\(trimmedBody)"
+            }
+            return "Server error: \(statusCode)"
+        case .decodingError:
+            return "Failed to decode server response"
+        }
+    }
 }

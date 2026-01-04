@@ -44,9 +44,14 @@ struct HistoryView: View {
                 backendConnected = try await coordinator.apiService.fetchStravaStatus()
                 if backendConnected == true {
                     activities = try await coordinator.apiService.fetchStravaActivities()
+                } else if coordinator.stravaManager.isAuthenticated {
+                    await coordinator.stravaManager.fetchRecentActivities(limit: 30)
                 }
             } catch {
                 backendConnected = false
+                if coordinator.stravaManager.isAuthenticated {
+                    await coordinator.stravaManager.fetchRecentActivities(limit: 30)
+                }
             }
         }
         .refreshable {

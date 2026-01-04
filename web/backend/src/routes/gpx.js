@@ -74,19 +74,14 @@ router.get('/download/:id', authenticateToken, async (req, res) => {
     }
     
     const route = routeResult.rows[0];
-    
-    // Get route points
-    const pointsResult = await query(
-      `SELECT latitude, longitude, elevation, distance
-       FROM route_points
-       WHERE route_id = $1
-       ORDER BY point_index ASC`,
-      [req.params.id]
-    );
-    
-    // Generate GPX XML
-    const gpxData = generateGPX(route.name, pointsResult.rows);
-    
+
+    // Prefer the uploaded GPX as the source of truth.
+    // Older/leaner schemas may not include a separate route_points table.
+    const gpxData = route.gpx_data;
+    if (!gpxData) {
+      return res.status(500).json({ error: 'Route is missing GPX data' });
+    }
+
     res.set('Content-Type', 'application/gpx+xml');
     res.set('Content-Disposition', `attachment; filename="${route.name}.gpx"`);
     res.send(gpxData);
@@ -306,25 +301,33 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
     
     // Parse GPX to get points
     const parsed = await parseGPX(route.gpx_data);
-    
-    // Get waypoints
-    const waypointsResult = await query(
-      `SELECT id,
-              route_id::int AS route_id,
-              user_id::int AS user_id,
-              latitude::float8 AS latitude,
-              longitude::float8 AS longitude,
-              type,
-              label,
-              notes,
-              distance_from_start::float8 AS distance_from_start,
-              COALESCE(alert_distance, 0)::int AS alert_distance,
-              created_at
-       FROM route_waypoints
-       WHERE route_id = $1 AND user_id = $2
-       ORDER BY distance_from_start ASC NULLS LAST, created_at ASC`,
-      [req.params.id, req.user.id]
-    );
+
+    // Get waypoints (optional). If the table doesn't exist yet in a deployed DB,
+    // return an empty list instead of failing the whole route download.
+    let waypoints = [];
+    try {
+      const waypointsResult = await query(
+        `SELECT id,
+                route_id::int AS route_id,
+                user_id::int AS user_id,
+                latitude::float8 AS latitude,
+                longitude::float8 AS longitude,
+                type,
+                label,
+                notes,
+                distance_from_start::float8 AS distance_from_start,
+                COALESCE(alert_distance, 0)::int AS alert_distance,
+                created_at
+         FROM route_waypoints
+         WHERE route_id = $1 AND user_id = $2
+         ORDER BY distance_from_start ASC NULLS LAST, created_at ASC`,
+        [req.params.id, req.user.id]
+      );
+      waypoints = waypointsResult.rows;
+    } catch (wpError) {
+      console.warn('Waypoints query failed; returning empty waypoints:', wpError);
+      waypoints = [];
+    }
     
     res.json({
       id: route.id,
@@ -332,7 +335,7 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
       total_distance: route.total_distance,
       total_elevation_gain: route.total_elevation_gain,
       points: parsed.points,
-      waypoints: waypointsResult.rows
+      waypoints
     });
   } catch (error) {
     console.error('Download route error:', error);
