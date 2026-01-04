@@ -42,8 +42,11 @@ const upload = multer({
 router.get('/list', authenticateToken, async (req, res) => {
   try {
     const result = await query(
-      `SELECT id, user_id, name, total_distance, total_elevation_gain, 
-              point_count, created_at
+      `SELECT id, user_id, name,
+              total_distance::float8 AS total_distance,
+              COALESCE(total_elevation_gain, 0)::float8 AS total_elevation_gain,
+              point_count::int AS point_count,
+              created_at
        FROM routes
        WHERE user_id = $1
        ORDER BY created_at DESC`,
@@ -286,7 +289,12 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
   try {
     // Get route
     const routeResult = await query(
-      'SELECT * FROM routes WHERE id = $1 AND user_id = $2',
+      `SELECT id, name, gpx_data,
+              total_distance::float8 AS total_distance,
+              COALESCE(total_elevation_gain, 0)::float8 AS total_elevation_gain,
+              created_at
+       FROM routes
+       WHERE id = $1 AND user_id = $2`,
       [req.params.id, req.user.id]
     );
     
@@ -301,9 +309,20 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
     
     // Get waypoints
     const waypointsResult = await query(
-      `SELECT * FROM route_waypoints 
+      `SELECT id,
+              route_id::int AS route_id,
+              user_id::int AS user_id,
+              latitude::float8 AS latitude,
+              longitude::float8 AS longitude,
+              type,
+              label,
+              notes,
+              distance_from_start::float8 AS distance_from_start,
+              COALESCE(alert_distance, 0)::int AS alert_distance,
+              created_at
+       FROM route_waypoints
        WHERE route_id = $1 AND user_id = $2
-       ORDER BY distance_from_start ASC`,
+       ORDER BY distance_from_start ASC NULLS LAST, created_at ASC`,
       [req.params.id, req.user.id]
     );
     
@@ -311,7 +330,7 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
       id: route.id,
       name: route.name,
       total_distance: route.total_distance,
-      total_elevation_gain: route.total_elevation_gain ?? 0,
+      total_elevation_gain: route.total_elevation_gain,
       points: parsed.points,
       waypoints: waypointsResult.rows
     });
@@ -326,7 +345,11 @@ router.get('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await query(
-      `SELECT id, name, total_distance, total_elevation_gain, point_count, created_at
+      `SELECT id, name,
+              total_distance::float8 AS total_distance,
+              COALESCE(total_elevation_gain, 0)::float8 AS total_elevation_gain,
+              point_count::int AS point_count,
+              created_at
        FROM routes
        WHERE user_id = $1
        ORDER BY created_at DESC`,
