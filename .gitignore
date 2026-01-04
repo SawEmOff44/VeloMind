@@ -3,5 +3,13 @@
 *.xcuserdatad/
 xcuserdata/
 
+# Also ignore these folders when nested under the project
+**/xcuserdata/
+**/*.xcuserstate
+
+# Xcode build artifacts
+DerivedData/
+*.xcresult/
+
 # macOS
 .DS_Store
