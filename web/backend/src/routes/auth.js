@@ -9,11 +9,12 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
+    const normalizedEmail = (email || '').trim().toLowerCase();
     
     // Check if user exists
     const existingUser = await query(
       'SELECT id FROM users WHERE email = $1',
-      [email]
+      [normalizedEmail]
     );
     
     if (existingUser.rows.length > 0) {
@@ -26,7 +27,7 @@ router.post('/register', async (req, res) => {
     // Create user
     const result = await query(
       'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name',
-      [email, passwordHash, name]
+      [normalizedEmail, passwordHash, name]
     );
     
     const user = result.rows[0];
@@ -53,11 +54,12 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = (email || '').trim().toLowerCase();
     
     // Get user
     const result = await query(
       'SELECT * FROM users WHERE email = $1',
-      [email]
+      [normalizedEmail]
     );
     
     if (result.rows.length === 0) {

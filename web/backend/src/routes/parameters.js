@@ -34,8 +34,8 @@ router.get('/active', authenticateToken, async (req, res) => {
     if (result.rows.length === 0) {
       // Create default parameters
       const defaultResult = await query(
-        `INSERT INTO rider_parameters (user_id, name, mass, cda, crr, drivetrain_loss, position, is_active)
-         VALUES ($1, 'Default', 85.0, 0.32, 0.0045, 0.03, 'hoods', true)
+        `INSERT INTO rider_parameters (user_id, name, mass, cda, crr, drivetrain_loss, ftp, position, is_active)
+         VALUES ($1, 'Default', 85.0, 0.32, 0.0045, 0.03, 250, 'hoods', true)
          RETURNING *`,
         [req.user.id]
       );
@@ -109,11 +109,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
       cda,
       crr,
       drivetrainLoss,
+      drivetrain_loss,
       ftp,
       position,
       isActive,
       is_active
     } = req.body;
+
+    const drivetrainLossValue = drivetrainLoss !== undefined ? drivetrainLoss : drivetrain_loss;
 
     // Preserve is_active unless explicitly provided
     const existingResult = await query(
@@ -143,7 +146,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
            ftp = $6, position = $7, is_active = $8
        WHERE id = $9 AND user_id = $10
        RETURNING *`,
-      [name, mass, cda, crr, drivetrainLoss, ftp, position, isActiveValue, req.params.id, req.user.id]
+      [name, mass, cda, crr, drivetrainLossValue, ftp, position, isActiveValue, req.params.id, req.user.id]
     );
     
     res.json({ parameters: result.rows[0] });
