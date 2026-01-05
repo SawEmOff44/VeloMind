@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getCurrentUser, getParameters, createParameters, updateParameters } from '../services/api'
+import { getCurrentUser, getParameters, getActiveParameters, createParameters, updateParameters } from '../services/api'
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -10,6 +10,8 @@ export default function Settings() {
   const [showStravaSuccess, setShowStravaSuccess] = useState(false)
   const [fitnessProfile, setFitnessProfile] = useState(null)
   const [editingFitness, setEditingFitness] = useState(false)
+  const [fitnessLoading, setFitnessLoading] = useState(true)
+  const [fitnessError, setFitnessError] = useState('')
   const [fitnessForm, setFitnessForm] = useState({
     name: 'Default Profile',
     mass: 85,
@@ -34,6 +36,19 @@ export default function Settings() {
     loadFitnessProfile()
   }, [])
 
+  const applyActiveProfile = (activeProfile) => {
+    setFitnessProfile(activeProfile)
+    setFitnessForm({
+      name: activeProfile.name,
+      mass: parseFloat(activeProfile.mass),
+      ftp: activeProfile.ftp,
+      cda: parseFloat(activeProfile.cda),
+      crr: parseFloat(activeProfile.crr),
+      drivetrain_loss: parseFloat(activeProfile.drivetrain_loss),
+      position: activeProfile.position
+    })
+  }
+
   const loadUser = async () => {
     try {
       const response = await getCurrentUser()
@@ -47,23 +62,28 @@ export default function Settings() {
   }
 
   const loadFitnessProfile = async () => {
+    setFitnessLoading(true)
+    setFitnessError('')
     try {
+      // Prefer the API that guarantees an active profile exists
+      const activeResp = await getActiveParameters()
+      const activeFromActive = activeResp?.data?.parameters
+      if (activeFromActive) {
+        applyActiveProfile(activeFromActive)
+        return
+      }
+
+      // Fallback (older servers): scan all profiles
       const response = await getParameters()
       const activeProfile = response.data.parameters?.find(p => p.is_active)
-      if (activeProfile) {
-        setFitnessProfile(activeProfile)
-        setFitnessForm({
-          name: activeProfile.name,
-          mass: parseFloat(activeProfile.mass),
-          ftp: activeProfile.ftp,
-          cda: parseFloat(activeProfile.cda),
-          crr: parseFloat(activeProfile.crr),
-          drivetrain_loss: parseFloat(activeProfile.drivetrain_loss),
-          position: activeProfile.position
-        })
-      }
+      if (activeProfile) applyActiveProfile(activeProfile)
     } catch (error) {
       console.error('Failed to load fitness profile:', error)
+      const msg = error?.response?.data?.error || error?.response?.data?.message || error?.message || 'Unknown error'
+      setFitnessError(msg)
+    }
+    finally {
+      setFitnessLoading(false)
     }
   }
 
@@ -131,10 +151,20 @@ export default function Settings() {
     }
   }
 
-  if (loading) {
+  if (loading || fitnessLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <p className="text-gray-500">Loading...</p>
+      </div>
+    )
+  }
+
+  if (fitnessError) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="rounded-md bg-red-50 p-4">
+          <p className="text-sm text-red-800">Failed to load fitness profile: {fitnessError}</p>
+        </div>
       </div>
     )
   }

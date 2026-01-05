@@ -89,11 +89,12 @@ export default function RouteDetail() {
   const loadRiderParams = async () => {
     try {
       const response = await getActiveParameters()
-      if (response.data) {
+      const active = response?.data?.parameters
+      if (active) {
         setRiderParams({
-          ftp: response.data.ftp || 250,
-          mass: parseFloat(response.data.mass) || 85,
-          cda: parseFloat(response.data.cda) || 0.32
+          ftp: active.ftp || 250,
+          mass: parseFloat(active.mass) || 85,
+          cda: parseFloat(active.cda) || 0.32
         })
       }
     } catch (error) {
