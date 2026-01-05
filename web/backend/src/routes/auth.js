@@ -58,7 +58,23 @@ router.post('/login', async (req, res) => {
     
     // Get user
     const result = await query(
-      'SELECT * FROM users WHERE LOWER(email) = $1',
+      `SELECT u.*
+       FROM users u
+       LEFT JOIN (
+         SELECT user_id, COUNT(*)::int AS cnt
+         FROM rider_parameters
+         GROUP BY user_id
+       ) rp ON rp.user_id = u.id
+       LEFT JOIN (
+         SELECT user_id, COUNT(*)::int AS cnt
+         FROM sessions
+         GROUP BY user_id
+       ) ss ON ss.user_id = u.id
+       WHERE LOWER(u.email) = $1
+       ORDER BY (COALESCE(rp.cnt, 0) > 0) DESC,
+                (COALESCE(ss.cnt, 0) > 0) DESC,
+                u.created_at ASC
+       LIMIT 1`,
       [normalizedEmail]
     );
     
