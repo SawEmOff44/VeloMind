@@ -2,7 +2,6 @@ import SwiftUI
 
 struct HistoryView: View {
     @EnvironmentObject var coordinator: RideCoordinator
-    @State private var showStravaAuth = false
     @State private var backendConnected: Bool?
     @State private var activities: [StravaActivity] = []
     
@@ -26,32 +25,18 @@ struct HistoryView: View {
                     ContentUnavailableView(
                         "Connect to Strava",
                         systemImage: "figure.outdoor.cycle",
-                        description: Text("Sign in to view your training history and fitness metrics")
+                        description: Text("Connect Strava in the web app, then pull to refresh")
                     )
-                    
-                    Button("Connect Strava") {
-                        showStravaAuth = true
-                    }
-                    .buttonStyle(.borderedProminent)
                 }
-        }
-        .sheet(isPresented: $showStravaAuth) {
-            StravaAuthView()
-                .environmentObject(coordinator.stravaManager)
         }
         .task {
             do {
                 backendConnected = try await coordinator.apiService.fetchStravaStatus()
                 if backendConnected == true {
                     activities = try await coordinator.apiService.fetchStravaActivities()
-                } else if coordinator.stravaManager.isAuthenticated {
-                    await coordinator.stravaManager.fetchRecentActivities(limit: 30)
                 }
             } catch {
                 backendConnected = false
-                if coordinator.stravaManager.isAuthenticated {
-                    await coordinator.stravaManager.fetchRecentActivities(limit: 30)
-                }
             }
         }
         .refreshable {
@@ -59,11 +44,9 @@ struct HistoryView: View {
                 backendConnected = try await coordinator.apiService.fetchStravaStatus()
                 if backendConnected == true {
                     activities = try await coordinator.apiService.fetchStravaActivities()
-                } else {
-                    await coordinator.stravaManager.fetchRecentActivities(limit: 30)
                 }
             } catch {
-                await coordinator.stravaManager.fetchRecentActivities(limit: 30)
+                backendConnected = false
             }
         }
     }

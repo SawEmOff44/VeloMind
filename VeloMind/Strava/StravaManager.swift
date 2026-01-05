@@ -10,104 +10,34 @@ class StravaManager: ObservableObject {
     @Published var isLoading = false
     
     private let logger = Logger(subsystem: "com.velomind.app", category: "Strava")
-    
-    // These should be stored securely and configured via environment
-    private let clientID = "191884"  // TODO: Replace with actual client ID
-    private let clientSecret = "ed20b59691c7c047232631c66b94f5cfede910c4"  // TODO: Replace with actual secret
-    private let redirectURI = "velomind://strava/callback"
-    
+
+    // NOTE: Strava OAuth should be handled via the backend.
+    // Do not ship Strava client secrets in the iOS app.
+
     private var tokens: StravaTokens?
     
-    // API endpoints
+    // API endpoints (only used if tokens are injected; OAuth exchange is backend-only)
     private let baseURL = "https://www.strava.com/api/v3"
-    private let authURL = "https://www.strava.com/oauth/authorize"
-    private let tokenURL = "https://www.strava.com/oauth/token"
     
     // MARK: - Authentication
     
     func getAuthorizationURL() -> URL? {
-        var components = URLComponents(string: authURL)
-        components?.queryItems = [
-            URLQueryItem(name: "client_id", value: clientID),
-            URLQueryItem(name: "redirect_uri", value: redirectURI),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: "read,activity:read_all")
-        ]
-        return components?.url
+        // Deprecated: use backend OAuth flow.
+        return nil
     }
-    
+
     func handleAuthorizationCallback(code: String) async {
-        do {
-            let tokens = try await exchangeCodeForTokens(code: code)
-            self.tokens = tokens
-            isAuthenticated = true
-            
-            // Fetch athlete profile
-            await fetchAthleteProfile()
-            
-            // TODO: Store tokens securely in backend (Neon DB via Render)
-            logger.info("Strava authentication successful")
-            
-        } catch {
-            logger.error("Strava authentication failed: \(error.localizedDescription)")
-        }
+        // Deprecated: use backend OAuth flow.
+        logger.warning("Strava OAuth callback received on iOS client; ignored. Use backend OAuth flow.")
     }
-    
-    private func exchangeCodeForTokens(code: String) async throws -> StravaTokens {
-        var request = URLRequest(url: URL(string: tokenURL)!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "client_id": clientID,
-            "client_secret": clientSecret,
-            "code": code,
-            "grant_type": "authorization_code"
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw StravaError.authenticationFailed
-        }
-        
-        let decoder = JSONDecoder()
-        return try decoder.decode(StravaTokens.self, from: data)
-    }
-    
+
     private func refreshTokensIfNeeded() async throws {
         guard let tokens = tokens, tokens.isExpired else {
             return
         }
-        
-        var request = URLRequest(url: URL(string: tokenURL)!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "client_id": clientID,
-            "client_secret": clientSecret,
-            "refresh_token": tokens.refreshToken,
-            "grant_type": "refresh_token"
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw StravaError.tokenRefreshFailed
-        }
-        
-        let decoder = JSONDecoder()
-        self.tokens = try decoder.decode(StravaTokens.self, from: data)
-        
-        // TODO: Update tokens in backend
-        logger.info("Strava tokens refreshed")
+
+        // Without a client secret, token refresh must be done via the backend.
+        throw StravaError.notAuthenticated
     }
     
     // MARK: - API Requests

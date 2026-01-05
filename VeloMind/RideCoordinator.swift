@@ -57,7 +57,7 @@ class RideCoordinator: ObservableObject {
         self.intelligenceEngine = IntelligenceEngine(riderParameters: riderParams)
         self.fitnessProfileManager = FitnessProfileManager(
             persistenceManager: persistenceManager,
-            stravaManager: stravaManager
+            apiService: apiService
         )
         self.navigationManager = RouteNavigationManager(locationManager: locationManager)
         

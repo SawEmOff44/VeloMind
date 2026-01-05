@@ -158,12 +158,12 @@ P_drivetrain = ~3-4% loss
 - Form estimation (TSB = CTL - ATL)
 
 **⚠️ Required Configuration:**
-- Replace `YOUR_STRAVA_CLIENT_ID` and `YOUR_STRAVA_CLIENT_SECRET` in `StravaManager.swift`
-- Configure redirect URI: `velomind://strava/callback`
-- Add to Info.plist URL schemes
+-- Configure `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET` in the backend environment (Render/Neon)
+-- Connect Strava via the web app/backend OAuth flow; iOS reads Strava state via backend endpoints
 
 **Key Classes:**
-- `StravaManager`: OAuth and API
+- `APIService`: Strava status + activities via backend
+- `StravaManager`: Legacy client (OAuth should be backend-only)
 - `FitnessManager`: Training load modeling
 - `StravaActivity`, `StravaStreams`: Data models
 

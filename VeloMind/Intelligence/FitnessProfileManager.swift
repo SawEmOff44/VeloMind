@@ -8,11 +8,11 @@ class FitnessProfileManager: ObservableObject {
     @Published var ftpUpdateSuggestion: String?
     
     private let persistenceManager: PersistenceManager
-    private let stravaManager: StravaManager
+    private let apiService: APIService
     
-    init(persistenceManager: PersistenceManager, stravaManager: StravaManager) {
+    init(persistenceManager: PersistenceManager, apiService: APIService) {
         self.persistenceManager = persistenceManager
-        self.stravaManager = stravaManager
+        self.apiService = apiService
         self.currentProfile = persistenceManager.loadRiderParameters() ?? RiderParameters.default
     }
     
@@ -97,11 +97,9 @@ class FitnessProfileManager: ObservableObject {
     
     /// Import recent activities from Strava
     func importStravaActivities() async {
-        guard stravaManager.isAuthenticated else { return }
-        
         do {
-            // Fetch recent Strava activities (last 30 days)
-            let activities = try await stravaManager.fetchRecentActivities()
+            // Fetch recent Strava activities via backend (tokens stored server-side)
+            let activities = try await apiService.fetchStravaActivities()
             
             // Convert to RidePerformance
             let performances = activities.compactMap { activity -> RidePerformance? in

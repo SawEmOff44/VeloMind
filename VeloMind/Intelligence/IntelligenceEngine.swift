@@ -436,7 +436,7 @@ class IntelligenceEngine: ObservableObject {
             distance: distance
         )
         
-        routeAheadAnalysis = RouteAheadAnalysis(
+        let analysis = RouteAheadAnalysis(
             distanceAhead: distance,
             elevationGain: elevationGain,
             avgGrade: avgGrade,
@@ -446,9 +446,11 @@ class IntelligenceEngine: ObservableObject {
             difficulty: difficulty,
             recommendation: recommendation
         )
+
+        routeAheadAnalysis = analysis
         
         // Trigger audio alert if significant change ahead
-        checkForAudioAlert(analysis: routeAheadAnalysis!)
+        checkForAudioAlert(analysis: analysis)
     }
     
     /// Update current power zone
