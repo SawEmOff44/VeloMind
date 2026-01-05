@@ -13,7 +13,7 @@ router.post('/register', async (req, res) => {
     
     // Check if user exists
     const existingUser = await query(
-      'SELECT id FROM users WHERE email = $1',
+      'SELECT id FROM users WHERE LOWER(email) = $1',
       [normalizedEmail]
     );
     
@@ -58,7 +58,7 @@ router.post('/login', async (req, res) => {
     
     // Get user
     const result = await query(
-      'SELECT * FROM users WHERE email = $1',
+      'SELECT * FROM users WHERE LOWER(email) = $1',
       [normalizedEmail]
     );
     
@@ -84,6 +84,17 @@ router.post('/login', async (req, res) => {
     
     // Remove password from response
     delete user.password_hash;
+
+    // Opportunistically normalize stored email casing
+    if (user.email !== normalizedEmail) {
+      try {
+        await query('UPDATE users SET email = $1 WHERE id = $2', [normalizedEmail, user.id]);
+        user.email = normalizedEmail;
+      } catch (e) {
+        // Non-fatal; login should still succeed
+        console.warn('Failed to normalize email casing for user:', user.id, e.message);
+      }
+    }
     
     res.json({ 
       token,
