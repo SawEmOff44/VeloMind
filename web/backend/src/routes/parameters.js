@@ -27,7 +27,8 @@ router.get('/active', authenticateToken, async (req, res) => {
     const result = await query(
       `SELECT * FROM rider_parameters
        WHERE user_id = $1 AND is_active = true
-       LIMIT 1`,
+       ORDER BY updated_at DESC NULLS LAST, created_at DESC
+       LIMIT 10`,
       [req.user.id]
     );
     
@@ -41,8 +42,20 @@ router.get('/active', authenticateToken, async (req, res) => {
       );
       return res.json({ parameters: defaultResult.rows[0] });
     }
-    
-    res.json({ parameters: result.rows[0] });
+
+    // If multiple profiles are marked active (possible from older versions), keep the newest
+    // and deactivate the rest to prevent random selection.
+    const active = result.rows[0];
+    const extras = result.rows.slice(1);
+    if (extras.length > 0) {
+      const extraIds = extras.map((r) => r.id);
+      await query(
+        'UPDATE rider_parameters SET is_active = false WHERE user_id = $1 AND id = ANY($2::int[])',
+        [req.user.id, extraIds]
+      );
+    }
+
+    res.json({ parameters: active });
   } catch (error) {
     console.error('Get active parameters error:', error);
     res.status(500).json({ error: error.message });
