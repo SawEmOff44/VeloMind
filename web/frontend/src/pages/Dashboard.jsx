@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getSessions, getIntelligenceSummary } from '../services/api'
+import { getSessions, getIntelligenceSummary, getActiveParameters, updateParameters } from '../services/api'
 import { format } from 'date-fns'
 import IntelligenceDashboard from '../components/IntelligenceDashboard'
 import ActivityFeed from '../components/ActivityFeed'
@@ -44,6 +44,31 @@ export default function Dashboard() {
     loadUserProfile()
   }, [])
 
+  const syncFitnessProfileFromDashboard = async (profile) => {
+    try {
+      const activeResp = await getActiveParameters()
+      const active = activeResp?.data?.parameters
+      if (!active?.id) return
+
+      const ftpValue = Number(profile?.ftp)
+      const massValue = Number(profile?.weight)
+      if (!Number.isFinite(ftpValue) || !Number.isFinite(massValue)) return
+
+      await updateParameters(active.id, {
+        name: active.name,
+        mass: massValue,
+        cda: Number(active.cda),
+        crr: Number(active.crr),
+        drivetrain_loss: Number(active.drivetrain_loss),
+        ftp: ftpValue,
+        position: active.position,
+        is_active: true
+      })
+    } catch (e) {
+      console.warn('Failed to sync fitness profile from dashboard:', e)
+    }
+  }
+
   const persistUserProfile = (profile) => {
     try {
       localStorage.setItem('userProfile', JSON.stringify(profile))
@@ -77,6 +102,9 @@ export default function Dashboard() {
       return
     }
     setEditingProfile(false)
+
+    // Best-effort: keep server-backed Fitness Profile in sync
+    void syncFitnessProfileFromDashboard(userProfile)
   }
   
   const handlePhotoUpload = (e) => {
