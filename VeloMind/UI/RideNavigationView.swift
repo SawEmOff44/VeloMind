@@ -7,6 +7,12 @@ struct RideNavigationView: View {
         center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
     )
+    @State private var cameraPosition: MapCameraPosition = .region(
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        )
+    )
     
     let route: Route
     
@@ -18,19 +24,23 @@ struct RideNavigationView: View {
     var body: some View {
         ZStack {
             // Map View
-            Map(coordinateRegion: $region, showsUserLocation: true, annotationItems: navigationManager.upcomingWaypoints) { waypoint in
-                MapAnnotation(coordinate: waypoint.coordinate) {
-                    VStack {
-                        Text(waypoint.type.icon)
-                            .font(.title)
-                            .padding(8)
-                            .background(Circle().fill(Color.white))
-                            .shadow(radius: 3)
-                        Text(waypoint.label ?? "")
-                            .font(.caption)
-                            .padding(4)
-                            .background(Color.white.opacity(0.9))
-                            .cornerRadius(4)
+            Map(position: $cameraPosition) {
+                UserAnnotation()
+
+                ForEach(navigationManager.upcomingWaypoints) { waypoint in
+                    Annotation(waypoint.label ?? "", coordinate: waypoint.coordinate) {
+                        VStack {
+                            Text(waypoint.type.icon)
+                                .font(.title)
+                                .padding(8)
+                                .background(Circle().fill(Color.white))
+                                .shadow(radius: 3)
+                            Text(waypoint.label ?? "")
+                                .font(.caption)
+                                .padding(4)
+                                .background(Color.white.opacity(0.9))
+                                .cornerRadius(4)
+                        }
                     }
                 }
             }
@@ -178,6 +188,7 @@ struct RideNavigationView: View {
         if let location = navigationManager.currentLocation {
             withAnimation {
                 region.center = location.coordinate
+                cameraPosition = .region(region)
             }
         }
     }
@@ -185,6 +196,7 @@ struct RideNavigationView: View {
     private func centerOnRoute() {
         if let firstPoint = route.points.first {
             region.center = firstPoint.coordinate
+            cameraPosition = .region(region)
         }
     }
     
@@ -228,7 +240,7 @@ struct StatCard: View {
                 id: 1,
                 routeId: 1,
                 latitude: 37.7799,
-                longitude: 122.4144,
+                longitude: -122.4144,
                 type: .danger,
                 label: "Aggressive Dogs",
                 notes: "Two large dogs often off-leash on right side",
