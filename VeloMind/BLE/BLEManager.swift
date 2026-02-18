@@ -17,8 +17,11 @@ class BLEManager: NSObject, ObservableObject {
     // MARK: - Private Properties
     private var centralManager: CBCentralManager!
     private let logger = Logger(subsystem: "com.velomind.app", category: "BLE")
+    private let preferredPeripheralIDsKey = "velomind.ble.preferredPeripheralIDs"
 
     private var pendingScanRequest = false
+    private var preferredPeripheralIDs = Set<UUID>()
+    private var peripheralSensorTypes: [UUID: Set<BLESensorType>] = [:]
     
     // Wheel parameters for speed calculation
     private let wheelCircumference: Double = 2.105  // meters (700x25c default)
@@ -40,6 +43,7 @@ class BLEManager: NSObject, ObservableObject {
     // MARK: - Initialization
     override init() {
         super.init()
+        preferredPeripheralIDs = loadPreferredPeripheralIDs()
         centralManager = CBCentralManager(delegate: self, queue: .main)
     }
     
@@ -70,20 +74,26 @@ class BLEManager: NSObject, ObservableObject {
         logger.info("Stopped scanning for BLE sensors")
     }
     
-    func connect(to peripheral: CBPeripheral) {
+    func connect(to peripheral: CBPeripheral, remember: Bool = true) {
+        if remember {
+            rememberPeripheral(peripheral)
+        }
         peripheral.delegate = self
         centralManager.connect(peripheral, options: nil)
         logger.info("Attempting to connect to \(peripheral.name ?? "Unknown Device")")
     }
     
-    func disconnect(from peripheral: CBPeripheral) {
+    func disconnect(from peripheral: CBPeripheral, forget: Bool = true) {
+        if forget {
+            forgetPeripheral(peripheral)
+        }
         centralManager.cancelPeripheralConnection(peripheral)
         logger.info("Disconnecting from \(peripheral.name ?? "Unknown Device")")
     }
     
-    func disconnectAll() {
+    func disconnectAll(forget: Bool = false) {
         for peripheral in connectedDevices {
-            disconnect(from: peripheral)
+            disconnect(from: peripheral, forget: forget)
         }
     }
     
@@ -173,6 +183,25 @@ class BLEManager: NSObject, ObservableObject {
         (UInt32(data[offset + 2]) << 16) |
         (UInt32(data[offset + 3]) << 24)
     }
+
+    private func loadPreferredPeripheralIDs() -> Set<UUID> {
+        let ids = UserDefaults.standard.stringArray(forKey: preferredPeripheralIDsKey) ?? []
+        return Set(ids.compactMap(UUID.init(uuidString:)))
+    }
+
+    private func persistPreferredPeripheralIDs() {
+        UserDefaults.standard.set(preferredPeripheralIDs.map(\.uuidString), forKey: preferredPeripheralIDsKey)
+    }
+
+    private func rememberPeripheral(_ peripheral: CBPeripheral) {
+        preferredPeripheralIDs.insert(peripheral.identifier)
+        persistPreferredPeripheralIDs()
+    }
+
+    private func forgetPeripheral(_ peripheral: CBPeripheral) {
+        preferredPeripheralIDs.remove(peripheral.identifier)
+        persistPreferredPeripheralIDs()
+    }
     
     private func parseHeartRateData(_ data: Data) {
         guard data.count >= 2 else { return }
@@ -182,7 +211,8 @@ class BLEManager: NSObject, ObservableObject {
         
         let heartRate: Int
         if hrFormat {
-            heartRate = Int(data.withUnsafeBytes { $0.load(fromByteOffset: 1, as: UInt16.self) })
+            guard data.count >= 3 else { return }
+            heartRate = Int(readUInt16LE(data, offset: 1))
         } else {
             heartRate = Int(data[1])
         }
@@ -231,6 +261,12 @@ extension BLEManager: CBCentralManagerDelegate {
             if !discoveredDevices.contains(where: { $0.identifier == peripheral.identifier }) {
                 discoveredDevices.append(peripheral)
                 logger.info("Discovered: \(peripheral.name ?? "Unknown") (\(peripheral.identifier))")
+
+                if preferredPeripheralIDs.contains(peripheral.identifier),
+                   !connectedDevices.contains(where: { $0.identifier == peripheral.identifier }) {
+                    logger.info("Auto-connecting preferred sensor: \(peripheral.name ?? "Unknown")")
+                    connect(to: peripheral, remember: false)
+                }
             }
         }
     }
@@ -246,6 +282,12 @@ extension BLEManager: CBCentralManagerDelegate {
     nonisolated func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         Task { @MainActor in
             connectedDevices.remove(peripheral)
+            let disconnectedTypes = peripheralSensorTypes.removeValue(forKey: peripheral.identifier) ?? []
+            for sensorType in disconnectedTypes {
+                connectionStatus[sensorType] = false
+                delegate?.didUpdateConnectionState(false, sensorType: sensorType)
+            }
+
             if let error = error {
                 logger.error("Disconnected with error: \(error.localizedDescription)")
             } else {
@@ -253,10 +295,10 @@ extension BLEManager: CBCentralManagerDelegate {
             }
             
             // Attempt reconnection for unexpected disconnects
-            if error != nil {
+            if error != nil && preferredPeripheralIDs.contains(peripheral.identifier) {
                 Task {
                     try? await Task.sleep(for: .seconds(2))
-                    await MainActor.run { connect(to: peripheral) }
+                    await MainActor.run { connect(to: peripheral, remember: false) }
                 }
             }
         }
@@ -308,10 +350,16 @@ extension BLEManager: CBPeripheralDelegate {
             
             switch characteristic.uuid {
             case cscCharacteristicUUID:
+                var sensorTypes = peripheralSensorTypes[peripheral.identifier, default: []]
+                sensorTypes.insert(.speedAndCadence)
+                peripheralSensorTypes[peripheral.identifier] = sensorTypes
                 parseCSCData(data)
                 connectionStatus[.speedAndCadence] = true
                 delegate?.didUpdateConnectionState(true, sensorType: .speedAndCadence)
             case hrCharacteristicUUID:
+                var sensorTypes = peripheralSensorTypes[peripheral.identifier, default: []]
+                sensorTypes.insert(.heartRate)
+                peripheralSensorTypes[peripheral.identifier] = sensorTypes
                 parseHeartRateData(data)
                 connectionStatus[.heartRate] = true
                 delegate?.didUpdateConnectionState(true, sensorType: .heartRate)

@@ -11,11 +11,7 @@ class AuthenticationManager: ObservableObject {
     private let tokenKey = "velomind.authToken"
     
     private var baseURL: String {
-        #if DEBUG
-        return "http://127.0.0.1:3001/api"
-        #else
-        return "https://velomind.onrender.com/api"
-        #endif
+        AppConfiguration.apiBaseURL
     }
     
     var currentToken: String? {

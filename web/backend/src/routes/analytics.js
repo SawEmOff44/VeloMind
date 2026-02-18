@@ -14,6 +14,12 @@ function asNumber(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function parsePositiveInt(value, fallback, min, max) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 function computeDailyExponentialAverage(dailyValues, timeConstantDays) {
   // Exponential moving average with a 1-day timestep
   // alpha = 1 - exp(-dt/tau)
@@ -37,16 +43,17 @@ function buildAlert(message, severity, details) {
 router.get('/overview', authenticateToken, async (req, res) => {
   try {
     const { timeframe = '30' } = req.query; // days
+    const timeframeDays = parsePositiveInt(timeframe, 30, 1, 365);
     
     // Check cache first
-    const cacheKey = cacheKeys.analyticsOverview(req.user.id, timeframe);
+    const cacheKey = cacheKeys.analyticsOverview(req.user.id, timeframeDays);
     const cached = cache.get(cacheKey);
     if (cached) {
       return res.json(cached);
     }
     
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(timeframe));
+    startDate.setDate(startDate.getDate() - timeframeDays);
     
     // Get aggregate statistics
     const statsResult = await query(
@@ -54,7 +61,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
         COUNT(*) as total_rides,
         SUM(distance) as total_distance,
         SUM(duration) as total_time,
-        SUM(elevation_gain) as total_elevation,
+        SUM(total_elevation_gain) as total_elevation,
         AVG(average_power) as avg_power,
         MAX(max_power) as peak_power,
         AVG(average_heart_rate) as avg_hr,
@@ -78,19 +85,25 @@ router.get('/overview', authenticateToken, async (req, res) => {
     
     // Get power zone distribution
     const powerZonesResult = await query(
-      `SELECT 
+      `WITH active_params AS (
+         SELECT COALESCE(MAX(ftp), 250) AS ftp
+         FROM rider_parameters
+         WHERE user_id = $1 AND is_active = true
+       )
+       SELECT 
         CASE 
-          WHEN average_power < (SELECT ftp * 0.55 FROM parameters WHERE user_id = $1 AND is_active = true LIMIT 1) THEN 'Recovery'
-          WHEN average_power < (SELECT ftp * 0.75 FROM parameters WHERE user_id = $1 AND is_active = true LIMIT 1) THEN 'Endurance'
-          WHEN average_power < (SELECT ftp * 0.90 FROM parameters WHERE user_id = $1 AND is_active = true LIMIT 1) THEN 'Tempo'
-          WHEN average_power < (SELECT ftp * 1.05 FROM parameters WHERE user_id = $1 AND is_active = true LIMIT 1) THEN 'Threshold'
-          WHEN average_power < (SELECT ftp * 1.20 FROM parameters WHERE user_id = $1 AND is_active = true LIMIT 1) THEN 'VO2Max'
+          WHEN s.average_power < ap.ftp * 0.55 THEN 'Recovery'
+          WHEN s.average_power < ap.ftp * 0.75 THEN 'Endurance'
+          WHEN s.average_power < ap.ftp * 0.90 THEN 'Tempo'
+          WHEN s.average_power < ap.ftp * 1.05 THEN 'Threshold'
+          WHEN s.average_power < ap.ftp * 1.20 THEN 'VO2Max'
           ELSE 'Anaerobic'
         END as zone,
         COUNT(*) as ride_count,
-        SUM(duration) as total_duration
-       FROM sessions
-       WHERE user_id = $1 AND start_time >= $2 AND average_power IS NOT NULL
+        SUM(s.duration) as total_duration
+       FROM sessions s
+       CROSS JOIN active_params ap
+       WHERE s.user_id = $1 AND s.start_time >= $2 AND s.average_power IS NOT NULL
        GROUP BY zone
        ORDER BY 
          CASE zone
@@ -108,7 +121,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
       stats: statsResult.rows[0],
       frequency: frequencyResult.rows,
       powerZones: powerZonesResult.rows,
-      timeframe: parseInt(timeframe)
+      timeframe: timeframeDays
     };
     
     // Cache the result
@@ -276,16 +289,17 @@ router.get('/intelligence', authenticateToken, async (req, res) => {
 router.get('/trends', authenticateToken, async (req, res) => {
   try {
     const { metric = 'power', timeframe = '90' } = req.query;
+    const timeframeDays = parsePositiveInt(timeframe, 90, 1, 730);
     
     // Check cache first
-    const cacheKey = cacheKeys.analyticsTrends(req.user.id, metric, timeframe);
+    const cacheKey = cacheKeys.analyticsTrends(req.user.id, metric, timeframeDays);
     const cached = cache.get(cacheKey);
     if (cached) {
       return res.json(cached);
     }
     
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(timeframe));
+    startDate.setDate(startDate.getDate() - timeframeDays);
     
     let metricColumn = 'average_power';
     switch(metric) {
@@ -319,7 +333,7 @@ router.get('/trends', authenticateToken, async (req, res) => {
     const result = {
       metric,
       data: trendsResult.rows,
-      timeframe: parseInt(timeframe)
+      timeframe: timeframeDays
     };
     
     // Cache the result
@@ -354,10 +368,10 @@ router.get('/records', authenticateToken, async (req, res) => {
     
     // Highest elevation
     const highestElevation = await query(
-      `SELECT id, name, elevation_gain, start_time
+      `SELECT id, name, total_elevation_gain AS elevation_gain, start_time
        FROM sessions
-       WHERE user_id = $1 AND elevation_gain IS NOT NULL
-       ORDER BY elevation_gain DESC
+       WHERE user_id = $1 AND total_elevation_gain IS NOT NULL
+       ORDER BY total_elevation_gain DESC
        LIMIT 1`,
       [req.user.id]
     );
@@ -415,6 +429,7 @@ router.get('/records', authenticateToken, async (req, res) => {
 router.get('/calendar', authenticateToken, async (req, res) => {
   try {
     const { year = new Date().getFullYear() } = req.query;
+    const parsedYear = parsePositiveInt(year, new Date().getFullYear(), 2000, 2100);
     
     const calendarResult = await query(
       `SELECT 
@@ -426,11 +441,11 @@ router.get('/calendar', authenticateToken, async (req, res) => {
        WHERE user_id = $1 AND EXTRACT(YEAR FROM start_time) = $2
        GROUP BY DATE(start_time)
        ORDER BY date`,
-      [req.user.id, year]
+      [req.user.id, parsedYear]
     );
     
     res.json({
-      year: parseInt(year),
+      year: parsedYear,
       data: calendarResult.rows
     });
   } catch (error) {
@@ -459,7 +474,7 @@ router.get('/comparison/:sessionId', authenticateToken, async (req, res) => {
     // Get similar rides (same route or similar distance)
     const similarRides = await query(
       `SELECT 
-        id, name, start_time, distance, duration, average_power, elevation_gain,
+        id, name, start_time, distance, duration, average_power, total_elevation_gain AS elevation_gain,
         ABS(distance - $1) as distance_diff
        FROM sessions
        WHERE user_id = $2 
@@ -476,7 +491,7 @@ router.get('/comparison/:sessionId', authenticateToken, async (req, res) => {
         AVG(distance) as avg_distance,
         AVG(duration) as avg_duration,
         AVG(average_power) as avg_power,
-        AVG(elevation_gain) as avg_elevation
+        AVG(total_elevation_gain) as avg_elevation
        FROM sessions
        WHERE user_id = $1 
          AND id != $2

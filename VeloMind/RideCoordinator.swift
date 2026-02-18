@@ -34,6 +34,8 @@ class RideCoordinator: ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private var updateTimer: Timer?
+    private var powerStateObserver: NSObjectProtocol?
+    private var lastUpdateTimestamp: Date?
 
     private var rideDataPoints: [RideDataPoint] = []
     private var totalElevationGain: Double = 0.0
@@ -108,6 +110,8 @@ class RideCoordinator: ObservableObject {
     // MARK: - Ride Control
     
     func startRide() {
+        guard !isRiding else { return }
+
         isRiding = true
         rideStartTime = Date()
         rideDuration = 0
@@ -115,6 +119,10 @@ class RideCoordinator: ObservableObject {
         rideDataPoints = []
         totalElevationGain = 0
         lastAltitude = nil
+        lastUpdateTimestamp = nil
+
+        // Trigger OS prompts if needed before location-dependent calculations begin.
+        locationManager.requestPermission()
         
         // Configure background support
         backgroundTaskManager.configureAudioSession()
@@ -136,6 +144,8 @@ class RideCoordinator: ObservableObject {
     }
     
     func startRideWithNavigation(route: Route) {
+        RouteNavigationManager.requestNotificationPermissions()
+
         // Start normal ride
         startRide()
         
@@ -168,6 +178,7 @@ class RideCoordinator: ObservableObject {
         stopUpdateLoop()
         locationManager.stopTracking()
         bleManager.stopScanning()
+        lastUpdateTimestamp = nil
         
         // Deactivate background support
         backgroundTaskManager.deactivateAudioSession()
@@ -268,6 +279,8 @@ class RideCoordinator: ObservableObject {
     // MARK: - Update Loop
     
     private func startUpdateLoop() {
+        stopUpdateLoop()
+
         // Adapt interval based on power mode
         let interval = backgroundTaskManager.recommendedUpdateInterval()
         updateTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
@@ -275,9 +288,10 @@ class RideCoordinator: ObservableObject {
                 await self?.updateRideData()
             }
         }
+        updateTimer?.tolerance = min(0.5, interval * 0.2)
         
         // Restart timer if power mode changes
-        NotificationCenter.default.addObserver(
+        powerStateObserver = NotificationCenter.default.addObserver(
             forName: .NSProcessInfoPowerStateDidChange,
             object: nil,
             queue: .main
@@ -292,38 +306,60 @@ class RideCoordinator: ObservableObject {
     private func stopUpdateLoop() {
         updateTimer?.invalidate()
         updateTimer = nil
+
+        if let powerStateObserver {
+            NotificationCenter.default.removeObserver(powerStateObserver)
+            self.powerStateObserver = nil
+        }
     }
     
     private func updateRideData() async {
         guard isRiding else { return }
+
+        let now = Date()
         
         // Update duration
         if let startTime = rideStartTime {
-            rideDuration = Date().timeIntervalSince(startTime)
+            rideDuration = now.timeIntervalSince(startTime)
         }
+
+        let deltaTime: TimeInterval
+        if let lastUpdateTimestamp {
+            deltaTime = min(max(now.timeIntervalSince(lastUpdateTimestamp), 0), 10)
+        } else {
+            deltaTime = backgroundTaskManager.recommendedUpdateInterval()
+        }
+        lastUpdateTimestamp = now
         
-        // Get current location
-        guard let location = locationManager.currentLocation else { return }
+        let location = locationManager.currentLocation
 
         // Elevation gain (positive deltas)
-        if let lastAlt = lastAltitude {
-            let delta = location.altitude - lastAlt
-            if delta > 0 {
-                totalElevationGain += delta
+        if let location {
+            if let lastAlt = lastAltitude {
+                let delta = location.altitude - lastAlt
+                if delta > 0 {
+                    totalElevationGain += delta
+                }
             }
+            lastAltitude = location.altitude
         }
-        lastAltitude = location.altitude
         
         // Fetch weather if needed
-        await weatherManager.fetchWeather(at: location)
+        if let location {
+            await weatherManager.fetchWeather(at: location)
+        }
         
-        // Match to route if available
-        let routeMatch = routeManager.matchLocation(location)
-        
-        // Analyze upcoming climbs
-        var upcomingClimb: ClimbSegment? = nil
-        if let currentIndex = routeManager.getCurrentPositionIndex() {
-            upcomingClimb = routeManager.analyzeUpcomingTerrain(currentIndex: currentIndex)
+        var routeMatch: RouteMatchResult?
+        var upcomingClimb: ClimbSegment?
+
+        // Match to route if available and location exists
+        if let location {
+            routeMatch = routeManager.matchLocation(location)
+
+            // Analyze upcoming climbs
+            if let currentIndex = routeManager.getCurrentPositionIndex() {
+                upcomingClimb = routeManager.analyzeUpcomingTerrain(currentIndex: currentIndex)
+            }
         }
         
         // Get speed (prefer BLE sensor, fallback to GPS)
@@ -333,15 +369,16 @@ class RideCoordinator: ObservableObject {
         let grade = routeMatch?.grade150m ?? 0.0
         
         // Calculate bearing for wind
-        let bearing = location.course >= 0 ? location.course : 0
+        let bearing = (location?.course ?? -1) >= 0 ? (location?.course ?? 0) : 0
         let headwind = weatherManager.getHeadwind(bearing: bearing)
+        let altitude = location?.altitude ?? locationManager.currentAltitude
         
         // Calculate power
         let powerResult = powerEngine.calculatePower(
             speed: speed,
             grade: grade,
             headwind: headwind,
-            altitude: location.altitude
+            altitude: altitude
         )
         
         // Update intelligence engine with all current data
@@ -389,27 +426,28 @@ class RideCoordinator: ObservableObject {
         }
         
         // Update distance
-        // This is simplified - should track actual distance traveled
-        rideDistance += speed * 1.0  // 1 second interval
+        rideDistance += speed * deltaTime
 
         // Record datapoint for persistence/backend
-        let windSpeed = weatherManager.currentWind?.speed ?? 0.0
-        let windDirection = weatherManager.currentWind?.direction ?? 0.0
-        let dp = RideDataPoint(
-            timestamp: Date(),
-            latitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude,
-            distance: rideDistance,
-            altitude: location.altitude,
-            speed: speed,
-            cadence: bleManager.currentCadence,
-            heartRate: bleManager.currentHeartRate > 0 ? bleManager.currentHeartRate : nil,
-            power: powerResult.totalPower,
-            grade: grade,
-            windSpeed: windSpeed,
-            windDirection: windDirection
-        )
-        rideDataPoints.append(dp)
+        if let location {
+            let windSpeed = weatherManager.currentWind?.speed ?? 0.0
+            let windDirection = weatherManager.currentWind?.direction ?? 0.0
+            let dp = RideDataPoint(
+                timestamp: Date(),
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude,
+                distance: rideDistance,
+                altitude: location.altitude,
+                speed: speed,
+                cadence: bleManager.currentCadence,
+                heartRate: bleManager.currentHeartRate > 0 ? bleManager.currentHeartRate : nil,
+                power: powerResult.totalPower,
+                grade: grade,
+                windSpeed: windSpeed,
+                windDirection: windDirection
+            )
+            rideDataPoints.append(dp)
+        }
         
         // Sync data to Apple Watch
         syncToWatch(speed: speed, powerResult: powerResult)

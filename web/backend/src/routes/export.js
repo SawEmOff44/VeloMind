@@ -4,6 +4,11 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+function csvField(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/"/g, '""');
+}
+
 // Export session as CSV
 router.get('/session/:id/csv', authenticateToken, async (req, res) => {
   try {
@@ -33,7 +38,7 @@ router.get('/session/:id/csv', authenticateToken, async (req, res) => {
     let csv = 'timestamp,latitude,longitude,altitude,power,heart_rate,cadence,speed,distance\n';
     
     dataPoints.rows.forEach(point => {
-      csv += `${point.timestamp},${point.latitude || ''},${point.longitude || ''},${point.altitude || ''},${point.power || ''},${point.heart_rate || ''},${point.cadence || ''},${point.speed || ''},${point.distance || ''}\n`;
+      csv += `${point.timestamp},${point.latitude ?? ''},${point.longitude ?? ''},${point.altitude ?? ''},${point.power ?? ''},${point.heart_rate ?? ''},${point.cadence ?? ''},${point.speed ?? ''},${point.distance ?? ''}\n`;
     });
     
     res.setHeader('Content-Type', 'text/csv');
@@ -143,7 +148,7 @@ router.get('/sessions/summary/csv', authenticateToken, async (req, res) => {
     const sessions = await query(
       `SELECT 
         s.id, s.name, s.start_time, s.duration, s.distance,
-        s.elevation_gain, s.average_power, s.max_power,
+        s.total_elevation_gain AS elevation_gain, s.average_power, s.max_power,
         s.average_heart_rate, s.max_heart_rate, s.average_cadence,
         r.name as route_name
        FROM sessions s
@@ -157,7 +162,7 @@ router.get('/sessions/summary/csv', authenticateToken, async (req, res) => {
     let csv = 'id,name,date,duration_seconds,distance_meters,elevation_meters,avg_power_watts,max_power_watts,avg_hr,max_hr,avg_cadence,route\n';
     
     sessions.rows.forEach(session => {
-      csv += `${session.id},"${session.name || 'Unnamed'}",${session.start_time},${session.duration || ''},${session.distance || ''},${session.elevation_gain || ''},${session.average_power || ''},${session.max_power || ''},${session.average_heart_rate || ''},${session.max_heart_rate || ''},${session.average_cadence || ''},"${session.route_name || ''}"\n`;
+      csv += `${session.id},"${csvField(session.name || 'Unnamed')}",${session.start_time},${session.duration ?? ''},${session.distance ?? ''},${session.elevation_gain ?? ''},${session.average_power ?? ''},${session.max_power ?? ''},${session.average_heart_rate ?? ''},${session.max_heart_rate ?? ''},${session.average_cadence ?? ''},"${csvField(session.route_name)}"\n`;
     });
     
     res.setHeader('Content-Type', 'text/csv');

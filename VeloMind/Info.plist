@@ -70,6 +70,16 @@
 				<string>com.topografix.gpx</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>FIT File</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.garmin.fit</string>
+			</array>
+		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
 	<array>
@@ -88,8 +98,27 @@
 				<array>
 					<string>gpx</string>
 				</array>
+				</dict>
 			</dict>
-		</dict>
+			<dict>
+				<key>UTTypeConformsTo</key>
+				<array>
+					<string>public.data</string>
+				</array>
+				<key>UTTypeDescription</key>
+				<string>Flexible and Interoperable Data Transfer</string>
+				<key>UTTypeIdentifier</key>
+				<string>com.garmin.fit</string>
+				<key>UTTypeTagSpecification</key>
+				<dict>
+					<key>public.filename-extension</key>
+					<array>
+						<string>fit</string>
+					</array>
+					<key>public.mime-type</key>
+					<string>application/vnd.ant.fit</string>
+				</dict>
+			</dict>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>

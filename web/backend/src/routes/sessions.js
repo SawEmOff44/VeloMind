@@ -5,10 +5,18 @@ import { invalidateUserCache } from '../services/cache.js';
 
 const router = express.Router();
 
+function parsePositiveInt(value, fallback, min, max) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 // Get all sessions for user
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { limit = 50, offset = 0 } = req.query;
+    const parsedLimit = parsePositiveInt(limit, 50, 1, 500);
+    const parsedOffset = parsePositiveInt(offset, 0, 0, 100000);
     
     const result = await query(
       `SELECT s.*, r.name as route_name
@@ -17,7 +25,7 @@ router.get('/', authenticateToken, async (req, res) => {
        WHERE s.user_id = $1
        ORDER BY s.start_time DESC
        LIMIT $2 OFFSET $3`,
-      [req.user.id, limit, offset]
+      [req.user.id, parsedLimit, parsedOffset]
     );
     
     res.json({ sessions: result.rows });
@@ -79,6 +87,7 @@ router.post('/', authenticateToken, async (req, res) => {
       averageCadence,
       averageHeartRate,
       totalElevationGain,
+      elevationGain,
       tss,
       intensityFactor,
       dataPoints
@@ -96,7 +105,7 @@ router.post('/', authenticateToken, async (req, res) => {
       [
         req.user.id, routeId, name, startTime, endTime, duration,
         distance, averagePower, normalizedPower, averageSpeed,
-        averageCadence, averageHeartRate, totalElevationGain,
+        averageCadence, averageHeartRate, totalElevationGain ?? elevationGain ?? null,
         tss, intensityFactor
       ]
     );
@@ -165,6 +174,14 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 // Get session analytics
 router.get('/:id/analytics', authenticateToken, async (req, res) => {
   try {
+    const sessionResult = await query(
+      'SELECT id FROM sessions WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    if (sessionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
     // Load active rider parameters for FTP + physics fallback
     const paramsResult = await query(
       `SELECT ftp, mass, cda, crr, drivetrain_loss

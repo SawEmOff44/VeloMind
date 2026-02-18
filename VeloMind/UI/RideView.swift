@@ -2,6 +2,11 @@ import SwiftUI
 
 struct RideView: View {
     @EnvironmentObject var coordinator: RideCoordinator
+
+    private var currentSpeedMps: Double {
+        let bleSpeed = coordinator.bleManager.currentSpeed
+        return bleSpeed > 0 ? bleSpeed : coordinator.locationManager.currentSpeed
+    }
     
     var body: some View {
         ZStack {
@@ -48,7 +53,7 @@ struct RideView: View {
                             // Speed (convert m/s to mph)
                             MetricCard(
                                 title: "SPEED",
-                                value: String(format: "%.1f", coordinator.bleManager.currentSpeed * 2.23694),
+                                value: String(format: "%.1f", currentSpeedMps * 2.23694),
                                 unit: "mph",
                                 color: .veloCyan
                             )

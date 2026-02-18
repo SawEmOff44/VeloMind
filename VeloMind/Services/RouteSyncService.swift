@@ -8,13 +8,7 @@ actor RouteSyncService {
     private var authToken: String?
     
     private init() {
-        #if DEBUG
-        // Use localhost for Simulator during development
-        self.baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://127.0.0.1:3001/api"
-        #else
-        // Use production backend for TestFlight/App Store
-        self.baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "https://velomind.onrender.com/api"
-        #endif
+        self.baseURL = AppConfiguration.apiBaseURL
     }
     
     func setAuthToken(_ token: String) {

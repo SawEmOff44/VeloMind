@@ -10,6 +10,11 @@ router.post('/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
     const normalizedEmail = (email || '').trim().toLowerCase();
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+
+    if (!normalizedEmail || typeof password !== 'string' || password.length === 0) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
     
     // Check if user exists
     const existingUser = await query(
@@ -27,7 +32,7 @@ router.post('/register', async (req, res) => {
     // Create user
     const result = await query(
       'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name',
-      [normalizedEmail, passwordHash, name]
+      [normalizedEmail, passwordHash, normalizedName || null]
     );
     
     const user = result.rows[0];
@@ -55,6 +60,10 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = (email || '').trim().toLowerCase();
+
+    if (!normalizedEmail || typeof password !== 'string' || password.length === 0) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
     
     // Get user
     const result = await query(

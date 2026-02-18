@@ -1,5 +1,31 @@
 import Foundation
 
+enum AppConfiguration {
+    private static let productionAPIBaseURL = "https://velomind.onrender.com/api"
+    private static let simulatorDebugBaseURL = "http://127.0.0.1:3001/api"
+
+    static var apiBaseURL: String {
+        if let envValue = ProcessInfo.processInfo.environment["API_BASE_URL"], !envValue.isEmpty {
+            return envValue
+        }
+
+        if let infoValue = Bundle.main.object(forInfoDictionaryKey: "API_BASE_URL") as? String,
+           !infoValue.isEmpty {
+            return infoValue
+        }
+
+        #if DEBUG
+        #if targetEnvironment(simulator)
+        return simulatorDebugBaseURL
+        #else
+        return productionAPIBaseURL
+        #endif
+        #else
+        return productionAPIBaseURL
+        #endif
+    }
+}
+
 /// Service for communicating with VeloMind backend API
 @MainActor
 class APIService: ObservableObject {
@@ -7,13 +33,7 @@ class APIService: ObservableObject {
     private let tokenKey = "velomind.authToken"
     
     init() {
-        #if DEBUG
-        // Use localhost for Simulator during development
-        self.baseURL = "http://127.0.0.1:3001/api"
-        #else
-        // Use production backend for TestFlight/App Store
-        self.baseURL = "https://velomind.onrender.com/api"
-        #endif
+        self.baseURL = AppConfiguration.apiBaseURL
     }
     
     private var authToken: String? {
@@ -154,7 +174,12 @@ class APIService: ObservableObject {
         return try decoder.decode(Route.self, from: data)
     }
     
-    func uploadRoute(name: String, gpxData: Data) async throws {
+    func uploadRoute(
+        name: String,
+        routeData: Data,
+        fileName: String = "route.gpx",
+        contentType: String = "application/gpx+xml"
+    ) async throws -> UploadedRoute {
         // Backend expects multipart/form-data at POST /api/gpx/upload
         // with fields: name (text) and gpx (file)
         guard let url = URL(string: "\(baseURL)/gpx/upload") else {
@@ -173,11 +198,11 @@ class APIService: ObservableObject {
         body.append("Content-Disposition: form-data; name=\"name\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(name)\r\n".data(using: .utf8)!)
         
-        // Add GPX file
+        // Add route file (GPX/FIT/etc)
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"gpx\"; filename=\"route.gpx\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: application/gpx+xml\r\n\r\n".data(using: .utf8)!)
-        body.append(gpxData)
+        body.append("Content-Disposition: form-data; name=\"gpx\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
+        body.append(routeData)
         body.append("\r\n".data(using: .utf8)!)
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
@@ -186,6 +211,11 @@ class APIService: ObservableObject {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         try validateHTTPResponse(response, data: data, acceptable: 200...299)
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let decoded = try decoder.decode(UploadRouteResponse.self, from: data)
+        return decoded.route
     }
 
     // MARK: - Rider Parameters
@@ -386,6 +416,15 @@ class APIService: ObservableObject {
 
 struct RoutesResponse: Codable {
     let routes: [RouteInfo]
+}
+
+struct UploadRouteResponse: Codable {
+    let route: UploadedRoute
+}
+
+struct UploadedRoute: Codable {
+    let id: Int
+    let name: String
 }
 
 struct RouteInfo: Codable, Identifiable {

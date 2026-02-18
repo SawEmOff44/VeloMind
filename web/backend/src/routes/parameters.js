@@ -4,6 +4,20 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+function toFiniteNumber(value, fallback = 0) {
+  const n = typeof value === 'string' ? Number.parseFloat(value) : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function averageFinite(points, key) {
+  const values = points
+    .map((p) => toFiniteNumber(p[key], NaN))
+    .filter((v) => Number.isFinite(v));
+
+  if (values.length === 0) return 0;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
 // Get user's rider parameters
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -83,10 +97,14 @@ router.post('/', authenticateToken, async (req, res) => {
     } = req.body;
     
     // Support both naming conventions
-    const massValue = mass || total_mass_kg;
-    const cdaValue = cda || (frontal_area_m2 && drag_coefficient ? frontal_area_m2 * drag_coefficient : null);
-    const crrValue = crr || rolling_resistance;
-    const drivetrainLossValue = drivetrainLoss || drivetrain_loss;
+    const massValue = mass ?? total_mass_kg ?? 85.0;
+    const cdaValue = cda ?? (
+      frontal_area_m2 !== undefined && drag_coefficient !== undefined
+        ? toFiniteNumber(frontal_area_m2) * toFiniteNumber(drag_coefficient)
+        : 0.32
+    );
+    const crrValue = crr ?? rolling_resistance ?? 0.0045;
+    const drivetrainLossValue = drivetrainLoss ?? drivetrain_loss ?? 0.03;
     const isActiveValue = isActive !== undefined ? isActive : is_active;
     const shouldBeActive = isActiveValue !== undefined ? !!isActiveValue : true;
     
@@ -133,7 +151,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Preserve is_active unless explicitly provided
     const existingResult = await query(
-      'SELECT is_active FROM rider_parameters WHERE id = $1 AND user_id = $2',
+      `SELECT name, mass, cda, crr, drivetrain_loss, ftp, position, is_active
+       FROM rider_parameters
+       WHERE id = $1 AND user_id = $2`,
       [req.params.id, req.user.id]
     );
 
@@ -141,7 +161,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Parameters not found' });
     }
 
-    const existingIsActive = !!existingResult.rows[0].is_active;
+    const existing = existingResult.rows[0];
+    const existingIsActive = !!existing.is_active;
     const requestedIsActive = isActive !== undefined ? isActive : is_active;
     const isActiveValue = requestedIsActive !== undefined ? !!requestedIsActive : existingIsActive;
     
@@ -159,7 +180,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
            ftp = $6, position = $7, is_active = $8
        WHERE id = $9 AND user_id = $10
        RETURNING *`,
-      [name, mass, cda, crr, drivetrainLossValue, ftp, position, isActiveValue, req.params.id, req.user.id]
+      [
+        name ?? existing.name,
+        mass ?? existing.mass,
+        cda ?? existing.cda,
+        crr ?? existing.crr,
+        drivetrainLossValue ?? existing.drivetrain_loss,
+        ftp ?? existing.ftp,
+        position ?? existing.position,
+        isActiveValue,
+        req.params.id,
+        req.user.id
+      ]
     );
     
     res.json({ parameters: result.rows[0] });
@@ -214,10 +246,11 @@ router.post('/estimate', authenticateToken, async (req, res) => {
     const points = dataPointsResult.rows;
     
     // Simple CdA estimation (if known power provided)
-    if (knownPower && points.length > 0) {
-      const avgSpeed = points.reduce((sum, p) => sum + parseFloat(p.speed), 0) / points.length;
-      const avgGrade = points.reduce((sum, p) => sum + parseFloat(p.grade), 0) / points.length;
-      const avgWind = points.reduce((sum, p) => sum + parseFloat(p.wind_speed), 0) / points.length;
+    const knownPowerValue = toFiniteNumber(knownPower, NaN);
+    if (Number.isFinite(knownPowerValue) && knownPowerValue > 0 && points.length > 0) {
+      const avgSpeed = averageFinite(points, 'speed');
+      const avgGrade = averageFinite(points, 'grade');
+      const avgWind = averageFinite(points, 'wind_speed');
       
       // Get current parameters
       const paramsResult = await query(
@@ -234,14 +267,17 @@ router.post('/estimate', authenticateToken, async (req, res) => {
       // Physics calculations
       const g = 9.81;
       const rho = 1.225;
-      const vAir = avgSpeed + avgWind;
+      const vAir = Math.max(0.1, avgSpeed + avgWind);
       const angleRad = Math.atan(avgGrade);
+      const massValue = toFiniteNumber(currentParams.mass, 85);
+      const crrValue = toFiniteNumber(currentParams.crr, 0.0045);
+      const drivetrainLossValue = toFiniteNumber(currentParams.drivetrain_loss, 0.03);
       
-      const pRoll = currentParams.crr * currentParams.mass * g * avgSpeed * Math.cos(angleRad);
-      const pGrav = currentParams.mass * g * avgGrade * avgSpeed;
+      const pRoll = crrValue * massValue * g * avgSpeed * Math.cos(angleRad);
+      const pGrav = massValue * g * avgGrade * avgSpeed;
       
-      const mechanicalPower = knownPower * (1 - currentParams.drivetrain_loss);
-      const pAero = mechanicalPower - pRoll - pGrav;
+      const mechanicalPower = knownPowerValue * (1 - drivetrainLossValue);
+      const pAero = Math.max(0, mechanicalPower - pRoll - pGrav);
       
       const estimatedCda = (2 * pAero) / (rho * Math.pow(vAir, 3));
       

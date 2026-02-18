@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct RouteView: View {
     @EnvironmentObject var coordinator: RideCoordinator
@@ -29,7 +30,7 @@ struct RouteView: View {
                     ContentUnavailableView(
                         "No Routes Available",
                         systemImage: "map",
-                        description: Text("Import a GPX file to get started")
+                        description: Text("Import a GPX or FIT file to get started")
                     )
                 } else {
                     ForEach(availableRoutes) { routeInfo in
@@ -73,10 +74,10 @@ struct RouteView: View {
         }
         .fileImporter(
             isPresented: $isImporting,
-            allowedContentTypes: [.xml],
+            allowedContentTypes: [.xml, .fitFile],
             allowsMultipleSelection: false
         ) { result in
-            handleGPXImport(result)
+            handleRouteImport(result)
         }
         .task {
             await fetchRoutes()
@@ -108,32 +109,93 @@ struct RouteView: View {
         }
     }
     
-    private func handleGPXImport(_ result: Result<[URL], Error>) {
+    private func handleRouteImport(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
             
             Task {
+                var loadedLocally = false
                 do {
                     let data = try Data(contentsOf: url)
                     let name = url.deletingPathExtension().lastPathComponent
+                    let metadata = try routeUploadMetadata(for: url)
                     
-                    // Load locally first
-                    try await coordinator.routeManager.loadRoute(from: data, name: name)
+                    if metadata.canLoadLocally {
+                        do {
+                            try await coordinator.routeManager.loadRoute(from: data, name: name)
+                            loadedLocally = true
+                        } catch {
+                            print("⚠️ Local route parse failed, falling back to backend parser: \(error.localizedDescription)")
+                        }
+                    }
                     
                     // Upload to backend
-                    try await apiService.uploadRoute(name: name, gpxData: data)
+                    let uploadedRoute = try await apiService.uploadRoute(
+                        name: name,
+                        routeData: data,
+                        fileName: metadata.fileName,
+                        contentType: metadata.contentType
+                    )
+
+                    // Reload from backend so we keep route id + server waypoints.
+                    let remoteRoute = try await apiService.downloadRouteWithWaypoints(id: uploadedRoute.id)
+                    coordinator.routeManager.loadRemoteRoute(remoteRoute)
                     
                     // Refresh list
                     await fetchRoutes()
                 } catch {
-                    errorMessage = "Failed to import GPX: \(error.localizedDescription)"
+                    if loadedLocally {
+                        errorMessage = "Route imported locally, but backend sync failed: \(error.localizedDescription)"
+                    } else {
+                        errorMessage = "Failed to import route: \(error.localizedDescription)"
+                    }
                 }
             }
             
         case .failure(let error):
             errorMessage = "File import error: \(error.localizedDescription)"
         }
+    }
+
+    private func routeUploadMetadata(for url: URL) throws -> RouteUploadMetadata {
+        let ext = url.pathExtension.lowercased()
+        switch ext {
+        case "gpx":
+            return RouteUploadMetadata(fileName: url.lastPathComponent, contentType: "application/gpx+xml", canLoadLocally: true)
+        case "xml":
+            return RouteUploadMetadata(fileName: url.lastPathComponent, contentType: "application/xml", canLoadLocally: true)
+        case "fit":
+            return RouteUploadMetadata(fileName: url.lastPathComponent, contentType: "application/vnd.ant.fit", canLoadLocally: false)
+        default:
+            throw RouteImportError.unsupportedFileType(ext)
+        }
+    }
+}
+
+private struct RouteUploadMetadata {
+    let fileName: String
+    let contentType: String
+    let canLoadLocally: Bool
+}
+
+private enum RouteImportError: LocalizedError {
+    case unsupportedFileType(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unsupportedFileType(let ext):
+            if ext.isEmpty {
+                return "Unsupported file type"
+            }
+            return "Unsupported file type: .\(ext)"
+        }
+    }
+}
+
+private extension UTType {
+    static var fitFile: UTType {
+        UTType(filenameExtension: "fit") ?? UTType(importedAs: "com.garmin.fit")
     }
 }
 

@@ -18,20 +18,25 @@ CREATE INDEX IF NOT EXISTS idx_routes_created_at ON routes(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_routes_user_created ON routes(user_id, created_at DESC);
 
 -- Route points indexes
-CREATE INDEX IF NOT EXISTS idx_route_points_route_id ON route_points(route_id);
-CREATE INDEX IF NOT EXISTS idx_route_points_sequence ON route_points(route_id, sequence_number);
+DO $$
+BEGIN
+  IF to_regclass('public.route_points') IS NOT NULL THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_route_points_route_id ON route_points(route_id)';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_route_points_sequence ON route_points(route_id, sequence_number)';
+  END IF;
+END $$;
 
 -- Route waypoints indexes
 CREATE INDEX IF NOT EXISTS idx_route_waypoints_route_id ON route_waypoints(route_id);
 CREATE INDEX IF NOT EXISTS idx_route_waypoints_type ON route_waypoints(route_id, type);
 
 -- Parameters indexes
-CREATE INDEX IF NOT EXISTS idx_parameters_user_id ON parameters(user_id);
-CREATE INDEX IF NOT EXISTS idx_parameters_active ON parameters(user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_rider_parameters_user_id ON rider_parameters(user_id);
+CREATE INDEX IF NOT EXISTS idx_rider_parameters_active ON rider_parameters(user_id, is_active);
 
 -- Users indexes (if not already present)
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_strava ON users(strava_athlete_id) WHERE strava_athlete_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_strava_id ON users(strava_id) WHERE strava_id IS NOT NULL;
 
 -- Composite indexes for analytics queries
 CREATE INDEX IF NOT EXISTS idx_sessions_analytics ON sessions(user_id, start_time DESC, average_power, distance, duration)
