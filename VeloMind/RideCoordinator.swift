@@ -27,10 +27,13 @@ class RideCoordinator: ObservableObject {
     
     // Ride state
     @Published var isRiding = false
+    @Published var isPaused = false
+    @Published var isAutoPaused = false
     @Published var rideStartTime: Date?
     @Published var rideDuration: TimeInterval = 0
     @Published var rideDistance: Double = 0
     @Published var isNavigating = false
+    @Published var completedRideSummary: RideSummary?
     
     private var cancellables = Set<AnyCancellable>()
     private var updateTimer: Timer?
@@ -43,6 +46,12 @@ class RideCoordinator: ObservableObject {
 
     private var isRetryingBackendUploads = false
     private let minimumDistanceIntegrationSpeed: Double = 0.5 // m/s (~1.1 mph)
+    private let autoPauseThresholdMps: Double = 2.0 / 2.23694
+    private let autoResumeThresholdMps: Double = 3.0 / 2.23694
+    private let autoPauseConfirmationSeconds: TimeInterval = 3.0
+    private let autoResumeConfirmationSeconds: TimeInterval = 2.0
+    private var belowPauseThresholdSince: Date?
+    private var aboveResumeThresholdSince: Date?
     
     init() {
         // Initialize intelligence components
@@ -134,6 +143,9 @@ class RideCoordinator: ObservableObject {
         guard !isRiding else { return }
 
         isRiding = true
+        isPaused = false
+        isAutoPaused = false
+        completedRideSummary = nil
         rideStartTime = Date()
         rideDuration = 0
         rideDistance = 0
@@ -141,6 +153,8 @@ class RideCoordinator: ObservableObject {
         totalElevationGain = 0
         lastAltitude = nil
         lastUpdateTimestamp = nil
+        belowPauseThresholdSince = nil
+        aboveResumeThresholdSince = nil
 
         // Trigger OS prompts if needed before location-dependent calculations begin.
         locationManager.requestPermission()
@@ -176,7 +190,13 @@ class RideCoordinator: ObservableObject {
     }
     
     func stopRide() {
+        guard isRiding else { return }
+
         isRiding = false
+        isPaused = false
+        isAutoPaused = false
+        belowPauseThresholdSince = nil
+        aboveResumeThresholdSince = nil
 
         let endTime = Date()
         
@@ -212,11 +232,15 @@ class RideCoordinator: ObservableObject {
                 guard !values.isEmpty else { return 0 }
                 return values.reduce(0, +) / Double(values.count)
             }()
+            let maxSpeed = rideDataPoints.map(\.speed).max() ?? 0
 
             let hrValues = rideDataPoints.compactMap { $0.heartRate }.filter { $0 > 0 }
             let avgHeartRate: Int? = hrValues.isEmpty ? nil : Int(Double(hrValues.reduce(0, +)) / Double(hrValues.count))
+            let maxHeartRate: Int? = hrValues.max()
+            let totalWorkKJ = (powerEngine.averagePower * rideDuration) / 1000.0
 
             let backendRouteId = (routeManager.currentRoute?.id ?? 0) > 0 ? routeManager.currentRoute?.id : nil
+            let routeName = routeManager.currentRoute?.name
 
             var session = RideSession(
                 backendRouteId: backendRouteId,
@@ -232,6 +256,23 @@ class RideCoordinator: ObservableObject {
                 totalElevationGain: totalElevationGain,
                 routeID: nil,
                 dataPoints: rideDataPoints
+            )
+
+            completedRideSummary = RideSummary(
+                startTime: startTime,
+                endTime: endTime,
+                routeName: routeName,
+                duration: rideDuration,
+                distanceMeters: rideDistance,
+                averageSpeedMps: avgSpeed,
+                maxSpeedMps: maxSpeed,
+                averagePower: powerEngine.averagePower,
+                normalizedPower: powerEngine.normalizedPower,
+                averageCadence: avgCadence,
+                averageHeartRate: avgHeartRate,
+                maxHeartRate: maxHeartRate,
+                elevationGainMeters: totalElevationGain,
+                workKJ: totalWorkKJ
             )
 
             persistenceManager.saveRideSession(session)
@@ -288,13 +329,19 @@ class RideCoordinator: ObservableObject {
     }
     
     func pauseRide() {
-        isRiding = false
-        stopUpdateLoop()
+        guard isRiding else { return }
+        isPaused = true
+        isAutoPaused = false
+        belowPauseThresholdSince = nil
+        aboveResumeThresholdSince = nil
     }
     
     func resumeRide() {
-        isRiding = true
-        startUpdateLoop()
+        guard isRiding else { return }
+        isPaused = false
+        isAutoPaused = false
+        belowPauseThresholdSince = nil
+        aboveResumeThresholdSince = nil
     }
     
     // MARK: - Update Loop
@@ -339,11 +386,6 @@ class RideCoordinator: ObservableObject {
 
         let now = Date()
         bleManager.refreshSensorState(at: now)
-        
-        // Update duration
-        if let startTime = rideStartTime {
-            rideDuration = now.timeIntervalSince(startTime)
-        }
 
         let deltaTime: TimeInterval
         if let lastUpdateTimestamp {
@@ -389,6 +431,27 @@ class RideCoordinator: ObservableObject {
         let gpsSpeed = locationManager.currentSpeed
         let speed = sensorSpeed > 0 ? sensorSpeed : gpsSpeed
         let cadence = bleManager.currentCadence
+
+        evaluateAutoPauseState(speed: speed, now: now)
+
+        if isPaused {
+            powerEngine.instantaneousPower = 0
+            powerEngine.smoothedPower3s = 0
+            powerEngine.smoothedPower10s = 0
+
+            let pausedPowerResult = PowerResult(
+                totalPower: 0,
+                aeroPower: 0,
+                gravityPower: 0,
+                rollingPower: 0,
+                timestamp: now,
+                confidence: 1.0
+            )
+            syncToWatch(speed: speed, powerResult: pausedPowerResult)
+            return
+        }
+
+        rideDuration += deltaTime
         
         // Get grade from route or calculate from GPS
         let grade = routeMatch?.grade150m ?? 0.0
@@ -489,6 +552,48 @@ class RideCoordinator: ObservableObject {
             )
         }
     }
+
+    private func evaluateAutoPauseState(speed: Double, now: Date) {
+        // Manual pause should only be resumed explicitly by the rider.
+        if isPaused && !isAutoPaused {
+            belowPauseThresholdSince = nil
+            aboveResumeThresholdSince = nil
+            return
+        }
+
+        if !isPaused {
+            if speed < autoPauseThresholdMps {
+                if belowPauseThresholdSince == nil {
+                    belowPauseThresholdSince = now
+                }
+                if let belowPauseThresholdSince,
+                   now.timeIntervalSince(belowPauseThresholdSince) >= autoPauseConfirmationSeconds {
+                    isPaused = true
+                    isAutoPaused = true
+                    belowPauseThresholdSince = nil
+                    aboveResumeThresholdSince = nil
+                }
+            } else {
+                belowPauseThresholdSince = nil
+            }
+            return
+        }
+
+        if speed > autoResumeThresholdMps {
+            if aboveResumeThresholdSince == nil {
+                aboveResumeThresholdSince = now
+            }
+            if let aboveResumeThresholdSince,
+               now.timeIntervalSince(aboveResumeThresholdSince) >= autoResumeConfirmationSeconds {
+                isPaused = false
+                isAutoPaused = false
+                belowPauseThresholdSince = nil
+                aboveResumeThresholdSince = nil
+            }
+        } else {
+            aboveResumeThresholdSince = nil
+        }
+    }
 }
 
 // MARK: - SensorDataDelegate
@@ -525,7 +630,7 @@ extension RideCoordinator {
             currentZone: intelligenceEngine.currentPowerZone.rawValue,
             targetZone: intelligenceEngine.targetPowerZone?.rawValue,
             routeAnalysis: intelligenceEngine.routeAheadAnalysis,
-            isRiding: isRiding
+            isRiding: isRiding && !isPaused
         )
         
         // Update complication with key metrics
@@ -537,4 +642,22 @@ extension RideCoordinator {
             )
         }
     }
+}
+
+struct RideSummary: Identifiable {
+    let id = UUID()
+    let startTime: Date
+    let endTime: Date
+    let routeName: String?
+    let duration: TimeInterval
+    let distanceMeters: Double
+    let averageSpeedMps: Double
+    let maxSpeedMps: Double
+    let averagePower: Double
+    let normalizedPower: Double
+    let averageCadence: Double
+    let averageHeartRate: Int?
+    let maxHeartRate: Int?
+    let elevationGainMeters: Double
+    let workKJ: Double
 }

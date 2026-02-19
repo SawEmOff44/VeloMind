@@ -15,6 +15,9 @@ struct RideView: View {
     var body: some View {
         GeometryReader { proxy in
             let compactLayout = proxy.size.height < 760 || proxy.size.width > proxy.size.height
+            let intelligenceCompact = compactLayout || coordinator.isNavigating
+            let heartRate = coordinator.bleManager.currentHeartRate
+            let heartRateAvailable = heartRate > 0 || coordinator.bleManager.connectionStatus[.heartRate] == true
             ZStack {
                 // Background - full screen
                 Color.black
@@ -27,21 +30,21 @@ struct RideView: View {
                 )
                 .edgesIgnoringSafeArea(.all)
                 
-                VStack(spacing: compactLayout ? 6 : 8) {
+                VStack(spacing: intelligenceCompact ? 6 : 8) {
                     if coordinator.backgroundTaskManager.isInBackground {
                         BackgroundStatusBanner(manager: coordinator.backgroundTaskManager)
                     }
                     
                     // Fixed nav height so active navigation does not push out other data.
                     NavigationAlertBox()
-                        .frame(height: compactLayout ? 62 : 72)
+                        .frame(height: intelligenceCompact ? 58 : 68)
                     
                     SensorFreshnessStrip(
                         speedState: coordinator.bleManager.speedFreshness,
                         cadenceState: coordinator.bleManager.cadenceFreshness
                     )
                     
-                    VStack(spacing: compactLayout ? 6 : 8) {
+                    VStack(spacing: intelligenceCompact ? 6 : 8) {
                         MetricCard(
                             title: "POWER",
                             value: String(format: "%.0f", coordinator.powerEngine.smoothedPower10s),
@@ -50,7 +53,7 @@ struct RideView: View {
                             size: .large
                         )
                         
-                        HStack(spacing: compactLayout ? 6 : 8) {
+                        HStack(spacing: intelligenceCompact ? 6 : 8) {
                             MetricCard(
                                 title: "SPEED",
                                 value: String(format: "%.1f", currentSpeedMps * 2.23694),
@@ -67,13 +70,21 @@ struct RideView: View {
                         }
                     }
                     
-                    VStack(spacing: compactLayout ? 6 : 8) {
-                        HStack(spacing: compactLayout ? 6 : 8) {
-                            SmallMetricCard(
-                                title: "WIND",
-                                value: String(format: "%.1f", abs(coordinator.weatherManager.currentWind?.speed ?? 0) * 2.23694),
-                                unit: "mph"
-                            )
+                    VStack(spacing: intelligenceCompact ? 6 : 8) {
+                        HStack(spacing: intelligenceCompact ? 6 : 8) {
+                            if heartRateAvailable {
+                                SmallMetricCard(
+                                    title: "HEART",
+                                    value: heartRate > 0 ? "\(heartRate)" : "--",
+                                    unit: "bpm"
+                                )
+                            } else {
+                                SmallMetricCard(
+                                    title: "WIND",
+                                    value: String(format: "%.1f", abs(coordinator.weatherManager.currentWind?.speed ?? 0) * 2.23694),
+                                    unit: "mph"
+                                )
+                            }
                             
                             SmallMetricCard(
                                 title: "GRADE",
@@ -82,7 +93,7 @@ struct RideView: View {
                             )
                         }
                         
-                        HStack(spacing: compactLayout ? 6 : 8) {
+                        HStack(spacing: intelligenceCompact ? 6 : 8) {
                             SmallMetricCard(
                                 title: "TIME",
                                 value: formatDuration(coordinator.rideDuration),
@@ -97,18 +108,24 @@ struct RideView: View {
                         }
                     }
                     
-                    IntelligenceMetricsView(compact: compactLayout)
+                    IntelligenceMetricsView(compact: intelligenceCompact)
                     IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
                     
                     Spacer(minLength: 0)
                     
                     RideControlButtons(coordinator: coordinator)
                 }
-                .padding(.horizontal, compactLayout ? 8 : 10)
+                .padding(.horizontal, intelligenceCompact ? 8 : 10)
                 .padding(.top, coordinator.backgroundTaskManager.isInBackground ? 6 : max(6, proxy.safeAreaInsets.top + 2))
                 .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
             }
             .edgesIgnoringSafeArea(.all)
+            .sheet(item: Binding(
+                get: { coordinator.completedRideSummary },
+                set: { coordinator.completedRideSummary = $0 }
+            )) { summary in
+                RideSummarySheet(summary: summary)
+            }
         }
     }
     
@@ -473,68 +490,80 @@ struct RideControlButtons: View {
     @ObservedObject var coordinator: RideCoordinator
     
     var body: some View {
-        HStack(spacing: 8) {
-            if !coordinator.isRiding {
-                Button(action: {
-                    coordinator.startRide()
-                }) {
-                    HStack {
-                        Image(systemName: "play.circle.fill")
-                            .font(.headline)
-                        Text("Start Ride")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [Color.green, Color.green.opacity(0.8)]),
-                            startPoint: .leading,
-                            endPoint: .trailing
+        VStack(spacing: 6) {
+            if coordinator.isRiding && coordinator.isPaused {
+                Text(coordinator.isAutoPaused ? "Auto-paused below 2 mph" : "Ride paused")
+                    .font(.caption)
+                    .foregroundColor(coordinator.isAutoPaused ? .orange : .gray)
+            }
+
+            HStack(spacing: 8) {
+                if !coordinator.isRiding {
+                    Button(action: {
+                        coordinator.startRide()
+                    }) {
+                        HStack {
+                            Image(systemName: "play.circle.fill")
+                                .font(.headline)
+                            Text("Start Ride")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.green, Color.green.opacity(0.8)]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
-                    )
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-                    .shadow(color: Color.green.opacity(0.3), radius: 8, x: 0, y: 4)
-                }
-            } else {
-                Button(action: {
-                    coordinator.pauseRide()
-                }) {
-                    HStack {
-                        Image(systemName: "pause.circle.fill")
-                            .font(.headline)
-                        Text("Pause")
-                            .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .cornerRadius(14)
+                        .shadow(color: Color.green.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(Color.yellow)
-                    .foregroundColor(.black)
-                    .cornerRadius(14)
-                }
-                
-                Button(action: {
-                    coordinator.stopRide()
-                }) {
-                    HStack {
-                        Image(systemName: "stop.circle.fill")
-                            .font(.headline)
-                        Text("Stop")
-                            .fontWeight(.semibold)
+                } else {
+                    Button(action: {
+                        if coordinator.isPaused {
+                            coordinator.resumeRide()
+                        } else {
+                            coordinator.pauseRide()
+                        }
+                    }) {
+                        HStack {
+                            Image(systemName: coordinator.isPaused ? "play.circle.fill" : "pause.circle.fill")
+                                .font(.headline)
+                            Text(coordinator.isPaused ? "Resume" : "Pause")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(coordinator.isPaused ? Color.green : Color.yellow)
+                        .foregroundColor(coordinator.isPaused ? .white : .black)
+                        .cornerRadius(14)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [Color.red, Color.red.opacity(0.8)]),
-                            startPoint: .leading,
-                            endPoint: .trailing
+                    
+                    Button(action: {
+                        coordinator.stopRide()
+                    }) {
+                        HStack {
+                            Image(systemName: "stop.circle.fill")
+                                .font(.headline)
+                            Text("Stop")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 11)
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.red, Color.red.opacity(0.8)]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
-                    )
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-                    .shadow(color: Color.red.opacity(0.3), radius: 8, x: 0, y: 4)
+                        .foregroundColor(.white)
+                        .cornerRadius(14)
+                        .shadow(color: Color.red.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
                 }
             }
         }
@@ -869,6 +898,17 @@ struct PowerZoneGauge: View {
     let ftp: Double
     
     private let allZones: [PowerZone] = [.recovery, .endurance, .tempo, .threshold, .vo2max, .anaerobic]
+
+    private func zoneLabel(_ zone: PowerZone) -> String {
+        switch zone {
+        case .recovery: return "Z1"
+        case .endurance: return "Z2"
+        case .tempo: return "Z3"
+        case .threshold: return "Z4"
+        case .vo2max: return "Z5"
+        case .anaerobic: return "Z6"
+        }
+    }
     
     var body: some View {
         VStack(spacing: 4) {
@@ -882,9 +922,13 @@ struct PowerZoneGauge: View {
                 Text("\(Int(currentPower))W")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Text("(\(Int((currentPower / ftp) * 100))% FTP)")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             
             // Zone Bar
@@ -921,24 +965,136 @@ struct PowerZoneGauge: View {
             
             // Labels
             HStack {
-                Text(currentZone.rawValue)
+                Text(zoneLabel(currentZone))
                     .font(.system(size: 10, weight: .semibold))
-                    .fontWeight(.semibold)
                     .foregroundColor(currentZone.color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 
                 if let target = targetZone, target != currentZone {
                     Image(systemName: "arrow.right")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundColor(.gray)
-                    Text(target.rawValue)
+                    Text(zoneLabel(target))
                         .font(.system(size: 10, weight: .semibold))
-                        .fontWeight(.semibold)
                         .foregroundColor(target.color)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 
                 Spacer()
                 
                 Text(currentZone.ftpRange)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.gray)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.gray.opacity(0.12))
+        .cornerRadius(8)
+    }
+}
+
+struct HeartRateZoneGauge: View {
+    let heartRate: Int
+    let maxHeartRate: Int?
+    
+    private struct ZoneBand {
+        let label: String
+        let minFraction: Double
+        let maxFraction: Double
+        let color: Color
+    }
+
+    private var resolvedMaxHeartRate: Int {
+        if let maxHeartRate, maxHeartRate > 0 {
+            return maxHeartRate
+        }
+        return 190
+    }
+
+    private var zoneBands: [ZoneBand] {
+        [
+            ZoneBand(label: "Z1", minFraction: 0.50, maxFraction: 0.60, color: .blue),
+            ZoneBand(label: "Z2", minFraction: 0.60, maxFraction: 0.70, color: .green),
+            ZoneBand(label: "Z3", minFraction: 0.70, maxFraction: 0.80, color: .yellow),
+            ZoneBand(label: "Z4", minFraction: 0.80, maxFraction: 0.90, color: .orange),
+            ZoneBand(label: "Z5", minFraction: 0.90, maxFraction: 1.50, color: .red)
+        ]
+    }
+
+    private var heartRateFraction: Double? {
+        guard heartRate > 0 else { return nil }
+        return Double(heartRate) / Double(resolvedMaxHeartRate)
+    }
+
+    private var currentZoneIndex: Int? {
+        guard let heartRateFraction else { return nil }
+
+        if heartRateFraction < zoneBands[0].minFraction {
+            return 0
+        }
+
+        return zoneBands.firstIndex { band in
+            heartRateFraction >= band.minFraction && heartRateFraction < band.maxFraction
+        } ?? (zoneBands.count - 1)
+    }
+
+    private var currentZoneLabel: String {
+        guard let currentZoneIndex else { return "No HR" }
+        return zoneBands[currentZoneIndex].label
+    }
+
+    private var currentZoneColor: Color {
+        guard let currentZoneIndex else { return .gray }
+        return zoneBands[currentZoneIndex].color
+    }
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Text("HEART RATE")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.gray)
+                    .tracking(0.5)
+                Spacer()
+                Text(heartRate > 0 ? "\(heartRate)bpm" : "-- bpm")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(currentZoneColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if let heartRateFraction {
+                    Text("(\(Int(heartRateFraction * 100))% max)")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+
+            HStack(spacing: 2) {
+                ForEach(Array(zoneBands.enumerated()), id: \.offset) { index, band in
+                    Rectangle()
+                        .fill(band.color.opacity(currentZoneIndex == index ? 1.0 : 0.3))
+                        .frame(height: 12)
+                        .overlay(
+                            Rectangle()
+                                .stroke(Color.white.opacity(currentZoneIndex == index ? 1.0 : 0.0), lineWidth: 1.5)
+                        )
+                }
+            }
+            .cornerRadius(4)
+
+            HStack {
+                Text(currentZoneLabel)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(currentZoneColor)
+                    .lineLimit(1)
+                Spacer()
+                Text("max \(resolvedMaxHeartRate)")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
             }
@@ -963,6 +1119,13 @@ struct IntelligenceMetricsView: View {
                 currentPower: coordinator.powerEngine.smoothedPower3s,
                 ftp: coordinator.intelligenceEngine.riderParameters.ftp ?? 200
             )
+
+            if coordinator.bleManager.connectionStatus[.heartRate] == true || coordinator.bleManager.currentHeartRate > 0 {
+                HeartRateZoneGauge(
+                    heartRate: coordinator.bleManager.currentHeartRate,
+                    maxHeartRate: coordinator.intelligenceEngine.riderParameters.maxHeartRate
+                )
+            }
             
             // Environmental Load & Effort Budget
             HStack(spacing: compact ? 6 : 10) {
@@ -1135,6 +1298,129 @@ struct AlertBanner: View {
         .overlay(
             RoundedRectangle(cornerRadius: 9)
                 .stroke(severity.color, lineWidth: 1)
+        )
+    }
+}
+
+struct RideSummarySheet: View {
+    let summary: RideSummary
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [Color.black, Color.gray.opacity(0.35)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 14) {
+                        VStack(spacing: 4) {
+                            Text("Ride Summary")
+                                .font(.system(size: 30, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+
+                            if let routeName = summary.routeName, !routeName.isEmpty {
+                                Text(routeName)
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.75))
+                            }
+
+                            Text("You rode \(String(format: "%.2f", summary.distanceMeters * 0.000621371)) miles at an average of \(String(format: "%.1f", summary.averageSpeedMps * 2.23694)) mph.")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 2)
+                        }
+
+                        HStack(spacing: 8) {
+                            SummaryMetricBlock(title: "Distance", value: String(format: "%.2f", summary.distanceMeters * 0.000621371), unit: "mi", tint: .veloCyan)
+                            SummaryMetricBlock(title: "Duration", value: formatDuration(summary.duration), unit: "", tint: .orange)
+                        }
+
+                        HStack(spacing: 8) {
+                            SummaryMetricBlock(title: "Avg Speed", value: String(format: "%.1f", summary.averageSpeedMps * 2.23694), unit: "mph", tint: .green)
+                            SummaryMetricBlock(title: "Max Speed", value: String(format: "%.1f", summary.maxSpeedMps * 2.23694), unit: "mph", tint: .yellow)
+                        }
+
+                        HStack(spacing: 8) {
+                            SummaryMetricBlock(title: "Avg Power", value: String(format: "%.0f", summary.averagePower), unit: "W", tint: .orange)
+                            SummaryMetricBlock(title: "Norm Power", value: String(format: "%.0f", summary.normalizedPower), unit: "W", tint: .pink)
+                        }
+
+                        HStack(spacing: 8) {
+                            SummaryMetricBlock(title: "Output", value: String(format: "%.0f", summary.workKJ), unit: "kJ", tint: .blue)
+                            SummaryMetricBlock(title: "Elevation", value: String(format: "%.0f", summary.elevationGainMeters * 3.28084), unit: "ft", tint: .purple)
+                        }
+
+                        HStack(spacing: 8) {
+                            SummaryMetricBlock(title: "Avg Cadence", value: String(format: "%.0f", summary.averageCadence), unit: "rpm", tint: .veloGreen)
+                            SummaryMetricBlock(title: "Avg HR", value: summary.averageHeartRate.map { "\($0)" } ?? "--", unit: "bpm", tint: .red)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 16)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        let totalSeconds = Int(duration)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+struct SummaryMetricBlock: View {
+    let title: String
+    let value: String
+    let unit: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title.uppercased())
+                .font(.caption2)
+                .foregroundColor(.gray)
+                .tracking(0.8)
+
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(value)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundColor(tint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.gray.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
         )
     }
 }
