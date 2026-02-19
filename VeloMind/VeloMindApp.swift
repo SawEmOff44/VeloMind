@@ -34,6 +34,9 @@ struct VeloMindApp: App {
                             print("Received Strava callback: \(url)")
                         }
                     }
+                    .onReceive(NotificationCenter.default.publisher(for: .authTokenExpired)) { _ in
+                        authManager.logout()
+                    }
             } else {
                 LoginView()
                     .environmentObject(authManager)

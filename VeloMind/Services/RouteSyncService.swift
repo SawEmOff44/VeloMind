@@ -45,6 +45,11 @@ actor RouteSyncService {
         }
         
         guard httpResponse.statusCode == 200 else {
+            if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                UserDefaults.standard.removeObject(forKey: tokenKey)
+                NotificationCenter.default.post(name: .authTokenExpired, object: nil)
+                throw RouteSyncError.notAuthenticated
+            }
             throw RouteSyncError.serverError(statusCode: httpResponse.statusCode)
         }
         
@@ -75,6 +80,11 @@ actor RouteSyncService {
         }
         
         guard httpResponse.statusCode == 200 else {
+            if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                UserDefaults.standard.removeObject(forKey: tokenKey)
+                NotificationCenter.default.post(name: .authTokenExpired, object: nil)
+                throw RouteSyncError.notAuthenticated
+            }
             throw RouteSyncError.serverError(statusCode: httpResponse.statusCode)
         }
         

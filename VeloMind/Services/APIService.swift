@@ -72,6 +72,10 @@ class APIService: ObservableObject {
 
         guard acceptable.contains(httpResponse.statusCode) else {
             let bodyString = String(data: data, encoding: .utf8)
+            if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                UserDefaults.standard.removeObject(forKey: tokenKey)
+                NotificationCenter.default.post(name: .authTokenExpired, object: nil)
+            }
             throw APIError.httpError(statusCode: httpResponse.statusCode, body: bodyString)
         }
     }
@@ -480,6 +484,9 @@ enum APIError: LocalizedError {
         case .invalidResponse:
             return "Invalid response from server"
         case .httpError(let statusCode, let body):
+            if statusCode == 401 || statusCode == 403 {
+                return "Session expired. Please sign in again."
+            }
             let trimmedBody = body?.trimmingCharacters(in: .whitespacesAndNewlines)
             if let trimmedBody, !trimmedBody.isEmpty {
                 return "Server error: \(statusCode)\n\(trimmedBody)"
@@ -489,4 +496,8 @@ enum APIError: LocalizedError {
             return "Failed to decode server response"
         }
     }
+}
+
+extension Notification.Name {
+    static let authTokenExpired = Notification.Name("authTokenExpired")
 }

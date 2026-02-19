@@ -199,8 +199,8 @@ struct RouteView: View {
         if let apiError = error as? APIError {
             switch apiError {
             case .httpError(let statusCode, _):
-                if statusCode == 401 {
-                    return "Your login session expired. Please log out and sign back in."
+                if statusCode == 401 || statusCode == 403 {
+                    return "Your login session expired. Please sign in again."
                 }
                 return apiError.errorDescription ?? "Server error"
             default:
