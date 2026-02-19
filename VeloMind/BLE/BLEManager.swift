@@ -13,6 +13,8 @@ class BLEManager: NSObject, ObservableObject {
     @Published var currentCadence: Double = 0.0      // rpm
     @Published var currentHeartRate: Int = 0         // bpm
     @Published var connectionStatus: [BLESensorType: Bool] = [:]
+    @Published var bluetoothState: CBManagerState = .unknown
+    @Published var scanStatusMessage: String?
     
     // MARK: - Private Properties
     private var centralManager: CBCentralManager!
@@ -51,17 +53,22 @@ class BLEManager: NSObject, ObservableObject {
     func startScanning() {
         guard centralManager.state == .poweredOn else {
             pendingScanRequest = true
+            scanStatusMessage = scanBlockedMessage(for: centralManager.state)
             logger.warning("Scan requested but Bluetooth not ready (state=\(self.centralManager.state.rawValue, privacy: .public)). Will start when powered on.")
             return
         }
         
         isScanning = true
         pendingScanRequest = false
+        scanStatusMessage = "Scanning for cadence/speed sensors..."
         discoveredDevices.removeAll()
         
-        let services = [cscServiceUUID, hrServiceUUID]
-        centralManager.scanForPeripherals(withServices: services, options: [
-            CBCentralManagerScanOptionAllowDuplicatesKey: false
+        // Restart scanning so repeated taps always refresh discovery.
+        centralManager.stopScan()
+
+        // Use nil services so sensors that don't advertise service UUIDs are still discoverable.
+        centralManager.scanForPeripherals(withServices: nil, options: [
+            CBCentralManagerScanOptionAllowDuplicatesKey: true
         ])
         
         logger.info("Started scanning for BLE sensors")
@@ -70,6 +77,7 @@ class BLEManager: NSObject, ObservableObject {
     func stopScanning() {
         isScanning = false
         pendingScanRequest = false
+        scanStatusMessage = "Scan stopped"
         centralManager.stopScan()
         logger.info("Stopped scanning for BLE sensors")
     }
@@ -202,6 +210,51 @@ class BLEManager: NSObject, ObservableObject {
         preferredPeripheralIDs.remove(peripheral.identifier)
         persistPreferredPeripheralIDs()
     }
+
+    private func scanBlockedMessage(for state: CBManagerState) -> String {
+        switch state {
+        case .poweredOff:
+            return "Bluetooth is off. Turn Bluetooth on and scan again."
+        case .unauthorized:
+            return "Bluetooth permission denied for VeloMind. Allow Bluetooth in iOS Settings."
+        case .unsupported:
+#if targetEnvironment(simulator)
+            return "Bluetooth LE scanning is unavailable in the iOS Simulator. Use a physical iPhone."
+#else
+            return "Bluetooth LE is not supported on this device."
+#endif
+        case .resetting, .unknown:
+            return "Bluetooth is starting up. Try scanning again in a moment."
+        case .poweredOn:
+            return "Bluetooth ready"
+        @unknown default:
+            return "Bluetooth status unknown."
+        }
+    }
+
+    private func isPotentialCyclingSensor(_ peripheral: CBPeripheral, advertisementData: [String: Any]) -> Bool {
+        if preferredPeripheralIDs.contains(peripheral.identifier) {
+            return true
+        }
+
+        if let serviceUUIDs = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID],
+           serviceUUIDs.contains(cscServiceUUID) || serviceUUIDs.contains(hrServiceUUID) {
+            return true
+        }
+
+        let localName = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? ""
+        let lowered = localName.lowercased()
+        let keywords = [
+            "cadence", "speed", "heart", "hr", "tickr", "rpm", "wahoo",
+            "garmin", "polar", "stages", "assioma", "magene", "sensor"
+        ]
+        if keywords.contains(where: { lowered.contains($0) }) {
+            return true
+        }
+
+        // Fallback: include all peripherals. Some bike sensors advertise without local names/UUIDs.
+        return true
+    }
     
     private func parseHeartRateData(_ data: Data) {
         guard data.count >= 2 else { return }
@@ -227,9 +280,11 @@ class BLEManager: NSObject, ObservableObject {
 extension BLEManager: CBCentralManagerDelegate {
     nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
         Task { @MainActor in
+            bluetoothState = central.state
             switch central.state {
             case .poweredOn:
                 logger.info("Bluetooth powered on")
+                scanStatusMessage = "Bluetooth ready"
                 if pendingScanRequest {
                     logger.info("Starting pending BLE scan request")
                     startScanning()
@@ -238,35 +293,48 @@ extension BLEManager: CBCentralManagerDelegate {
                 logger.warning("Bluetooth powered off")
                 pendingScanRequest = false
                 isScanning = false
+                scanStatusMessage = scanBlockedMessage(for: .poweredOff)
             case .unsupported:
                 logger.error("Bluetooth not supported")
                 pendingScanRequest = false
                 isScanning = false
+                scanStatusMessage = scanBlockedMessage(for: .unsupported)
             case .unauthorized:
                 logger.error("Bluetooth unauthorized")
                 pendingScanRequest = false
                 isScanning = false
+                scanStatusMessage = scanBlockedMessage(for: .unauthorized)
             case .resetting:
                 logger.info("Bluetooth resetting")
+                scanStatusMessage = scanBlockedMessage(for: .resetting)
             case .unknown:
                 logger.info("Bluetooth state unknown")
+                scanStatusMessage = scanBlockedMessage(for: .unknown)
             @unknown default:
                 logger.warning("Unknown Bluetooth state")
+                scanStatusMessage = "Bluetooth status unknown."
             }
         }
     }
     
     nonisolated func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         Task { @MainActor in
-            if !discoveredDevices.contains(where: { $0.identifier == peripheral.identifier }) {
-                discoveredDevices.append(peripheral)
-                logger.info("Discovered: \(peripheral.name ?? "Unknown") (\(peripheral.identifier))")
+            guard isPotentialCyclingSensor(peripheral, advertisementData: advertisementData) else { return }
 
-                if preferredPeripheralIDs.contains(peripheral.identifier),
-                   !connectedDevices.contains(where: { $0.identifier == peripheral.identifier }) {
-                    logger.info("Auto-connecting preferred sensor: \(peripheral.name ?? "Unknown")")
-                    connect(to: peripheral, remember: false)
-                }
+            if let idx = discoveredDevices.firstIndex(where: { $0.identifier == peripheral.identifier }) {
+                discoveredDevices[idx] = peripheral
+                return
+            }
+
+            discoveredDevices.append(peripheral)
+            logger.info("Discovered: \(peripheral.name ?? "Unknown") (\(peripheral.identifier))")
+            let count = discoveredDevices.count
+            scanStatusMessage = count == 1 ? "Found 1 sensor" : "Found \(count) sensors"
+
+            if preferredPeripheralIDs.contains(peripheral.identifier),
+               !connectedDevices.contains(where: { $0.identifier == peripheral.identifier }) {
+                logger.info("Auto-connecting preferred sensor: \(peripheral.name ?? "Unknown")")
+                connect(to: peripheral, remember: false)
             }
         }
     }
@@ -275,6 +343,7 @@ extension BLEManager: CBCentralManagerDelegate {
         Task { @MainActor in
             connectedDevices.insert(peripheral)
             peripheral.discoverServices([cscServiceUUID, hrServiceUUID])
+            scanStatusMessage = "Connected to \(peripheral.name ?? "sensor")"
             logger.info("Connected to \(peripheral.name ?? "Unknown")")
         }
     }

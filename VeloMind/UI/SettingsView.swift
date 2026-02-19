@@ -1,3 +1,4 @@
+import CoreBluetooth
 import SwiftUI
 
 struct SettingsView: View {
@@ -511,14 +512,74 @@ struct CalibrationView: View {
 struct SensorSettingsView: View {
     @EnvironmentObject var coordinator: RideCoordinator
     
+    private func deviceDisplayName(_ device: CBPeripheral) -> String {
+        if let name = device.name?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !name.isEmpty {
+            return name
+        }
+        let shortID = String(device.identifier.uuidString.prefix(8))
+        return "Sensor \(shortID)"
+    }
+
+    private var bluetoothStateText: String {
+        switch coordinator.bleManager.bluetoothState {
+        case .poweredOn:
+            return "Bluetooth is on"
+        case .poweredOff:
+            return "Bluetooth is off"
+        case .unauthorized:
+            return "Bluetooth permission denied"
+        case .unsupported:
+            return "Bluetooth not supported"
+        case .resetting, .unknown:
+            return "Bluetooth starting..."
+        @unknown default:
+            return "Bluetooth status unknown"
+        }
+    }
+
+    private var bluetoothStateColor: Color {
+        switch coordinator.bleManager.bluetoothState {
+        case .poweredOn:
+            return .green
+        case .poweredOff, .unauthorized, .unsupported:
+            return .red
+        case .resetting, .unknown:
+            return .orange
+        @unknown default:
+            return .gray
+        }
+    }
+    
     var body: some View {
         List {
+            Section("Bluetooth Status") {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(bluetoothStateColor)
+                        .frame(width: 10, height: 10)
+                    Text(bluetoothStateText)
+                }
+
+                if let message = coordinator.bleManager.scanStatusMessage, !message.isEmpty {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                if coordinator.bleManager.isScanning && coordinator.bleManager.discoveredDevices.isEmpty {
+                    Text("Tip: Wake sensors by spinning wheel/crank while scanning.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+
             Section("Connected Sensors") {
                 ForEach(Array(coordinator.bleManager.connectedDevices), id: \.identifier) { device in
                     HStack {
                         Image(systemName: "sensor.fill")
                             .foregroundColor(.green)
-                        Text(device.name ?? "Unknown Device")
+                        Text(deviceDisplayName(device))
                         Spacer()
                         Button("Disconnect") {
                             coordinator.bleManager.disconnect(from: device)
@@ -536,6 +597,10 @@ struct SensorSettingsView: View {
                         Text("Scanning...")
                             .foregroundColor(.secondary)
                     }
+                } else if coordinator.bleManager.discoveredDevices.isEmpty {
+                    Text("Tap Scan to find nearby cadence/speed/heart-rate sensors.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 
                 ForEach(coordinator.bleManager.discoveredDevices, id: \.identifier) { device in
@@ -544,7 +609,7 @@ struct SensorSettingsView: View {
                     }) {
                         HStack {
                             Image(systemName: "sensor")
-                            Text(device.name ?? "Unknown Device")
+                            Text(deviceDisplayName(device))
                             Spacer()
                             Image(systemName: "plus.circle")
                                 .foregroundColor(.veloTeal)
