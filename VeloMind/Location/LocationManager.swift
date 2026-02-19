@@ -13,6 +13,7 @@ class LocationManager: NSObject, ObservableObject {
     private let locationManager = CLLocationManager()
     private let logger = Logger(subsystem: "com.velomind.app", category: "Location")
     private var pendingStartTracking = false
+    private let minimumReliableMovingSpeed: Double = 0.5 // m/s (~1.1 mph)
 
     var authorizationStatus: CLAuthorizationStatus {
         locationManager.authorizationStatus
@@ -67,7 +68,12 @@ extension LocationManager: CLLocationManagerDelegate {
             guard let location = locations.last else { return }
             
             currentLocation = location
-            currentSpeed = max(0, location.speed)  // GPS speed
+            let rawSpeed = max(0, location.speed)
+            if rawSpeed < minimumReliableMovingSpeed {
+                currentSpeed = 0
+            } else {
+                currentSpeed = rawSpeed
+            }
             currentAltitude = location.altitude
             accuracy = location.horizontalAccuracy
             

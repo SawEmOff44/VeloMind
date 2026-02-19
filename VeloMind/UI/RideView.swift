@@ -5,7 +5,11 @@ struct RideView: View {
 
     private var currentSpeedMps: Double {
         let bleSpeed = coordinator.bleManager.currentSpeed
-        return bleSpeed > 0 ? bleSpeed : coordinator.locationManager.currentSpeed
+        if bleSpeed > 0 {
+            return bleSpeed
+        }
+        let gpsSpeed = coordinator.locationManager.currentSpeed
+        return gpsSpeed > 0 ? gpsSpeed : 0
     }
     
     var body: some View {

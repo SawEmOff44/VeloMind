@@ -42,6 +42,7 @@ class RideCoordinator: ObservableObject {
     private var lastAltitude: Double?
 
     private var isRetryingBackendUploads = false
+    private let minimumDistanceIntegrationSpeed: Double = 0.5 // m/s (~1.1 mph)
     
     init() {
         // Initialize intelligence components
@@ -317,6 +318,7 @@ class RideCoordinator: ObservableObject {
         guard isRiding else { return }
 
         let now = Date()
+        bleManager.refreshSensorState(at: now)
         
         // Update duration
         if let startTime = rideStartTime {
@@ -363,7 +365,10 @@ class RideCoordinator: ObservableObject {
         }
         
         // Get speed (prefer BLE sensor, fallback to GPS)
-        let speed = bleManager.currentSpeed > 0 ? bleManager.currentSpeed : locationManager.currentSpeed
+        let sensorSpeed = bleManager.currentSpeed
+        let gpsSpeed = locationManager.currentSpeed
+        let speed = sensorSpeed > 0 ? sensorSpeed : gpsSpeed
+        let cadence = bleManager.currentCadence
         
         // Get grade from route or calculate from GPS
         let grade = routeMatch?.grade150m ?? 0.0
@@ -385,7 +390,7 @@ class RideCoordinator: ObservableObject {
         intelligenceEngine.update(
             currentPower: powerResult.totalPower,
             currentSpeed: speed,
-            currentCadence: bleManager.currentCadence,
+            currentCadence: cadence,
             heartRate: Double(bleManager.currentHeartRate),
             grade: grade,
             windSpeed: headwind,
@@ -426,7 +431,9 @@ class RideCoordinator: ObservableObject {
         }
         
         // Update distance
-        rideDistance += speed * deltaTime
+        if speed >= minimumDistanceIntegrationSpeed {
+            rideDistance += speed * deltaTime
+        }
 
         // Record datapoint for persistence/backend
         if let location {
@@ -439,7 +446,7 @@ class RideCoordinator: ObservableObject {
                 distance: rideDistance,
                 altitude: location.altitude,
                 speed: speed,
-                cadence: bleManager.currentCadence,
+                cadence: cadence,
                 heartRate: bleManager.currentHeartRate > 0 ? bleManager.currentHeartRate : nil,
                 power: powerResult.totalPower,
                 grade: grade,

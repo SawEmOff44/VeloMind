@@ -30,12 +30,18 @@ class BLEManager: NSObject, ObservableObject {
     
     // Wheel parameters for speed calculation
     private let wheelCircumference: Double = 2.105  // meters (700x25c default)
+    private let speedStaleTimeout: TimeInterval = 3.0
+    private let cadenceStaleTimeout: TimeInterval = 3.0
+    private let speedZeroThreshold: Double = 0.25   // m/s
+    private let cadenceZeroThreshold: Double = 2.0  // rpm
     
     // CSC tracking
     private var lastWheelRevolutions: UInt32?
     private var lastWheelEventTime: UInt16?
     private var lastCrankRevolutions: UInt16?
     private var lastCrankEventTime: UInt16?
+    private var lastSpeedUpdateAt: Date?
+    private var lastCadenceUpdateAt: Date?
     
     // Service UUIDs
     private let cscServiceUUID = CBUUID(string: "1816")
@@ -170,6 +176,10 @@ class BLEManager: NSObject, ObservableObject {
     func isConnecting(_ peripheral: CBPeripheral) -> Bool {
         connectingDeviceIDs.contains(peripheral.identifier)
     }
+
+    func refreshSensorState(at now: Date = Date()) {
+        applyStaleValueTimeouts(at: now)
+    }
     
     // MARK: - Private Methods
     private func parseCSCData(_ data: Data) {
@@ -184,6 +194,7 @@ class BLEManager: NSObject, ObservableObject {
         let hasWheelData = (flags & 0x01) != 0
         let hasCrankData = (flags & 0x02) != 0
         
+        let now = Date()
         var index = 1
         
         // Parse wheel data (speed)
@@ -201,14 +212,16 @@ class BLEManager: NSObject, ObservableObject {
                     timeDiff += 65536
                 }
                 
-                if revDiff > 0 && timeDiff > 0 {
+                if timeDiff > 0 {
                     let timeSeconds = Double(timeDiff) / 1024.0
-                    let distance = Double(revDiff) * wheelCircumference
-                    let speed = distance / timeSeconds
-                    
-                    currentSpeed = speed
-                    delegate?.didUpdateSpeed(speed, timestamp: Date())
-                    logger.debug("Speed: \(speed * 2.23694, privacy: .public) mph")
+                    if revDiff > 0 {
+                        let distance = Double(revDiff) * wheelCircumference
+                        let speed = distance / timeSeconds
+                        publishSpeed(speed, timestamp: now)
+                        logger.debug("Speed: \(speed * 2.23694, privacy: .public) mph")
+                    } else {
+                        publishSpeed(0, timestamp: now)
+                    }
                 }
             }
             
@@ -230,19 +243,23 @@ class BLEManager: NSObject, ObservableObject {
                     timeDiff += 65536
                 }
                 
-                if revDiff > 0 && timeDiff > 0 {
+                if timeDiff > 0 {
                     let timeMinutes = Double(timeDiff) / 1024.0 / 60.0
-                    let cadence = Double(revDiff) / timeMinutes
-                    
-                    currentCadence = cadence
-                    delegate?.didUpdateCadence(cadence, timestamp: Date())
-                    logger.debug("Cadence: \(cadence, privacy: .public) rpm")
+                    if revDiff > 0 {
+                        let cadence = Double(revDiff) / timeMinutes
+                        publishCadence(cadence, timestamp: now)
+                        logger.debug("Cadence: \(cadence, privacy: .public) rpm")
+                    } else {
+                        publishCadence(0, timestamp: now)
+                    }
                 }
             }
             
             lastCrankRevolutions = crankRevolutions
             lastCrankEventTime = crankEventTime
         }
+
+        applyStaleValueTimeouts(at: now)
     }
 
     private func readUInt16LE(_ data: Data, offset: Int) -> UInt16 {
@@ -317,6 +334,40 @@ class BLEManager: NSObject, ObservableObject {
     
     private func removeConnected(by identifier: UUID) {
         connectedDevices.removeAll(where: { $0.identifier == identifier })
+    }
+
+    private func publishSpeed(_ value: Double, timestamp: Date) {
+        let normalized = value < speedZeroThreshold ? 0 : value
+        if currentSpeed != normalized {
+            currentSpeed = normalized
+            delegate?.didUpdateSpeed(normalized, timestamp: timestamp)
+        }
+        lastSpeedUpdateAt = timestamp
+    }
+    
+    private func publishCadence(_ value: Double, timestamp: Date) {
+        let normalized = value < cadenceZeroThreshold ? 0 : value
+        if currentCadence != normalized {
+            currentCadence = normalized
+            delegate?.didUpdateCadence(normalized, timestamp: timestamp)
+        }
+        lastCadenceUpdateAt = timestamp
+    }
+    
+    private func applyStaleValueTimeouts(at now: Date) {
+        if let lastSpeedUpdateAt,
+           now.timeIntervalSince(lastSpeedUpdateAt) >= speedStaleTimeout,
+           currentSpeed != 0 {
+            currentSpeed = 0
+            delegate?.didUpdateSpeed(0, timestamp: now)
+        }
+        
+        if let lastCadenceUpdateAt,
+           now.timeIntervalSince(lastCadenceUpdateAt) >= cadenceStaleTimeout,
+           currentCadence != 0 {
+            currentCadence = 0
+            delegate?.didUpdateCadence(0, timestamp: now)
+        }
     }
 
     private func handleConnectedPeripheral(_ peripheral: CBPeripheral) {
@@ -479,6 +530,12 @@ extension BLEManager: CBCentralManagerDelegate {
             for sensorType in disconnectedTypes {
                 connectionStatus[sensorType] = false
                 delegate?.didUpdateConnectionState(false, sensorType: sensorType)
+            }
+            if disconnectedTypes.contains(.speedAndCadence) {
+                currentSpeed = 0
+                currentCadence = 0
+                lastSpeedUpdateAt = nil
+                lastCadenceUpdateAt = nil
             }
 
             if let error = error {
