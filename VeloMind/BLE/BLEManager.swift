@@ -22,6 +22,7 @@ class BLEManager: NSObject, ObservableObject {
     private let preferredPeripheralIDsKey = "velomind.ble.preferredPeripheralIDs"
 
     private var pendingScanRequest = false
+    private var activeScanID: UUID?
     private var preferredPeripheralIDs = Set<UUID>()
     private var peripheralSensorTypes: [UUID: Set<BLESensorType>] = [:]
     
@@ -62,14 +63,27 @@ class BLEManager: NSObject, ObservableObject {
         pendingScanRequest = false
         scanStatusMessage = "Scanning for cadence/speed sensors..."
         discoveredDevices.removeAll()
+        let scanID = UUID()
+        activeScanID = scanID
         
         // Restart scanning so repeated taps always refresh discovery.
         centralManager.stopScan()
+
+        preloadKnownPeripherals()
 
         // Use nil services so sensors that don't advertise service UUIDs are still discoverable.
         centralManager.scanForPeripherals(withServices: nil, options: [
             CBCentralManagerScanOptionAllowDuplicatesKey: true
         ])
+
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            await MainActor.run {
+                guard let self = self else { return }
+                guard self.isScanning, self.activeScanID == scanID, self.discoveredDevices.isEmpty else { return }
+                self.scanStatusMessage = "No sensors found yet. Spin wheel/crank and make sure sensor is not connected to another app/device."
+            }
+        }
         
         logger.info("Started scanning for BLE sensors")
     }
@@ -77,6 +91,7 @@ class BLEManager: NSObject, ObservableObject {
     func stopScanning() {
         isScanning = false
         pendingScanRequest = false
+        activeScanID = nil
         scanStatusMessage = "Scan stopped"
         centralManager.stopScan()
         logger.info("Stopped scanning for BLE sensors")
@@ -210,6 +225,42 @@ class BLEManager: NSObject, ObservableObject {
         preferredPeripheralIDs.remove(peripheral.identifier)
         persistPreferredPeripheralIDs()
     }
+    
+    private func preloadKnownPeripherals() {
+        let connected = centralManager.retrieveConnectedPeripherals(withServices: [cscServiceUUID, hrServiceUUID])
+        for peripheral in connected {
+            upsertDiscovered(peripheral)
+            handleConnectedPeripheral(peripheral)
+        }
+
+        if !preferredPeripheralIDs.isEmpty {
+            let saved = centralManager.retrievePeripherals(withIdentifiers: Array(preferredPeripheralIDs))
+            for peripheral in saved {
+                upsertDiscovered(peripheral)
+                if peripheral.state == .connected {
+                    handleConnectedPeripheral(peripheral)
+                }
+            }
+        }
+
+        if !connected.isEmpty {
+            scanStatusMessage = connected.count == 1 ? "Found 1 connected sensor" : "Found \(connected.count) connected sensors"
+        }
+    }
+
+    private func upsertDiscovered(_ peripheral: CBPeripheral) {
+        if let idx = discoveredDevices.firstIndex(where: { $0.identifier == peripheral.identifier }) {
+            discoveredDevices[idx] = peripheral
+        } else {
+            discoveredDevices.append(peripheral)
+        }
+    }
+
+    private func handleConnectedPeripheral(_ peripheral: CBPeripheral) {
+        peripheral.delegate = self
+        connectedDevices.insert(peripheral)
+        peripheral.discoverServices([cscServiceUUID, hrServiceUUID])
+    }
 
     private func scanBlockedMessage(for state: CBManagerState) -> String {
         switch state {
@@ -246,7 +297,7 @@ class BLEManager: NSObject, ObservableObject {
         let lowered = localName.lowercased()
         let keywords = [
             "cadence", "speed", "heart", "hr", "tickr", "rpm", "wahoo",
-            "garmin", "polar", "stages", "assioma", "magene", "sensor"
+            "garmin", "polar", "stages", "assioma", "magene", "coospo", "bk9", "sensor"
         ]
         if keywords.contains(where: { lowered.contains($0) }) {
             return true
@@ -320,13 +371,10 @@ extension BLEManager: CBCentralManagerDelegate {
     nonisolated func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         Task { @MainActor in
             guard isPotentialCyclingSensor(peripheral, advertisementData: advertisementData) else { return }
+            let isNewDevice = !discoveredDevices.contains(where: { $0.identifier == peripheral.identifier })
+            upsertDiscovered(peripheral)
+            if !isNewDevice { return }
 
-            if let idx = discoveredDevices.firstIndex(where: { $0.identifier == peripheral.identifier }) {
-                discoveredDevices[idx] = peripheral
-                return
-            }
-
-            discoveredDevices.append(peripheral)
             logger.info("Discovered: \(peripheral.name ?? "Unknown") (\(peripheral.identifier))")
             let count = discoveredDevices.count
             scanStatusMessage = count == 1 ? "Found 1 sensor" : "Found \(count) sensors"
@@ -341,10 +389,17 @@ extension BLEManager: CBCentralManagerDelegate {
     
     nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         Task { @MainActor in
-            connectedDevices.insert(peripheral)
-            peripheral.discoverServices([cscServiceUUID, hrServiceUUID])
+            handleConnectedPeripheral(peripheral)
             scanStatusMessage = "Connected to \(peripheral.name ?? "sensor")"
             logger.info("Connected to \(peripheral.name ?? "Unknown")")
+        }
+    }
+
+    nonisolated func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        Task { @MainActor in
+            let message = error?.localizedDescription ?? "Connection failed"
+            scanStatusMessage = "Failed to connect to \(peripheral.name ?? "sensor"): \(message)"
+            logger.error("Failed to connect to \(peripheral.name ?? "Unknown"): \(message, privacy: .public)")
         }
     }
     
