@@ -63,6 +63,11 @@ class RideCoordinator: ObservableObject {
             apiService: apiService
         )
         self.navigationManager = RouteNavigationManager(locationManager: locationManager)
+
+        // Ensure all engines share the same rider profile instance at startup.
+        self.fitnessProfileManager.currentProfile = riderParams
+        self.powerEngine.riderParameters = riderParams
+        self.intelligenceEngine.updateRiderParameters(riderParams)
         
         // Link learning engine to other components
         self.powerEngine.learningEngine = learningEngine
@@ -78,6 +83,21 @@ class RideCoordinator: ObservableObject {
                     self.learningEngine.learnedParameters = params
                 }
             }
+        }
+    }
+
+    func configurePersistenceUser(_ userId: String?) {
+        persistenceManager.setCurrentUser(userId)
+        let profile = persistenceManager.loadRiderParameters() ?? RiderParameters.default
+        applyRiderProfile(profile, persist: false)
+    }
+
+    func applyRiderProfile(_ profile: RiderParameters, persist: Bool = true) {
+        fitnessProfileManager.currentProfile = profile
+        powerEngine.riderParameters = profile
+        intelligenceEngine.updateRiderParameters(profile)
+        if persist {
+            fitnessProfileManager.saveProfile()
         }
     }
     

@@ -82,11 +82,11 @@ struct SettingsView: View {
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
                         .onChange(of: ftp) { _, newValue in
-                            if let ftpValue = Double(newValue), ftpValue > 0 {
-                                coordinator.powerEngine.riderParameters.ftp = ftpValue
-                                coordinator.powerEngine.riderParameters.ftpLastUpdated = Date()
-                                coordinator.fitnessProfileManager.saveProfile()
-                            }
+                            guard let ftpValue = Double(newValue), ftpValue > 0 else { return }
+                            var profile = coordinator.fitnessProfileManager.currentProfile
+                            profile.ftp = ftpValue
+                            profile.ftpLastUpdated = Date()
+                            coordinator.applyRiderProfile(profile)
                         }
                 }
                 
@@ -126,10 +126,10 @@ struct SettingsView: View {
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
                         .onChange(of: maxHR) { _, newValue in
-                            if let maxHRValue = Int(newValue), maxHRValue > 0 {
-                                coordinator.powerEngine.riderParameters.maxHeartRate = maxHRValue
-                                coordinator.fitnessProfileManager.saveProfile()
-                            }
+                            guard let maxHRValue = Int(newValue), maxHRValue > 0 else { return }
+                            var profile = coordinator.fitnessProfileManager.currentProfile
+                            profile.maxHeartRate = maxHRValue
+                            coordinator.applyRiderProfile(profile)
                         }
                 }
                 
@@ -139,12 +139,14 @@ struct SettingsView: View {
                     TextField("Resting HR", text: $restingHR)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 80)                        .onChange(of: restingHR) { _, newValue in
-                            if let restingHRValue = Int(newValue), restingHRValue > 0 {
-                                coordinator.powerEngine.riderParameters.restingHeartRate = restingHRValue
-                                coordinator.fitnessProfileManager.saveProfile()
-                            }
-                        }                }
+                        .frame(width: 80)
+                        .onChange(of: restingHR) { _, newValue in
+                            guard let restingHRValue = Int(newValue), restingHRValue > 0 else { return }
+                            var profile = coordinator.fitnessProfileManager.currentProfile
+                            profile.restingHeartRate = restingHRValue
+                            coordinator.applyRiderProfile(profile)
+                        }
+                }
             }
             
             // Strava Integration Section
@@ -318,7 +320,7 @@ struct SettingsView: View {
                 
                 Section("Sensors") {
                     NavigationLink("Bluetooth Devices") {
-                        SensorSettingsView()
+                        SensorSettingsView(bleManager: coordinator.bleManager)
                     }
                 }
                 
@@ -364,7 +366,8 @@ struct SettingsView: View {
     }
     
     private func loadParameters() {
-        let params = coordinator.powerEngine.riderParameters
+        let params = coordinator.fitnessProfileManager.currentProfile
+        coordinator.applyRiderProfile(params, persist: false)
         mass = params.mass
         cda = params.cda
         crr = params.crr
@@ -384,37 +387,32 @@ struct SettingsView: View {
     }
     
     private func applyParameters() {
-        coordinator.powerEngine.riderParameters.mass = mass
-        coordinator.powerEngine.riderParameters.cda = cda
-        coordinator.powerEngine.riderParameters.crr = crr
+        var profile = coordinator.fitnessProfileManager.currentProfile
+        profile.mass = mass
+        profile.cda = cda
+        profile.crr = crr
         
         // Save FTP if provided
         if let ftpValue = Double(ftp), ftpValue > 0 {
-            coordinator.powerEngine.riderParameters.ftp = ftpValue
-            coordinator.powerEngine.riderParameters.ftpLastUpdated = Date()
+            profile.ftp = ftpValue
+            profile.ftpLastUpdated = Date()
         }
         
         // Save heart rate values if provided
         if let maxHRValue = Int(maxHR), maxHRValue > 0 {
-            coordinator.powerEngine.riderParameters.maxHeartRate = maxHRValue
+            profile.maxHeartRate = maxHRValue
         }
         if let restingHRValue = Int(restingHR), restingHRValue > 0 {
-            coordinator.powerEngine.riderParameters.restingHeartRate = restingHRValue
+            profile.restingHeartRate = restingHRValue
         }
-        
-        // Save to persistence
-        coordinator.fitnessProfileManager.currentProfile.mass = mass
-        coordinator.fitnessProfileManager.currentProfile.cda = cda
-        coordinator.fitnessProfileManager.currentProfile.crr = crr
-        coordinator.fitnessProfileManager.currentProfile.drivetrainLoss = coordinator.powerEngine.riderParameters.drivetrainLoss
-        coordinator.fitnessProfileManager.currentProfile.ftp = coordinator.powerEngine.riderParameters.ftp
-        coordinator.fitnessProfileManager.saveProfile()
+
+        coordinator.applyRiderProfile(profile)
 
         // Sync to backend (best-effort)
         Task {
             do {
                 let position = selectedPosition.lowercased()
-                try await coordinator.apiService.syncActiveRiderParameters(profile: coordinator.fitnessProfileManager.currentProfile, position: position)
+                try await coordinator.apiService.syncActiveRiderParameters(profile: profile, position: position)
             } catch {
                 print("⚠️ Failed to sync rider parameters: \(error.localizedDescription)")
             }
@@ -425,7 +423,10 @@ struct SettingsView: View {
         var profile = coordinator.fitnessProfileManager.currentProfile
         
         if let ftpValue = Double(ftp), ftpValue > 0 {
-            coordinator.fitnessProfileManager.updateFTP(ftpValue)
+            profile.ftp = ftpValue
+            profile.ftpLastUpdated = Date()
+            coordinator.fitnessProfileManager.ftpNeedsUpdate = false
+            coordinator.fitnessProfileManager.ftpUpdateSuggestion = nil
         }
         
         if let maxHRValue = Int(maxHR), maxHRValue > 0 {
@@ -435,17 +436,13 @@ struct SettingsView: View {
         if let restingHRValue = Int(restingHR), restingHRValue > 0 {
             profile.restingHeartRate = restingHRValue
         }
-        
-        // Update intelligence engine with new parameters
-        coordinator.intelligenceEngine.updateRiderParameters(profile)
 
-        coordinator.fitnessProfileManager.currentProfile = profile
-        coordinator.fitnessProfileManager.saveProfile()
+        coordinator.applyRiderProfile(profile)
 
         Task {
             do {
                 let position = selectedPosition.lowercased()
-                try await coordinator.apiService.syncActiveRiderParameters(profile: coordinator.fitnessProfileManager.currentProfile, position: position)
+                try await coordinator.apiService.syncActiveRiderParameters(profile: profile, position: position)
             } catch {
                 print("⚠️ Failed to sync fitness profile: \(error.localizedDescription)")
             }
@@ -510,7 +507,8 @@ struct CalibrationView: View {
 }
 
 struct SensorSettingsView: View {
-    @EnvironmentObject var coordinator: RideCoordinator
+    @ObservedObject var bleManager: BLEManager
+    @State private var didAutoStartScan = false
     
     private func deviceDisplayName(_ device: CBPeripheral) -> String {
         if let name = device.name?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -522,7 +520,7 @@ struct SensorSettingsView: View {
     }
 
     private var bluetoothStateText: String {
-        switch coordinator.bleManager.bluetoothState {
+        switch bleManager.bluetoothState {
         case .poweredOn:
             return "Bluetooth is on"
         case .poweredOff:
@@ -539,7 +537,7 @@ struct SensorSettingsView: View {
     }
 
     private var bluetoothStateColor: Color {
-        switch coordinator.bleManager.bluetoothState {
+        switch bleManager.bluetoothState {
         case .poweredOn:
             return .green
         case .poweredOff, .unauthorized, .unsupported:
@@ -561,13 +559,13 @@ struct SensorSettingsView: View {
                     Text(bluetoothStateText)
                 }
 
-                if let message = coordinator.bleManager.scanStatusMessage, !message.isEmpty {
+                if let message = bleManager.scanStatusMessage, !message.isEmpty {
                     Text(message)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
 
-                if coordinator.bleManager.isScanning && coordinator.bleManager.discoveredDevices.isEmpty {
+                if bleManager.isScanning && bleManager.discoveredDevices.isEmpty {
                     Text("Tip: Wake sensors by spinning wheel/crank while scanning.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
@@ -575,14 +573,14 @@ struct SensorSettingsView: View {
             }
 
             Section("Connected Sensors") {
-                ForEach(coordinator.bleManager.connectedDevices, id: \.identifier) { device in
+                ForEach(bleManager.connectedDevices, id: \.identifier) { device in
                     HStack {
                         Image(systemName: "sensor.fill")
                             .foregroundColor(.green)
                         Text(deviceDisplayName(device))
                         Spacer()
                         Button("Disconnect") {
-                            coordinator.bleManager.disconnect(from: device)
+                            bleManager.disconnect(from: device)
                         }
                         .font(.caption)
                         .foregroundColor(.red)
@@ -591,30 +589,30 @@ struct SensorSettingsView: View {
             }
             
             Section("Available Devices") {
-                if coordinator.bleManager.isScanning {
+                if bleManager.isScanning {
                     HStack {
                         ProgressView()
                         Text("Scanning...")
                             .foregroundColor(.secondary)
                     }
-                } else if coordinator.bleManager.discoveredDevices.isEmpty {
+                } else if bleManager.discoveredDevices.isEmpty {
                     Text("Tap Scan to find nearby cadence/speed/heart-rate sensors.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
-                ForEach(coordinator.bleManager.discoveredDevices, id: \.identifier) { device in
+                ForEach(bleManager.discoveredDevices, id: \.identifier) { device in
                     Button(action: {
-                        coordinator.bleManager.connect(to: device)
+                        bleManager.connect(to: device)
                     }) {
                         HStack {
                             Image(systemName: "sensor")
                             Text(deviceDisplayName(device))
                             Spacer()
-                            if coordinator.bleManager.isConnected(device) {
+                            if bleManager.isConnected(device) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
-                            } else if coordinator.bleManager.isConnecting(device) {
+                            } else if bleManager.isConnecting(device) {
                                 ProgressView()
                                     .controlSize(.small)
                             } else {
@@ -623,18 +621,27 @@ struct SensorSettingsView: View {
                             }
                         }
                     }
-                    .disabled(coordinator.bleManager.isConnected(device) || coordinator.bleManager.isConnecting(device))
+                    .disabled(bleManager.isConnected(device) || bleManager.isConnecting(device))
                 }
             }
         }
         .navigationTitle("Sensors")
+        .onAppear {
+            guard !didAutoStartScan else { return }
+            didAutoStartScan = true
+            if bleManager.bluetoothState == .poweredOn,
+               bleManager.connectedDevices.isEmpty,
+               bleManager.discoveredDevices.isEmpty {
+                bleManager.startScanning()
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(coordinator.bleManager.isScanning ? "Stop Scan" : "Scan") {
-                    if coordinator.bleManager.isScanning {
-                        coordinator.bleManager.stopScanning()
+                Button(bleManager.isScanning ? "Stop Scan" : "Scan") {
+                    if bleManager.isScanning {
+                        bleManager.stopScanning()
                     } else {
-                        coordinator.bleManager.startScanning()
+                        bleManager.startScanning()
                     }
                 }
             }

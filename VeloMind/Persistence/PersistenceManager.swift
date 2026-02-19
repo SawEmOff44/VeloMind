@@ -23,6 +23,18 @@ class PersistenceManager: ObservableObject {
     
     func setCurrentUser(_ userId: String?) {
         self.userId = userId
+
+        guard let userId else { return }
+
+        let userScopedPreferences = "userPreferences_\(userId)"
+        let defaultPreferences = "userPreferences_default"
+
+        // Preserve existing local profile values when moving from unauthenticated to user-scoped storage.
+        if UserDefaults.standard.data(forKey: userScopedPreferences) == nil,
+           let defaultData = UserDefaults.standard.data(forKey: defaultPreferences) {
+            UserDefaults.standard.set(defaultData, forKey: userScopedPreferences)
+            logger.info("Seeded rider parameters for user \(userId, privacy: .public) from default scope")
+        }
     }
     
     // MARK: - Ride Sessions

@@ -15,11 +15,13 @@ struct VeloMindApp: App {
                     .statusBar(hidden: true)
                     .edgesIgnoringSafeArea(.all)
                     .onAppear {
-                        if let userId = authManager.currentUser?.id {
-                            rideCoordinator.persistenceManager.setCurrentUser(String(userId))
-                        }
+                        let userId = authManager.currentUser.map { String($0.id) }
+                        rideCoordinator.configurePersistenceUser(userId)
                         rideCoordinator.authManager = authManager
                         rideCoordinator.retryPendingSessionUploads()
+                    }
+                    .onChange(of: authManager.currentUser?.id) { _, newUserID in
+                        rideCoordinator.configurePersistenceUser(newUserID.map { String($0) })
                     }
                     .onChange(of: scenePhase) { _, phase in
                         guard authManager.isAuthenticated else { return }
@@ -40,6 +42,9 @@ struct VeloMindApp: App {
             } else {
                 LoginView()
                     .environmentObject(authManager)
+                    .onAppear {
+                        rideCoordinator.configurePersistenceUser(nil)
+                    }
             }
         }
     }
