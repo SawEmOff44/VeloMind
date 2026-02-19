@@ -170,14 +170,28 @@ class APIService: ObservableObject {
     }
 
     func downloadRouteWithWaypoints(id: Int) async throws -> Route {
-        guard let url = URL(string: "\(baseURL)/gpx/\(id)/download") else {
+        guard let primaryURL = URL(string: "\(baseURL)/gpx/\(id)/download"),
+              let fallbackURL = URL(string: "\(baseURL)/gpx/\(id)") else {
             throw APIError.invalidURL
         }
 
+        do {
+            return try await fetchRoute(url: primaryURL)
+        } catch let apiError as APIError {
+            if case .httpError(let statusCode, _) = apiError, statusCode == 404 || statusCode == 405 {
+                return try await fetchRoute(url: fallbackURL)
+            }
+            throw apiError
+        } catch is DecodingError {
+            return try await fetchRoute(url: fallbackURL)
+        }
+    }
+
+    private func fetchRoute(url: URL) async throws -> Route {
         let request = authorizedRequest(url: url)
         let (data, response) = try await URLSession.shared.data(for: request)
 
-                try validateHTTPResponse(response, data: data, acceptable: 200...200)
+        try validateHTTPResponse(response, data: data, acceptable: 200...200)
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase

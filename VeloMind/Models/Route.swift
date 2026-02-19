@@ -103,6 +103,57 @@ struct RoutePoint: Codable {
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
+
+    enum CodingKeys: String, CodingKey {
+        case latitude
+        case longitude
+        case elevation
+        case distance
+        // Back-compat keys from older payloads
+        case lat
+        case lon
+        case ele
+        case alt
+        case altitude
+        case dist
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        latitude =
+            container.decodeLossyDoubleIfPresent(forKey: .latitude) ??
+            container.decodeLossyDoubleIfPresent(forKey: .lat) ??
+            0
+        longitude =
+            container.decodeLossyDoubleIfPresent(forKey: .longitude) ??
+            container.decodeLossyDoubleIfPresent(forKey: .lon) ??
+            0
+        elevation =
+            container.decodeLossyDoubleIfPresent(forKey: .elevation) ??
+            container.decodeLossyDoubleIfPresent(forKey: .ele) ??
+            container.decodeLossyDoubleIfPresent(forKey: .alt) ??
+            container.decodeLossyDoubleIfPresent(forKey: .altitude)
+        distance =
+            container.decodeLossyDoubleIfPresent(forKey: .distance) ??
+            container.decodeLossyDoubleIfPresent(forKey: .dist) ??
+            0
+    }
+
+    init(latitude: Double, longitude: Double, elevation: Double?, distance: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.elevation = elevation
+        self.distance = distance
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(latitude, forKey: .latitude)
+        try container.encode(longitude, forKey: .longitude)
+        try container.encodeIfPresent(elevation, forKey: .elevation)
+        try container.encode(distance, forKey: .distance)
+    }
 }
 
 /// Represents a complete route
@@ -129,7 +180,46 @@ struct Route: Codable, Identifiable {
         case id, name, points, waypoints
         case totalDistance = "total_distance"
         case totalElevationGain = "total_elevation_gain"
+        // Back-compat keys
+        case totalDistanceAlt = "totalDistance"
+        case totalElevationGainAlt = "totalElevationGain"
+        case elevationGain = "elevation_gain"
         case createdAt = "created_at"
+        case createdAtAlt = "createdAt"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = (try? container.decode(Int.self, forKey: .id)) ?? 0
+        name = (try? container.decode(String.self, forKey: .name)) ?? "Route"
+        points = (try? container.decode([RoutePoint].self, forKey: .points)) ?? []
+
+        totalDistance =
+            container.decodeLossyDoubleIfPresent(forKey: .totalDistance) ??
+            container.decodeLossyDoubleIfPresent(forKey: .totalDistanceAlt) ??
+            0
+        totalElevationGain =
+            container.decodeLossyDoubleIfPresent(forKey: .totalElevationGain) ??
+            container.decodeLossyDoubleIfPresent(forKey: .totalElevationGainAlt) ??
+            container.decodeLossyDoubleIfPresent(forKey: .elevationGain) ??
+            0
+
+        waypoints = (try? container.decode([RouteWaypoint].self, forKey: .waypoints)) ?? []
+        createdAt =
+            (try? container.decodeIfPresent(Date.self, forKey: .createdAt)) ??
+            (try? container.decodeIfPresent(Date.self, forKey: .createdAtAlt))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(points, forKey: .points)
+        try container.encode(totalDistance, forKey: .totalDistance)
+        try container.encode(totalElevationGain, forKey: .totalElevationGain)
+        try container.encode(waypoints, forKey: .waypoints)
+        try container.encodeIfPresent(createdAt, forKey: .createdAt)
     }
 }
 
