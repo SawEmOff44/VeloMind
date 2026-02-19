@@ -61,7 +61,7 @@ struct SettingsView: View {
             
             // Routes Section
             Section {
-                RoutesSyncView(coordinator: coordinator)
+                RoutesSyncView(coordinator: coordinator, routeManager: coordinator.routeManager)
             } header: {
                 HStack {
                     Image(systemName: "map")
@@ -653,13 +653,14 @@ struct SensorSettingsView: View {
 
 struct RoutesSyncView: View {
     @ObservedObject var coordinator: RideCoordinator
+    @ObservedObject var routeManager: RouteManager
     @State private var syncing = false
     @State private var syncError: String?
     @State private var lastSyncDate: Date?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if let route = coordinator.routeManager.currentRoute {
+            if let route = routeManager.currentRoute {
                 HStack {
                     Image(systemName: "map.fill")
                         .foregroundColor(.green)

@@ -43,7 +43,7 @@ struct MenuView: View {
                         Label("Ride", systemImage: "bicycle")
                     }
                     
-                    NavigationLink(destination: RouteView()) {
+                    NavigationLink(destination: RouteView(routeManager: coordinator.routeManager)) {
                         Label("Routes", systemImage: "map")
                     }
                     

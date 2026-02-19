@@ -4,16 +4,18 @@ import Foundation
 
 struct RouteView: View {
     @EnvironmentObject var coordinator: RideCoordinator
+    @ObservedObject var routeManager: RouteManager
     @StateObject private var apiService = APIService()
     @State private var isImporting = false
     @State private var availableRoutes: [RouteInfo] = []
     @State private var isLoadingRoutes = false
+    @State private var loadingRouteID: Int?
     @State private var errorMessage: String?
     
     var body: some View {
         List {
             // Current Active Route
-            if let route = coordinator.routeManager.currentRoute {
+            if let route = routeManager.currentRoute {
                 Section("Active Route") {
                     RouteCard(route: route)
                 }
@@ -35,7 +37,11 @@ struct RouteView: View {
                     )
                 } else {
                     ForEach(availableRoutes) { routeInfo in
-                        RouteInfoCard(routeInfo: routeInfo) {
+                        RouteInfoCard(
+                            routeInfo: routeInfo,
+                            isActive: routeManager.currentRoute?.id == routeInfo.id,
+                            isLoading: loadingRouteID == routeInfo.id
+                        ) {
                             loadRouteFromBackend(routeInfo)
                         }
                     }
@@ -100,11 +106,15 @@ struct RouteView: View {
     }
     
     private func loadRouteFromBackend(_ routeInfo: RouteInfo) {
+        loadingRouteID = routeInfo.id
+        errorMessage = nil
         Task {
             do {
                 let route = try await apiService.downloadRouteWithWaypoints(id: routeInfo.id)
-                coordinator.routeManager.loadRemoteRoute(route)
+                routeManager.loadRemoteRoute(route)
+                loadingRouteID = nil
             } catch {
+                loadingRouteID = nil
                 errorMessage = "Failed to load route: \(error.localizedDescription)"
             }
         }
@@ -124,7 +134,7 @@ struct RouteView: View {
                     
                     if metadata.canLoadLocally {
                         do {
-                            try await coordinator.routeManager.loadRoute(from: data, name: name)
+                            try await routeManager.loadRoute(from: data, name: name)
                             loadedLocally = true
                         } catch {
                             print("⚠️ Local route parse failed, falling back to backend parser: \(error.localizedDescription)")
@@ -141,7 +151,7 @@ struct RouteView: View {
 
                     // Reload from backend so we keep route id + server waypoints.
                     let remoteRoute = try await apiService.downloadRouteWithWaypoints(id: uploadedRoute.id)
-                    coordinator.routeManager.loadRemoteRoute(remoteRoute)
+                    routeManager.loadRemoteRoute(remoteRoute)
                     
                     // Refresh list
                     await fetchRoutes()
@@ -326,6 +336,8 @@ struct RouteCard: View {
 
 struct RouteInfoCard: View {
     let routeInfo: RouteInfo
+    let isActive: Bool
+    let isLoading: Bool
     let onLoad: () -> Void
     
     var body: some View {
@@ -346,16 +358,26 @@ struct RouteInfoCard: View {
                 
                 Spacer()
                 
-                Image(systemName: "arrow.down.circle")
-                    .foregroundColor(.blue)
-                    .font(.title3)
+                if isLoading {
+                    ProgressView()
+                } else if isActive {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.title3)
+                } else {
+                    Image(systemName: "arrow.down.circle")
+                        .foregroundColor(.blue)
+                        .font(.title3)
+                }
             }
         }
+        .disabled(isLoading)
         .padding(.vertical, 4)
     }
 }
 
 #Preview {
-    RouteView()
-        .environmentObject(RideCoordinator())
+    let coordinator = RideCoordinator()
+    RouteView(routeManager: coordinator.routeManager)
+        .environmentObject(coordinator)
 }

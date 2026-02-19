@@ -867,24 +867,23 @@ struct PowerZoneGauge: View {
     let targetZone: PowerZone?
     let currentPower: Double
     let ftp: Double
-    var compact: Bool = false
     
     private let allZones: [PowerZone] = [.recovery, .endurance, .tempo, .threshold, .vo2max, .anaerobic]
     
     var body: some View {
-        VStack(spacing: compact ? 5 : 7) {
+        VStack(spacing: 4) {
             // Header
             HStack {
                 Text("POWER ZONE")
-                    .font(.caption2)
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
                     .tracking(0.5)
                 Spacer()
                 Text("\(Int(currentPower))W")
-                    .font(compact ? .subheadline : .headline)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                 Text("(\(Int((currentPower / ftp) * 100))% FTP)")
-                    .font(.caption2)
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
             }
             
@@ -894,24 +893,24 @@ struct PowerZoneGauge: View {
                     ZStack {
                         Rectangle()
                             .fill(zone.color.opacity(currentZone == zone ? 1.0 : 0.3))
-                            .frame(height: compact ? 18 : 22)
+                            .frame(height: 12)
                         
                         if currentZone == zone {
                             Rectangle()
                                 .fill(Color.white.opacity(0.3))
-                                .frame(height: compact ? 18 : 22)
+                                .frame(height: 12)
                                 .overlay(
                                     Rectangle()
-                                        .stroke(Color.white, lineWidth: 2)
+                                        .stroke(Color.white, lineWidth: 1.5)
                                 )
                         }
                         
                         if let target = targetZone, target == zone {
                             VStack {
                                 Image(systemName: "arrowtriangle.down.fill")
-                                    .font(.caption2)
+                                    .font(.system(size: 8))
                                     .foregroundColor(.white)
-                                    .offset(y: -8)
+                                    .offset(y: -5)
                                 Spacer()
                             }
                         }
@@ -923,16 +922,16 @@ struct PowerZoneGauge: View {
             // Labels
             HStack {
                 Text(currentZone.rawValue)
-                    .font(.caption2)
+                    .font(.system(size: 10, weight: .semibold))
                     .fontWeight(.semibold)
                     .foregroundColor(currentZone.color)
                 
                 if let target = targetZone, target != currentZone {
                     Image(systemName: "arrow.right")
-                        .font(.caption2)
+                        .font(.system(size: 9, weight: .medium))
                         .foregroundColor(.gray)
                     Text(target.rawValue)
-                        .font(.caption2)
+                        .font(.system(size: 10, weight: .semibold))
                         .fontWeight(.semibold)
                         .foregroundColor(target.color)
                 }
@@ -940,14 +939,14 @@ struct PowerZoneGauge: View {
                 Spacer()
                 
                 Text(currentZone.ftpRange)
-                    .font(.caption2)
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, compact ? 8 : 10)
-        .background(Color.gray.opacity(0.15))
-        .cornerRadius(10)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(Color.gray.opacity(0.12))
+        .cornerRadius(8)
     }
 }
 
@@ -956,14 +955,13 @@ struct IntelligenceMetricsView: View {
     var compact: Bool = false
     
     var body: some View {
-        VStack(spacing: compact ? 6 : 10) {
+        VStack(spacing: compact ? 5 : 8) {
             // Phase 2: Power Zone Gauge
             PowerZoneGauge(
                 currentZone: coordinator.intelligenceEngine.currentPowerZone,
                 targetZone: coordinator.intelligenceEngine.targetPowerZone,
                 currentPower: coordinator.powerEngine.smoothedPower3s,
-                ftp: coordinator.intelligenceEngine.riderParameters.ftp ?? 200,
-                compact: compact
+                ftp: coordinator.intelligenceEngine.riderParameters.ftp ?? 200
             )
             
             // Environmental Load & Effort Budget
