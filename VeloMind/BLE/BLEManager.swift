@@ -5,6 +5,12 @@ import os.log
 /// Manages BLE connections to cycling sensors
 @MainActor
 class BLEManager: NSObject, ObservableObject {
+    enum SensorFreshnessState {
+        case live
+        case stale
+        case inactive
+    }
+
     // MARK: - Published Properties
     @Published var isScanning = false
     @Published var discoveredDevices: [CBPeripheral] = []
@@ -16,6 +22,8 @@ class BLEManager: NSObject, ObservableObject {
     @Published var connectionStatus: [BLESensorType: Bool] = [:]
     @Published var bluetoothState: CBManagerState = .unknown
     @Published var scanStatusMessage: String?
+    @Published var speedFreshness: SensorFreshnessState = .inactive
+    @Published var cadenceFreshness: SensorFreshnessState = .inactive
     
     // MARK: - Private Properties
     private var centralManager: CBCentralManager!
@@ -343,6 +351,7 @@ class BLEManager: NSObject, ObservableObject {
             delegate?.didUpdateSpeed(normalized, timestamp: timestamp)
         }
         lastSpeedUpdateAt = timestamp
+        speedFreshness = .live
     }
     
     private func publishCadence(_ value: Double, timestamp: Date) {
@@ -352,14 +361,27 @@ class BLEManager: NSObject, ObservableObject {
             delegate?.didUpdateCadence(normalized, timestamp: timestamp)
         }
         lastCadenceUpdateAt = timestamp
+        cadenceFreshness = .live
     }
     
     private func applyStaleValueTimeouts(at now: Date) {
+        let hasSpeedCadenceConnection = connectionStatus[.speedAndCadence] == true
+        if !hasSpeedCadenceConnection {
+            speedFreshness = .inactive
+            cadenceFreshness = .inactive
+            return
+        }
+
         if let lastSpeedUpdateAt,
            now.timeIntervalSince(lastSpeedUpdateAt) >= speedStaleTimeout,
            currentSpeed != 0 {
             currentSpeed = 0
             delegate?.didUpdateSpeed(0, timestamp: now)
+        }
+        if let lastSpeedUpdateAt {
+            speedFreshness = now.timeIntervalSince(lastSpeedUpdateAt) < speedStaleTimeout ? .live : .stale
+        } else {
+            speedFreshness = .inactive
         }
         
         if let lastCadenceUpdateAt,
@@ -367,6 +389,11 @@ class BLEManager: NSObject, ObservableObject {
            currentCadence != 0 {
             currentCadence = 0
             delegate?.didUpdateCadence(0, timestamp: now)
+        }
+        if let lastCadenceUpdateAt {
+            cadenceFreshness = now.timeIntervalSince(lastCadenceUpdateAt) < cadenceStaleTimeout ? .live : .stale
+        } else {
+            cadenceFreshness = .inactive
         }
     }
 
@@ -536,6 +563,8 @@ extension BLEManager: CBCentralManagerDelegate {
                 currentCadence = 0
                 lastSpeedUpdateAt = nil
                 lastCadenceUpdateAt = nil
+                speedFreshness = .inactive
+                cadenceFreshness = .inactive
             }
 
             if let error = error {

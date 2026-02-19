@@ -13,38 +13,35 @@ struct RideView: View {
     }
     
     var body: some View {
-        ZStack {
-            // Background - full screen
-            Color.black
+        GeometryReader { proxy in
+            let compactLayout = proxy.size.height < 760 || proxy.size.width > proxy.size.height
+            ZStack {
+                // Background - full screen
+                Color.black
+                    .edgesIgnoringSafeArea(.all)
+                
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.clear, Color.gray.opacity(0.22)]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
                 .edgesIgnoringSafeArea(.all)
-            
-            LinearGradient(
-                gradient: Gradient(colors: [Color.clear, Color.gray.opacity(0.3)]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .edgesIgnoringSafeArea(.all)
-            
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 8) {
-                    // Background Status Indicator
+                
+                VStack(spacing: compactLayout ? 6 : 8) {
                     if coordinator.backgroundTaskManager.isInBackground {
                         BackgroundStatusBanner(manager: coordinator.backgroundTaskManager)
-                            .padding(.top, 50)
                     }
                     
-                    // Navigation Box - Full width at top
+                    // Fixed nav height so active navigation does not push out other data.
                     NavigationAlertBox()
-                        .frame(height: 80)
-                        .padding(.top, coordinator.backgroundTaskManager.isInBackground ? 8 : 50)
+                        .frame(height: compactLayout ? 62 : 72)
                     
-                    // Intelligence Alerts
-                    IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
-                        .padding(.horizontal, 8)
+                    SensorFreshnessStrip(
+                        speedState: coordinator.bleManager.speedFreshness,
+                        cadenceState: coordinator.bleManager.cadenceFreshness
+                    )
                     
-                    // Primary metrics
-                    VStack(spacing: 8) {
-                        // Power - Large display
+                    VStack(spacing: compactLayout ? 6 : 8) {
                         MetricCard(
                             title: "POWER",
                             value: String(format: "%.0f", coordinator.powerEngine.smoothedPower10s),
@@ -53,8 +50,7 @@ struct RideView: View {
                             size: .large
                         )
                         
-                        HStack(spacing: 10) {
-                            // Speed (convert m/s to mph)
+                        HStack(spacing: compactLayout ? 6 : 8) {
                             MetricCard(
                                 title: "SPEED",
                                 value: String(format: "%.1f", currentSpeedMps * 2.23694),
@@ -62,7 +58,6 @@ struct RideView: View {
                                 color: .veloCyan
                             )
                             
-                            // Cadence
                             MetricCard(
                                 title: "CADENCE",
                                 value: String(format: "%.0f", coordinator.bleManager.currentCadence),
@@ -71,19 +66,15 @@ struct RideView: View {
                             )
                         }
                     }
-                    .padding(.horizontal, 12)
                     
-                    // Secondary metrics
-                    VStack(spacing: 8) {
-                        HStack(spacing: 10) {
-                            // Wind (convert m/s to mph)
+                    VStack(spacing: compactLayout ? 6 : 8) {
+                        HStack(spacing: compactLayout ? 6 : 8) {
                             SmallMetricCard(
                                 title: "WIND",
                                 value: String(format: "%.1f", abs(coordinator.weatherManager.currentWind?.speed ?? 0) * 2.23694),
                                 unit: "mph"
                             )
                             
-                            // Grade
                             SmallMetricCard(
                                 title: "GRADE",
                                 value: String(format: "%.1f", (coordinator.routeManager.currentMatchResult?.grade150m ?? 0) * 100),
@@ -91,15 +82,13 @@ struct RideView: View {
                             )
                         }
                         
-                        HStack(spacing: 10) {
-                            // Duration
+                        HStack(spacing: compactLayout ? 6 : 8) {
                             SmallMetricCard(
                                 title: "TIME",
                                 value: formatDuration(coordinator.rideDuration),
                                 unit: ""
                             )
                             
-                            // Distance (convert m to miles)
                             SmallMetricCard(
                                 title: "DISTANCE",
                                 value: String(format: "%.2f", coordinator.rideDistance * 0.000621371),
@@ -107,50 +96,20 @@ struct RideView: View {
                             )
                         }
                     }
-                    .padding(.horizontal, 12)
                     
-                    // Intelligence Metrics
-                    IntelligenceMetricsView()
-                        .padding(.horizontal, 12)
+                    IntelligenceMetricsView(compact: compactLayout)
+                    IntelligenceAlertsView(engine: coordinator.intelligenceEngine)
                     
-                    // Phase 2 Polish: Power History Chart
-                    if !coordinator.intelligenceEngine.powerZoneHistory.isEmpty {
-                        PowerHistoryChart(
-                            history: coordinator.intelligenceEngine.powerZoneHistory,
-                            targetPower: coordinator.intelligenceEngine.routeAheadAnalysis?.requiredPower
-                        )
-                        .padding(.horizontal, 12)
-                    }
+                    Spacer(minLength: 0)
                     
-                    // Phase 2 Polish: Power Comparison
-                    if coordinator.intelligenceEngine.routeAheadAnalysis != nil {
-                        PowerComparison(
-                            currentPower: coordinator.powerEngine.smoothedPower10s,
-                            requiredPower: coordinator.intelligenceEngine.routeAheadAnalysis?.requiredPower,
-                            ftp: coordinator.intelligenceEngine.riderParameters.ftp
-                        )
-                        .padding(.horizontal, 12)
-                    }
-                    
-                    // Learning Mode Indicator
-                    if coordinator.learningEngine.learnedParameters.hasUsefulLearning {
-                        LearningActiveIndicator(learningEngine: coordinator.learningEngine)
-                            .padding(.horizontal, 12)
-                    }
-                    
-                    // Message Dialog Box - Full width
-                    MessageDialogBox()
-                        .padding(.top, 4)
-                    
-                    // Ride controls
                     RideControlButtons(coordinator: coordinator)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 12)
                 }
-                .padding(.vertical, 0)
+                .padding(.horizontal, compactLayout ? 8 : 10)
+                .padding(.top, coordinator.backgroundTaskManager.isInBackground ? 6 : max(6, proxy.safeAreaInsets.top + 2))
+                .padding(.bottom, max(8, proxy.safeAreaInsets.bottom))
             }
+            .edgesIgnoringSafeArea(.all)
         }
-        .edgesIgnoringSafeArea(.all)
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -163,6 +122,71 @@ struct RideView: View {
         } else {
             return String(format: "%02d:%02d", minutes, seconds)
         }
+    }
+}
+
+private extension BLEManager.SensorFreshnessState {
+    var label: String {
+        switch self {
+        case .live: return "Live"
+        case .stale: return "Stale"
+        case .inactive: return "Inactive"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .live: return .green
+        case .stale: return .orange
+        case .inactive: return .gray
+        }
+    }
+}
+
+struct SensorFreshnessStrip: View {
+    let speedState: BLEManager.SensorFreshnessState
+    let cadenceState: BLEManager.SensorFreshnessState
+
+    var body: some View {
+        HStack(spacing: 8) {
+            SensorFreshnessChip(label: "SPD", state: speedState)
+            SensorFreshnessChip(label: "CAD", state: cadenceState)
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.gray.opacity(0.14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.gray.opacity(0.25), lineWidth: 1)
+                )
+        )
+    }
+}
+
+struct SensorFreshnessChip: View {
+    let label: String
+    let state: BLEManager.SensorFreshnessState
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(state.color)
+                .frame(width: 7, height: 7)
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(.gray.opacity(0.9))
+            Text(state.label)
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundColor(state.color)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.black.opacity(0.2))
+        .cornerRadius(8)
     }
 }
 
@@ -209,7 +233,7 @@ struct NavigationAlertContent: View {
     @Binding var arrowScale: CGFloat
     
     var body: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 12) {
             // Direction Arrow with animated glow
             ZStack {
                 // Glow effect
@@ -222,7 +246,7 @@ struct NavigationAlertContent: View {
                             endRadius: 40
                         )
                     )
-                    .frame(width: 80, height: 80)
+                    .frame(width: 46, height: 46)
                     .scaleEffect(pulseAnimation ? 1.2 : 1.0)
                     .opacity(pulseAnimation ? 0.3 : 0.8)
                     .animation(
@@ -233,7 +257,7 @@ struct NavigationAlertContent: View {
                 
                 // Arrow icon
                 Image(systemName: direction.icon)
-                    .font(.system(size: 48, weight: .bold))
+                    .font(.system(size: 26, weight: .bold))
                     .foregroundColor(arrowColor)
                     .shadow(color: arrowColor.opacity(0.5), radius: 8, x: 0, y: 0)
                     .scaleEffect(arrowScale)
@@ -243,12 +267,12 @@ struct NavigationAlertContent: View {
                         value: arrowScale
                     )
             }
-            .frame(width: 80)
+            .frame(width: 48)
             
             // Distance Info with animated gradient text
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("IN \(distance)")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundStyle(
                         LinearGradient(
                             colors: [.white, arrowColor.opacity(0.8)],
@@ -259,9 +283,10 @@ struct NavigationAlertContent: View {
                     .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
                 
                 Text(direction.description)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white.opacity(0.9))
                     .tracking(0.5)
+                    .lineLimit(1)
             }
             
             Spacer()
@@ -277,8 +302,8 @@ struct NavigationAlertContent: View {
                     value: pulseAnimation
                 )
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(
             ZStack {
                 // Gradient background
@@ -305,7 +330,6 @@ struct NavigationAlertContent: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(color: arrowColor.opacity(0.3), radius: 12, x: 0, y: 4)
         )
-        .padding(.horizontal, 12)
         .onAppear {
             pulseAnimation = true
             arrowScale = 1.1
@@ -323,25 +347,26 @@ struct NavigationAlertContent: View {
 
 struct NoRouteContent: View {
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             Image(systemName: "map")
-                .font(.system(size: 40))
+                .font(.system(size: 22))
                 .foregroundColor(.gray.opacity(0.5))
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("No Route Loaded")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white.opacity(0.7))
                 
                 Text("Load a route in Settings for navigation")
-                    .font(.system(size: 14))
+                    .font(.system(size: 11))
                     .foregroundColor(.gray)
+                    .lineLimit(1)
             }
             
             Spacer()
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color.gray.opacity(0.15))
@@ -350,7 +375,6 @@ struct NoRouteContent: View {
                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
                 )
         )
-        .padding(.horizontal, 12)
     }
 }
 
@@ -449,19 +473,19 @@ struct RideControlButtons: View {
     @ObservedObject var coordinator: RideCoordinator
     
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 8) {
             if !coordinator.isRiding {
                 Button(action: {
                     coordinator.startRide()
                 }) {
                     HStack {
                         Image(systemName: "play.circle.fill")
-                            .font(.title2)
+                            .font(.headline)
                         Text("Start Ride")
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 11)
                     .background(
                         LinearGradient(
                             gradient: Gradient(colors: [Color.green, Color.green.opacity(0.8)]),
@@ -479,12 +503,12 @@ struct RideControlButtons: View {
                 }) {
                     HStack {
                         Image(systemName: "pause.circle.fill")
-                            .font(.title3)
+                            .font(.headline)
                         Text("Pause")
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 11)
                     .background(Color.yellow)
                     .foregroundColor(.black)
                     .cornerRadius(14)
@@ -495,12 +519,12 @@ struct RideControlButtons: View {
                 }) {
                     HStack {
                         Image(systemName: "stop.circle.fill")
-                            .font(.title3)
+                            .font(.headline)
                         Text("Stop")
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 11)
                     .background(
                         LinearGradient(
                             gradient: Gradient(colors: [Color.red, Color.red.opacity(0.8)]),
@@ -543,34 +567,34 @@ struct MetricCard: View {
     }
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             Text(title)
-                .font(size == .large ? .subheadline : .caption)
+                .font(.caption2)
                 .foregroundColor(.gray)
-                .tracking(1.5)
+                .tracking(1.2)
                 .fontWeight(.medium)
             
             HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text(value)
-                    .font(size == .large ? .system(size: 72, weight: .bold, design: .rounded) : .system(size: 38, weight: .bold, design: .rounded))
+                    .font(size == .large ? .system(size: 56, weight: .bold, design: .rounded) : .system(size: 30, weight: .bold, design: .rounded))
                     .foregroundColor(color)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                 
                 Text(unit)
-                    .font(size == .large ? .title : .title3)
+                    .font(size == .large ? .title3 : .footnote)
                     .foregroundColor(.gray.opacity(0.8))
                     .fontWeight(.medium)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, size == .large ? 24 : 18)
-        .padding(.horizontal, 14)
+        .padding(.vertical, size == .large ? 14 : 10)
+        .padding(.horizontal, 10)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Color.gray.opacity(0.15))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 12)
                         .stroke(color.opacity(0.3), lineWidth: 1)
                 )
         )
@@ -584,32 +608,32 @@ struct SmallMetricCard: View {
     let unit: String
     
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 2) {
             Text(title)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundColor(.gray.opacity(0.9))
                 .tracking(1)
                 .fontWeight(.medium)
             
             HStack(alignment: .lastTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(.system(size: 26, weight: .semibold, design: .rounded))
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
                 
                 if !unit.isEmpty {
                     Text(unit)
-                        .font(.subheadline)
+                        .font(.caption2)
                         .foregroundColor(.gray.opacity(0.8))
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 8)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(Color.gray.opacity(0.12))
         )
     }
@@ -626,46 +650,66 @@ struct IntelligenceAlertsView: View {
     @ObservedObject var engine: IntelligenceEngine
     
     var body: some View {
-        VStack(spacing: 8) {
-            // Phase 2: Route Ahead Analysis
-            if let routeAnalysis = engine.routeAheadAnalysis {
-                RouteAheadCard(analysis: routeAnalysis, currentZone: engine.currentPowerZone, targetZone: engine.targetPowerZone)
-            }
-            
-            // Overcooking Alert
-            if let alert = engine.overcookingAlert {
+        VStack(spacing: 6) {
+            if let primaryAlert {
                 AlertBanner(
-                    message: alert.message,
-                    severity: alert.severity
+                    message: primaryAlert.message,
+                    severity: primaryAlert.severity,
+                    icon: primaryAlert.icon
                 )
-            }
-            
-            // Fatigue Alert
-            if let alert = engine.fatigueAlert {
-                AlertBanner(
-                    message: alert.message,
-                    severity: .medium
-                )
-            }
-            
-            // Pacing Recommendation
-            if let pacing = engine.pacingRecommendation {
-                AlertBanner(
-                    message: pacing.message,
-                    severity: .medium
-                )
-            }
-            
-            // Nutrition Alert
-            if let nutrition = engine.nutritionAlert {
-                AlertBanner(
-                    message: nutrition.message,
-                    severity: .medium,
-                    icon: "fork.knife"
-                )
+            } else if let routeAnalysis = engine.routeAheadAnalysis {
+                CompactRouteAheadCard(analysis: routeAnalysis)
             }
         }
-        .padding(.horizontal)
+    }
+    
+    private var primaryAlert: (message: String, severity: AlertSeverity, icon: String)? {
+        if let alert = engine.overcookingAlert {
+            return (alert.message, alert.severity, "exclamationmark.triangle.fill")
+        }
+        if let alert = engine.fatigueAlert {
+            return (alert.message, .medium, "bolt.heart.fill")
+        }
+        if let pacing = engine.pacingRecommendation {
+            return (pacing.message, .medium, "figure.outdoor.cycle")
+        }
+        if let nutrition = engine.nutritionAlert {
+            return (nutrition.message, .medium, "fork.knife")
+        }
+        return nil
+    }
+}
+
+struct CompactRouteAheadCard: View {
+    let analysis: RouteAheadAnalysis
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.forward.circle.fill")
+                .foregroundColor(.veloCyan)
+            Text("Next \(String(format: "%.1f", analysis.distanceAhead / 1609.34)) mi")
+                .font(.subheadline)
+                .foregroundColor(.white)
+            Text("+\(Int(analysis.elevationGain * 3.28084)) ft")
+                .font(.caption)
+                .foregroundColor(.orange)
+            Text("\(String(format: "%.1f", analysis.avgGrade))%")
+                .font(.caption)
+                .foregroundColor(.yellow)
+            Spacer()
+            Text(analysis.difficulty.rawValue)
+                .font(.caption2)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(analysis.difficulty.color)
+                .cornerRadius(6)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(Color.veloCyan.opacity(0.14))
+        .cornerRadius(10)
     }
 }
 
@@ -823,11 +867,12 @@ struct PowerZoneGauge: View {
     let targetZone: PowerZone?
     let currentPower: Double
     let ftp: Double
+    var compact: Bool = false
     
     private let allZones: [PowerZone] = [.recovery, .endurance, .tempo, .threshold, .vo2max, .anaerobic]
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: compact ? 5 : 7) {
             // Header
             HStack {
                 Text("POWER ZONE")
@@ -836,10 +881,10 @@ struct PowerZoneGauge: View {
                     .tracking(0.5)
                 Spacer()
                 Text("\(Int(currentPower))W")
-                    .font(.headline)
+                    .font(compact ? .subheadline : .headline)
                     .foregroundColor(.white)
                 Text("(\(Int((currentPower / ftp) * 100))% FTP)")
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundColor(.gray)
             }
             
@@ -849,12 +894,12 @@ struct PowerZoneGauge: View {
                     ZStack {
                         Rectangle()
                             .fill(zone.color.opacity(currentZone == zone ? 1.0 : 0.3))
-                            .frame(height: 24)
+                            .frame(height: compact ? 18 : 22)
                         
                         if currentZone == zone {
                             Rectangle()
                                 .fill(Color.white.opacity(0.3))
-                                .frame(height: 24)
+                                .frame(height: compact ? 18 : 22)
                                 .overlay(
                                     Rectangle()
                                         .stroke(Color.white, lineWidth: 2)
@@ -878,7 +923,7 @@ struct PowerZoneGauge: View {
             // Labels
             HStack {
                 Text(currentZone.rawValue)
-                    .font(.caption)
+                    .font(.caption2)
                     .fontWeight(.semibold)
                     .foregroundColor(currentZone.color)
                 
@@ -887,7 +932,7 @@ struct PowerZoneGauge: View {
                         .font(.caption2)
                         .foregroundColor(.gray)
                     Text(target.rawValue)
-                        .font(.caption)
+                        .font(.caption2)
                         .fontWeight(.semibold)
                         .foregroundColor(target.color)
                 }
@@ -899,30 +944,32 @@ struct PowerZoneGauge: View {
                     .foregroundColor(.gray)
             }
         }
-        .padding()
+        .padding(.horizontal, 10)
+        .padding(.vertical, compact ? 8 : 10)
         .background(Color.gray.opacity(0.15))
-        .cornerRadius(12)
-        .padding(.horizontal)
+        .cornerRadius(10)
     }
 }
 
 struct IntelligenceMetricsView: View {
     @EnvironmentObject var coordinator: RideCoordinator
+    var compact: Bool = false
     
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: compact ? 6 : 10) {
             // Phase 2: Power Zone Gauge
             PowerZoneGauge(
                 currentZone: coordinator.intelligenceEngine.currentPowerZone,
                 targetZone: coordinator.intelligenceEngine.targetPowerZone,
                 currentPower: coordinator.powerEngine.smoothedPower3s,
-                ftp: coordinator.intelligenceEngine.riderParameters.ftp ?? 200
+                ftp: coordinator.intelligenceEngine.riderParameters.ftp ?? 200,
+                compact: compact
             )
             
             // Environmental Load & Effort Budget
-            HStack(spacing: 12) {
+            HStack(spacing: compact ? 6 : 10) {
                 // Environmental Load Index
-                VStack(spacing: 4) {
+                VStack(spacing: 2) {
                     Text("CONDITIONS")
                         .font(.caption2)
                         .foregroundColor(.gray)
@@ -932,7 +979,7 @@ struct IntelligenceMetricsView: View {
                         Image(systemName: "cloud.sun.fill")
                             .foregroundColor(.orange)
                         Text("+\(Int(coordinator.intelligenceEngine.environmentalLoadIndex))%")
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.system(size: compact ? 17 : 20, weight: .bold))
                             .foregroundColor(.orange)
                     }
                     
@@ -941,12 +988,12 @@ struct IntelligenceMetricsView: View {
                         .foregroundColor(.gray)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, compact ? 6 : 9)
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(10)
                 
                 // Effort Budget
-                VStack(spacing: 4) {
+                VStack(spacing: 2) {
                     Text("EFFORT BUDGET")
                         .font(.caption2)
                         .foregroundColor(.gray)
@@ -955,66 +1002,104 @@ struct IntelligenceMetricsView: View {
                     ZStack {
                         Circle()
                             .stroke(Color.gray.opacity(0.3), lineWidth: 6)
-                            .frame(width: 50, height: 50)
+                            .frame(width: compact ? 40 : 50, height: compact ? 40 : 50)
                         
                         Circle()
                             .trim(from: 0, to: coordinator.intelligenceEngine.effortBudgetRemaining / 100.0)
                             .stroke(budgetColor(coordinator.intelligenceEngine.effortBudgetRemaining), lineWidth: 6)
-                            .frame(width: 50, height: 50)
+                            .frame(width: compact ? 40 : 50, height: compact ? 40 : 50)
                             .rotationEffect(.degrees(-90))
                         
                         Text("\(Int(coordinator.intelligenceEngine.effortBudgetRemaining))%")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: compact ? 12 : 14, weight: .bold))
                             .foregroundColor(budgetColor(coordinator.intelligenceEngine.effortBudgetRemaining))
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, compact ? 6 : 9)
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(10)
             }
             
-            // Wind-Aware Speed Prediction
-            if let predicted = coordinator.intelligenceEngine.predictedSpeedValue {
-                HStack {
-                    Image(systemName: "wind")
-                        .foregroundColor(.cyan)
+            if compact {
+                if let predicted = coordinator.intelligenceEngine.predictedSpeedValue {
+                    HStack {
+                        Image(systemName: "wind")
+                            .foregroundColor(.cyan)
+                        Text("Predicted: ~\(String(format: "%.1f", predicted.speed)) mph (\(predicted.windCondition))")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(Color.cyan.opacity(0.2))
+                    .cornerRadius(8)
+                } else if let climb = coordinator.intelligenceEngine.upcomingClimb {
+                    let distanceDisplay = String(format: "%.1f", climb.distance)
+                    let gradeDisplay = String(format: "%.1f", climb.grade)
+                    let powerRange = "\(Int(climb.recommendedPower.lowerBound))–\(Int(climb.recommendedPower.upperBound))W"
                     
-                    Text("Predicted: ~\(String(format: "%.1f", predicted.speed)) mph (\(predicted.windCondition))")
-                        .font(.subheadline)
-                        .foregroundColor(.white)
+                    HStack {
+                        Image(systemName: "triangle.fill")
+                            .rotationEffect(.degrees(45))
+                            .foregroundColor(.red)
+                        Text("Upcoming: \(distanceDisplay) mi @ \(gradeDisplay)% — rec: \(powerRange)")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(Color.red.opacity(0.2))
+                    .cornerRadius(8)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
-                .background(Color.cyan.opacity(0.2))
-                .cornerRadius(8)
-            }
-            
-            // Upcoming Climb Preview
-            if let climb = coordinator.intelligenceEngine.upcomingClimb {
-                let distanceValue = climb.distance
-                let distanceDisplay = String(format: "%.1f", distanceValue)
-                let gradeDisplay = String(format: "%.1f", climb.grade)
-                let powerRange = "\(Int(climb.recommendedPower.lowerBound))–\(Int(climb.recommendedPower.upperBound))W"
+            } else {
+                // Wind-Aware Speed Prediction
+                if let predicted = coordinator.intelligenceEngine.predictedSpeedValue {
+                    HStack {
+                        Image(systemName: "wind")
+                            .foregroundColor(.cyan)
+                        
+                        Text("Predicted: ~\(String(format: "%.1f", predicted.speed)) mph (\(predicted.windCondition))")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(Color.cyan.opacity(0.2))
+                    .cornerRadius(8)
+                }
                 
-                HStack {
-                    Image(systemName: "triangle.fill")
-                        .rotationEffect(.degrees(45))
-                        .foregroundColor(.red)
+                // Upcoming Climb Preview
+                if let climb = coordinator.intelligenceEngine.upcomingClimb {
+                    let distanceValue = climb.distance
+                    let distanceDisplay = String(format: "%.1f", distanceValue)
+                    let gradeDisplay = String(format: "%.1f", climb.grade)
+                    let powerRange = "\(Int(climb.recommendedPower.lowerBound))–\(Int(climb.recommendedPower.upperBound))W"
                     
-                    Text("Upcoming: \(distanceDisplay) mi @ \(gradeDisplay)% — rec: \(powerRange)")
-                        .font(.subheadline)
-                        .foregroundColor(.white)
+                    HStack {
+                        Image(systemName: "triangle.fill")
+                            .rotationEffect(.degrees(45))
+                            .foregroundColor(.red)
+                        
+                        Text("Upcoming: \(distanceDisplay) mi @ \(gradeDisplay)% — rec: \(powerRange)")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 10)
+                    .background(Color.red.opacity(0.2))
+                    .cornerRadius(8)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
-                .background(Color.red.opacity(0.2))
-                .cornerRadius(8)
             }
         }
-        .padding(.horizontal)
     }
     
     private func budgetColor(_ remaining: Double) -> Color {
@@ -1034,23 +1119,23 @@ struct AlertBanner: View {
     var icon: String = "exclamationmark.triangle.fill"
     
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
                 .foregroundColor(severity.color)
             
             Text(message)
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundColor(.white)
-                .lineLimit(2)
+                .lineLimit(1)
             
             Spacer()
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .padding(.horizontal, 10)
         .background(severity.color.opacity(0.25))
-        .cornerRadius(10)
+        .cornerRadius(9)
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 9)
                 .stroke(severity.color, lineWidth: 1)
         )
     }
@@ -1115,10 +1200,10 @@ struct BackgroundStatusBanner: View {
     @ObservedObject var manager: BackgroundTaskManager
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Image(systemName: "moon.fill")
                 .foregroundColor(.yellow)
-                .font(.caption)
+                .font(.caption2)
             
             Text("Background Mode")
                 .font(.caption)
@@ -1144,8 +1229,8 @@ struct BackgroundStatusBanner: View {
                     .foregroundColor(.gray)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
         .background(
             LinearGradient(
                 colors: [Color.yellow.opacity(0.3), Color.orange.opacity(0.3)],
@@ -1154,6 +1239,5 @@ struct BackgroundStatusBanner: View {
             )
         )
         .cornerRadius(8)
-        .padding(.horizontal, 12)
     }
 }
