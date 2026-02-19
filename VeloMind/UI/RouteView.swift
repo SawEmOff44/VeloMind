@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import Foundation
 
 struct RouteView: View {
     @EnvironmentObject var coordinator: RideCoordinator
@@ -74,7 +75,7 @@ struct RouteView: View {
         }
         .fileImporter(
             isPresented: $isImporting,
-            allowedContentTypes: [.xml, .fitFile],
+            allowedContentTypes: [.gpxFile, .xml, .fitFile],
             allowsMultipleSelection: false
         ) { result in
             handleRouteImport(result)
@@ -91,7 +92,7 @@ struct RouteView: View {
         do {
             availableRoutes = try await apiService.fetchRoutes()
         } catch {
-            errorMessage = "Failed to load routes from server. Make sure backend is running."
+            errorMessage = describeRouteError(error)
             print("Failed to fetch routes: \(error)")
         }
         
@@ -117,7 +118,7 @@ struct RouteView: View {
             Task {
                 var loadedLocally = false
                 do {
-                    let data = try Data(contentsOf: url)
+                    let data = try loadImportedRouteFileData(from: url)
                     let name = url.deletingPathExtension().lastPathComponent
                     let metadata = try routeUploadMetadata(for: url)
                     
@@ -146,9 +147,9 @@ struct RouteView: View {
                     await fetchRoutes()
                 } catch {
                     if loadedLocally {
-                        errorMessage = "Route imported locally, but backend sync failed: \(error.localizedDescription)"
+                        errorMessage = "Route imported locally, but backend sync failed: \(describeRouteError(error))"
                     } else {
-                        errorMessage = "Failed to import route: \(error.localizedDescription)"
+                        errorMessage = "Failed to import route: \(describeRouteError(error))"
                     }
                 }
             }
@@ -156,6 +157,58 @@ struct RouteView: View {
         case .failure(let error):
             errorMessage = "File import error: \(error.localizedDescription)"
         }
+    }
+
+    private func loadImportedRouteFileData(from url: URL) throws -> Data {
+        let accessedSecurityScope = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessedSecurityScope {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        var coordinatorError: NSError?
+        var fileData: Data?
+        var readError: Error?
+
+        let coordinator = NSFileCoordinator()
+        coordinator.coordinate(readingItemAt: url, options: [], error: &coordinatorError) { coordinatedURL in
+            do {
+                fileData = try Data(contentsOf: coordinatedURL)
+            } catch {
+                readError = error
+            }
+        }
+
+        if let coordinatorError {
+            throw coordinatorError
+        }
+
+        if let readError {
+            throw readError
+        }
+
+        guard let fileData else {
+            throw RouteImportError.unreadableFile
+        }
+
+        return fileData
+    }
+
+    private func describeRouteError(_ error: Error) -> String {
+        if let apiError = error as? APIError {
+            switch apiError {
+            case .httpError(let statusCode, _):
+                if statusCode == 401 {
+                    return "Your login session expired. Please log out and sign back in."
+                }
+                return apiError.errorDescription ?? "Server error"
+            default:
+                return apiError.errorDescription ?? "Network error"
+            }
+        }
+
+        return error.localizedDescription
     }
 
     private func routeUploadMetadata(for url: URL) throws -> RouteUploadMetadata {
@@ -181,6 +234,7 @@ private struct RouteUploadMetadata {
 
 private enum RouteImportError: LocalizedError {
     case unsupportedFileType(String)
+    case unreadableFile
 
     var errorDescription: String? {
         switch self {
@@ -189,11 +243,17 @@ private enum RouteImportError: LocalizedError {
                 return "Unsupported file type"
             }
             return "Unsupported file type: .\(ext)"
+        case .unreadableFile:
+            return "Unable to read the selected file. Ensure Files/iCloud access is available and try again."
         }
     }
 }
 
 private extension UTType {
+    static var gpxFile: UTType {
+        UTType(filenameExtension: "gpx") ?? UTType(importedAs: "com.topografix.gpx")
+    }
+
     static var fitFile: UTType {
         UTType(filenameExtension: "fit") ?? UTType(importedAs: "com.garmin.fit")
     }

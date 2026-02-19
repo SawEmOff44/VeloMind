@@ -32,16 +32,20 @@ class RouteManager: ObservableObject {
     func loadGPX(from url: URL, routeId: String? = nil) {
         Task {
             do {
-                let data = try Data(contentsOf: url)
-                let name = url.deletingPathExtension().lastPathComponent
-                try await loadRoute(from: data, name: name)
-                
-                if let id = routeId {
-                    routeIdMap[id] = url
-                }
+                try await loadGPXFile(from: url, routeId: routeId)
             } catch {
                 logger.error("Failed to load GPX: \(error.localizedDescription)")
             }
+        }
+    }
+
+    func loadGPXFile(from url: URL, routeId: String? = nil) async throws {
+        let data = try Data(contentsOf: url)
+        let name = url.deletingPathExtension().lastPathComponent
+        try await loadRoute(from: data, name: name)
+
+        if let id = routeId {
+            routeIdMap[id] = url
         }
     }
     

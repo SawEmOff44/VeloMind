@@ -3,8 +3,14 @@ import Foundation
 enum AppConfiguration {
     private static let productionAPIBaseURL = "https://velomind.onrender.com/api"
     private static let simulatorDebugBaseURL = "http://127.0.0.1:3001/api"
+    private static let apiBaseURLOverrideKey = "velomind.api.baseURLOverride"
 
     static var apiBaseURL: String {
+        if let override = UserDefaults.standard.string(forKey: apiBaseURLOverrideKey),
+           !override.isEmpty {
+            return override
+        }
+
         if let envValue = ProcessInfo.processInfo.environment["API_BASE_URL"], !envValue.isEmpty {
             return envValue
         }
@@ -15,14 +21,11 @@ enum AppConfiguration {
         }
 
         #if DEBUG
-        #if targetEnvironment(simulator)
-        return simulatorDebugBaseURL
-        #else
-        return productionAPIBaseURL
+        if ProcessInfo.processInfo.environment["USE_LOCAL_API"] == "1" {
+            return simulatorDebugBaseURL
+        }
         #endif
-        #else
         return productionAPIBaseURL
-        #endif
     }
 }
 
@@ -34,6 +37,10 @@ class APIService: ObservableObject {
     
     init() {
         self.baseURL = AppConfiguration.apiBaseURL
+    }
+
+    var configuredBaseURL: String {
+        baseURL
     }
     
     private var authToken: String? {

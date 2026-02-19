@@ -6,6 +6,7 @@ actor RouteSyncService {
     
     private let baseURL: String
     private var authToken: String?
+    private let tokenKey = "velomind.authToken"
     
     private init() {
         self.baseURL = AppConfiguration.apiBaseURL
@@ -14,15 +15,24 @@ actor RouteSyncService {
     func setAuthToken(_ token: String) {
         self.authToken = token
     }
+
+    private func resolvedAuthToken() -> String? {
+        if let authToken, !authToken.isEmpty {
+            return authToken
+        }
+        return UserDefaults.standard.string(forKey: tokenKey)
+    }
     
     // MARK: - Route Sync
     
     func fetchAvailableRoutes() async throws -> [RemoteRoute] {
-        guard let token = authToken else {
+        guard let token = resolvedAuthToken() else {
             throw RouteSyncError.notAuthenticated
         }
         
-        let url = URL(string: "\(baseURL)/gpx/list")!
+        guard let url = URL(string: "\(baseURL)/gpx/list") else {
+            throw RouteSyncError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -46,12 +56,14 @@ actor RouteSyncService {
         return result.routes
     }
     
-    func downloadRoute(id: Int) async throws -> String {
-        guard let token = authToken else {
+    func downloadRoute(id: Int) async throws -> Data {
+        guard let token = resolvedAuthToken() else {
             throw RouteSyncError.notAuthenticated
         }
         
-        let url = URL(string: "\(baseURL)/gpx/download/\(id)")!
+        guard let url = URL(string: "\(baseURL)/gpx/download/\(id)") else {
+            throw RouteSyncError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -66,11 +78,7 @@ actor RouteSyncService {
             throw RouteSyncError.serverError(statusCode: httpResponse.statusCode)
         }
         
-        guard let gpxString = String(data: data, encoding: .utf8) else {
-            throw RouteSyncError.invalidData
-        }
-        
-        return gpxString
+        return data
     }
     
     func syncRoutes(to routeManager: RouteManager) async throws {
@@ -88,17 +96,22 @@ actor RouteSyncService {
                 
                 // Save to documents directory
                 let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                let fileName = "\(remoteRoute.name).gpx"
+                let fileName = "\(sanitizeFileName(remoteRoute.name)).gpx"
                 let fileURL = documentsPath.appendingPathComponent(fileName)
                 
-                try gpxData.write(to: fileURL, atomically: true, encoding: .utf8)
+                try gpxData.write(to: fileURL, options: .atomic)
                 
-                // Load into route manager
-                await MainActor.run {
-                    routeManager.loadGPX(from: fileURL, routeId: String(remoteRoute.id))
-                }
+                // Load into route manager (throws on parse issues)
+                try await routeManager.loadGPXFile(from: fileURL, routeId: String(remoteRoute.id))
             }
         }
+    }
+
+    private func sanitizeFileName(_ name: String) -> String {
+        let invalid = CharacterSet(charactersIn: "/:\\?%*|\"<>")
+        let parts = name.components(separatedBy: invalid)
+        let sanitized = parts.joined(separator: "_").trimmingCharacters(in: .whitespacesAndNewlines)
+        return sanitized.isEmpty ? "route" : sanitized
     }
 }
 
@@ -117,6 +130,29 @@ struct RemoteRoute: Codable, Identifiable {
     let pointCount: Int
     let createdAt: Date
     let updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case name
+        case totalDistance = "total_distance"
+        case totalElevationGain = "total_elevation_gain"
+        case pointCount = "point_count"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        userId = try container.decode(Int.self, forKey: .userId)
+        name = try container.decode(String.self, forKey: .name)
+        totalDistance = container.decodeLossyDoubleIfPresent(forKey: .totalDistance) ?? 0
+        totalElevationGain = container.decodeLossyDoubleIfPresent(forKey: .totalElevationGain)
+        pointCount = container.decodeLossyIntIfPresent(forKey: .pointCount) ?? 0
+        createdAt = (try? container.decode(Date.self, forKey: .createdAt)) ?? Date()
+        updatedAt = try? container.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
 }
 
 enum RouteSyncError: LocalizedError {
