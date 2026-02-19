@@ -575,7 +575,7 @@ struct SensorSettingsView: View {
             }
 
             Section("Connected Sensors") {
-                ForEach(Array(coordinator.bleManager.connectedDevices), id: \.identifier) { device in
+                ForEach(coordinator.bleManager.connectedDevices, id: \.identifier) { device in
                     HStack {
                         Image(systemName: "sensor.fill")
                             .foregroundColor(.green)
@@ -611,10 +611,19 @@ struct SensorSettingsView: View {
                             Image(systemName: "sensor")
                             Text(deviceDisplayName(device))
                             Spacer()
-                            Image(systemName: "plus.circle")
-                                .foregroundColor(.veloTeal)
+                            if coordinator.bleManager.isConnected(device) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                            } else if coordinator.bleManager.isConnecting(device) {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "plus.circle")
+                                    .foregroundColor(.veloTeal)
+                            }
                         }
                     }
+                    .disabled(coordinator.bleManager.isConnected(device) || coordinator.bleManager.isConnecting(device))
                 }
             }
         }

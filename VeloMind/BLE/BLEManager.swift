@@ -8,7 +8,8 @@ class BLEManager: NSObject, ObservableObject {
     // MARK: - Published Properties
     @Published var isScanning = false
     @Published var discoveredDevices: [CBPeripheral] = []
-    @Published var connectedDevices: Set<CBPeripheral> = []
+    @Published var connectedDevices: [CBPeripheral] = []
+    @Published var connectingDeviceIDs: Set<UUID> = []
     @Published var currentSpeed: Double = 0.0        // m/s
     @Published var currentCadence: Double = 0.0      // rpm
     @Published var currentHeartRate: Int = 0         // bpm
@@ -23,6 +24,7 @@ class BLEManager: NSObject, ObservableObject {
 
     private var pendingScanRequest = false
     private var activeScanID: UUID?
+    private var connectAttemptTokens: [UUID: UUID] = [:]
     private var preferredPeripheralIDs = Set<UUID>()
     private var peripheralSensorTypes: [UUID: Set<BLESensorType>] = [:]
     
@@ -98,18 +100,59 @@ class BLEManager: NSObject, ObservableObject {
     }
     
     func connect(to peripheral: CBPeripheral, remember: Bool = true) {
+        guard centralManager.state == .poweredOn else {
+            scanStatusMessage = scanBlockedMessage(for: centralManager.state)
+            return
+        }
+
+        if isConnected(peripheral) {
+            scanStatusMessage = "Already connected to \(peripheral.name ?? "sensor")"
+            handleConnectedPeripheral(peripheral)
+            return
+        }
+
+        if connectingDeviceIDs.contains(peripheral.identifier) {
+            scanStatusMessage = "Already connecting to \(peripheral.name ?? "sensor")"
+            return
+        }
+
+        if isScanning {
+            centralManager.stopScan()
+            isScanning = false
+        }
+
         if remember {
             rememberPeripheral(peripheral)
         }
+
+        let token = UUID()
+        connectAttemptTokens[peripheral.identifier] = token
+        connectingDeviceIDs.insert(peripheral.identifier)
+        scanStatusMessage = "Connecting to \(peripheral.name ?? "sensor")..."
+
         peripheral.delegate = self
         centralManager.connect(peripheral, options: nil)
         logger.info("Attempting to connect to \(peripheral.name ?? "Unknown Device")")
+
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(12))
+            await MainActor.run {
+                guard let self = self else { return }
+                guard self.connectAttemptTokens[peripheral.identifier] == token else { return }
+
+                self.connectingDeviceIDs.remove(peripheral.identifier)
+                self.connectAttemptTokens.removeValue(forKey: peripheral.identifier)
+                self.scanStatusMessage = "Connection timeout for \(peripheral.name ?? "sensor"). Wake sensor and try again."
+            }
+        }
     }
     
     func disconnect(from peripheral: CBPeripheral, forget: Bool = true) {
         if forget {
             forgetPeripheral(peripheral)
         }
+        connectingDeviceIDs.remove(peripheral.identifier)
+        connectAttemptTokens.removeValue(forKey: peripheral.identifier)
         centralManager.cancelPeripheralConnection(peripheral)
         logger.info("Disconnecting from \(peripheral.name ?? "Unknown Device")")
     }
@@ -118,6 +161,14 @@ class BLEManager: NSObject, ObservableObject {
         for peripheral in connectedDevices {
             disconnect(from: peripheral, forget: forget)
         }
+    }
+
+    func isConnected(_ peripheral: CBPeripheral) -> Bool {
+        connectedDevices.contains(where: { $0.identifier == peripheral.identifier })
+    }
+    
+    func isConnecting(_ peripheral: CBPeripheral) -> Bool {
+        connectingDeviceIDs.contains(peripheral.identifier)
     }
     
     // MARK: - Private Methods
@@ -255,10 +306,22 @@ class BLEManager: NSObject, ObservableObject {
             discoveredDevices.append(peripheral)
         }
     }
+    
+    private func upsertConnected(_ peripheral: CBPeripheral) {
+        if let idx = connectedDevices.firstIndex(where: { $0.identifier == peripheral.identifier }) {
+            connectedDevices[idx] = peripheral
+        } else {
+            connectedDevices.append(peripheral)
+        }
+    }
+    
+    private func removeConnected(by identifier: UUID) {
+        connectedDevices.removeAll(where: { $0.identifier == identifier })
+    }
 
     private func handleConnectedPeripheral(_ peripheral: CBPeripheral) {
         peripheral.delegate = self
-        connectedDevices.insert(peripheral)
+        upsertConnected(peripheral)
         peripheral.discoverServices([cscServiceUUID, hrServiceUUID])
     }
 
@@ -389,6 +452,8 @@ extension BLEManager: CBCentralManagerDelegate {
     
     nonisolated func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         Task { @MainActor in
+            connectingDeviceIDs.remove(peripheral.identifier)
+            connectAttemptTokens.removeValue(forKey: peripheral.identifier)
             handleConnectedPeripheral(peripheral)
             scanStatusMessage = "Connected to \(peripheral.name ?? "sensor")"
             logger.info("Connected to \(peripheral.name ?? "Unknown")")
@@ -397,6 +462,8 @@ extension BLEManager: CBCentralManagerDelegate {
 
     nonisolated func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         Task { @MainActor in
+            connectingDeviceIDs.remove(peripheral.identifier)
+            connectAttemptTokens.removeValue(forKey: peripheral.identifier)
             let message = error?.localizedDescription ?? "Connection failed"
             scanStatusMessage = "Failed to connect to \(peripheral.name ?? "sensor"): \(message)"
             logger.error("Failed to connect to \(peripheral.name ?? "Unknown"): \(message, privacy: .public)")
@@ -405,7 +472,9 @@ extension BLEManager: CBCentralManagerDelegate {
     
     nonisolated func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         Task { @MainActor in
-            connectedDevices.remove(peripheral)
+            connectingDeviceIDs.remove(peripheral.identifier)
+            connectAttemptTokens.removeValue(forKey: peripheral.identifier)
+            removeConnected(by: peripheral.identifier)
             let disconnectedTypes = peripheralSensorTypes.removeValue(forKey: peripheral.identifier) ?? []
             for sensorType in disconnectedTypes {
                 connectionStatus[sensorType] = false
