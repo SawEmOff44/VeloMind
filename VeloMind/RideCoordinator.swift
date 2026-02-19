@@ -566,8 +566,8 @@ class RideCoordinator: ObservableObject {
                 if belowPauseThresholdSince == nil {
                     belowPauseThresholdSince = now
                 }
-                if let belowPauseThresholdSince,
-                   now.timeIntervalSince(belowPauseThresholdSince) >= autoPauseConfirmationSeconds {
+                if let pauseSince = belowPauseThresholdSince,
+                   now.timeIntervalSince(pauseSince) >= autoPauseConfirmationSeconds {
                     isPaused = true
                     isAutoPaused = true
                     belowPauseThresholdSince = nil
@@ -583,8 +583,8 @@ class RideCoordinator: ObservableObject {
             if aboveResumeThresholdSince == nil {
                 aboveResumeThresholdSince = now
             }
-            if let aboveResumeThresholdSince,
-               now.timeIntervalSince(aboveResumeThresholdSince) >= autoResumeConfirmationSeconds {
+            if let resumeSince = aboveResumeThresholdSince,
+               now.timeIntervalSince(resumeSince) >= autoResumeConfirmationSeconds {
                 isPaused = false
                 isAutoPaused = false
                 belowPauseThresholdSince = nil
