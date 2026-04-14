@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { getCurrentUser, getParameters, getActiveParameters, createParameters, updateParameters } from '../services/api'
+import { buildApiUrl } from '../services/config'
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -107,7 +108,7 @@ export default function Settings() {
     try {
       // Redirect to Strava OAuth
       const clientId = import.meta.env.VITE_STRAVA_CLIENT_ID
-      const redirectUri = `${import.meta.env.VITE_API_BASE.replace('/api', '')}/strava/callback`
+      const redirectUri = buildApiUrl('/strava/callback')
       const scope = 'read,activity:read_all'
       
       if (!user || !user.id) {

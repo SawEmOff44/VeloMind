@@ -89,23 +89,29 @@ router.get('/overview', authenticateToken, async (req, res) => {
          SELECT COALESCE(MAX(ftp), 250) AS ftp
          FROM rider_parameters
          WHERE user_id = $1 AND is_active = true
+       ),
+       classified_sessions AS (
+         SELECT
+           CASE
+             WHEN s.average_power < ap.ftp * 0.55 THEN 'Recovery'
+             WHEN s.average_power < ap.ftp * 0.75 THEN 'Endurance'
+             WHEN s.average_power < ap.ftp * 0.90 THEN 'Tempo'
+             WHEN s.average_power < ap.ftp * 1.05 THEN 'Threshold'
+             WHEN s.average_power < ap.ftp * 1.20 THEN 'VO2Max'
+             ELSE 'Anaerobic'
+           END AS zone,
+           s.duration
+         FROM sessions s
+         CROSS JOIN active_params ap
+         WHERE s.user_id = $1 AND s.start_time >= $2 AND s.average_power IS NOT NULL
        )
-       SELECT 
-        CASE 
-          WHEN s.average_power < ap.ftp * 0.55 THEN 'Recovery'
-          WHEN s.average_power < ap.ftp * 0.75 THEN 'Endurance'
-          WHEN s.average_power < ap.ftp * 0.90 THEN 'Tempo'
-          WHEN s.average_power < ap.ftp * 1.05 THEN 'Threshold'
-          WHEN s.average_power < ap.ftp * 1.20 THEN 'VO2Max'
-          ELSE 'Anaerobic'
-        END as zone,
-        COUNT(*) as ride_count,
-        SUM(s.duration) as total_duration
-       FROM sessions s
-       CROSS JOIN active_params ap
-       WHERE s.user_id = $1 AND s.start_time >= $2 AND s.average_power IS NOT NULL
+       SELECT
+         zone,
+         COUNT(*) AS ride_count,
+         SUM(duration) AS total_duration
+       FROM classified_sessions
        GROUP BY zone
-       ORDER BY 
+       ORDER BY
          CASE zone
            WHEN 'Recovery' THEN 1
            WHEN 'Endurance' THEN 2

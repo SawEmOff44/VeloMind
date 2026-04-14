@@ -11,6 +11,12 @@ function parsePositiveInt(value, fallback, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+function toOptionalInteger(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = typeof value === 'string' ? Number.parseFloat(value) : Number(value);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
 // Get all sessions for user
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -103,9 +109,9 @@ router.post('/', authenticateToken, async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
-        req.user.id, routeId, name, startTime, endTime, duration,
+        req.user.id, routeId, name, startTime, endTime, toOptionalInteger(duration),
         distance, averagePower, normalizedPower, averageSpeed,
-        averageCadence, averageHeartRate, totalElevationGain ?? elevationGain ?? null,
+        averageCadence, toOptionalInteger(averageHeartRate), totalElevationGain ?? elevationGain ?? null,
         tss, intensityFactor
       ]
     );
@@ -131,7 +137,7 @@ router.post('/', authenticateToken, async (req, res) => {
             dp.altitude,
             dp.speed,
             dp.cadence,
-            dp.heartRate,
+            toOptionalInteger(dp.heartRate),
             dp.power,
             dp.grade,
             dp.windSpeed,

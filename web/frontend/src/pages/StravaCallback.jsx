@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import axios from 'axios'
+import { getCurrentUser } from '../services/api'
+import { buildApiUrl } from '../services/config'
 
 export default function StravaCallback() {
   const [searchParams] = useSearchParams()
@@ -26,15 +27,22 @@ export default function StravaCallback() {
 
       try {
         const token = localStorage.getItem('token')
-        const apiUrl = import.meta.env.VITE_API_URL || '/api'
-        
-        await axios.get(`${apiUrl}/strava/callback?code=${code}`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        })
+        if (!token) {
+          throw new Error('Not authenticated')
+        }
 
-        navigate('/settings?strava=connected')
+        const response = await getCurrentUser()
+        const userId = response?.data?.user?.id
+
+        if (!userId) {
+          throw new Error('Unable to determine current user')
+        }
+
+        const callbackUrl = buildApiUrl(
+          `/strava/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(userId)}`
+        )
+
+        window.location.replace(callbackUrl)
       } catch (error) {
         console.error('Failed to connect Strava:', error)
         setError('Failed to connect Strava account')

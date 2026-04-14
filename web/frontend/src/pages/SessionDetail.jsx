@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { getSession, getSessionAnalytics, syncStravaStreams } from '../services/api'
+import { buildApiUrl } from '../services/config'
 import { format } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { ArrowDownTrayIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
@@ -52,9 +53,8 @@ export default function SessionDetail() {
   }
   
   const handleExport = (format) => {
-    const apiBase = import.meta.env.VITE_API_BASE || '/api'
     const token = localStorage.getItem('token')
-    const url = `${apiBase}/export/session/${id}/${format}`
+    const url = buildApiUrl(`/export/session/${id}/${format}`)
     
     // Create a temporary link and click it
     const link = document.createElement('a')

@@ -26,13 +26,6 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 app.use(compression());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
-
 // CORS - Allow all Vercel deployments, localhost, and mobile apps
 const allowedOrigins = [
   'http://localhost:3000',
@@ -64,6 +57,15 @@ app.use(cors({
   },
   credentials: true
 }));
+
+// Rate limiting
+if (process.env.NODE_ENV !== 'development') {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+  });
+  app.use('/api/', limiter);
+}
 
 // Body parsing
 app.use(express.json());

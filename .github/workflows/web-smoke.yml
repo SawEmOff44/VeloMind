@@ -1,0 +1,73 @@
+name: Web Smoke
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-smoke.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_ENV: development
+      PORT: 3001
+      CORS_ORIGIN: http://localhost:3000
+      DATABASE_URL: ${{ secrets.VELOMIND_DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.VELOMIND_JWT_SECRET }}
+      STRAVA_CLIENT_ID: ${{ secrets.VELOMIND_STRAVA_CLIENT_ID }}
+      STRAVA_CLIENT_SECRET: ${{ secrets.VELOMIND_STRAVA_CLIENT_SECRET }}
+      STRAVA_REDIRECT_URI: http://localhost:3000/strava/callback
+      VITE_API_BASE: http://localhost:3001/api
+      VITE_STRAVA_CLIENT_ID: ${{ secrets.VELOMIND_STRAVA_CLIENT_ID }}
+      SMOKE_ARTIFACT_DIR: ${{ runner.temp }}/velomind-smoke
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            web/backend/package-lock.json
+            web/frontend/package-lock.json
+
+      - name: Validate required secrets
+        run: |
+          test -n "$DATABASE_URL" || { echo "Missing VELOMIND_DATABASE_URL secret"; exit 1; }
+          test -n "$JWT_SECRET" || { echo "Missing VELOMIND_JWT_SECRET secret"; exit 1; }
+
+      - name: Install backend dependencies
+        working-directory: web/backend
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: web/frontend
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: web/frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run rich web smoke test
+        working-directory: web/frontend
+        run: npm run smoke:test
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-smoke-artifacts
+          path: ${{ runner.temp }}/velomind-smoke
+          if-no-files-found: ignore

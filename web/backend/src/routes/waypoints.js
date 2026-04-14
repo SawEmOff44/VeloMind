@@ -30,6 +30,10 @@ router.get('/route/:routeId', authenticateToken, async (req, res) => {
 
     res.json({ waypoints: result.rows })
   } catch (error) {
+    if (error?.code === '42P01') {
+      console.warn('route_waypoints table missing; returning empty waypoints list')
+      return res.json({ waypoints: [] })
+    }
     console.error('Error fetching waypoints:', error)
     res.status(500).json({ error: 'Failed to fetch waypoints' })
   }

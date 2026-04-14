@@ -65,7 +65,7 @@ npm install
 
 3. Create `.env` file:
 ```env
-VITE_API_URL=http://localhost:3001
+VITE_API_BASE=http://localhost:3001/api
 ```
 
 4. Start development server:
@@ -183,6 +183,37 @@ cd web/frontend
 npm run dev  # Starts Vite dev server
 ```
 
+## Smoke Tests
+
+The frontend package includes browser smoke tests powered by Playwright. They:
+
+- Start the backend and frontend locally
+- Register a throwaway test user
+- Exercise core app flows in a real browser
+- Save screenshots and a JSON result bundle under `/tmp/velomind-smoke-*`
+- Clean up the throwaway user after the run
+
+One-time browser install:
+
+```bash
+cd web/frontend
+npm run smoke:install
+```
+
+Run the fast pass:
+
+```bash
+cd web/frontend
+npm run smoke:test:basic
+```
+
+Run the richer pass:
+
+```bash
+cd web/frontend
+npm run smoke:test
+```
+
 ## Production Deployment
 
 ### Backend (Render)
@@ -198,7 +229,8 @@ npm run dev  # Starts Vite dev server
 1. Connect GitHub repository
 2. Set build command: `cd web/frontend && npm run build`
 3. Set publish directory: `web/frontend/dist`
-4. Add environment variable: `VITE_API_URL=https://your-backend.render.com`
+4. Add environment variable: `VITE_API_BASE=https://your-backend.render.com/api`
+   `VITE_API_URL=https://your-backend.render.com` is still accepted as a legacy alias.
 
 ## License
 
