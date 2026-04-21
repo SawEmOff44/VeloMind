@@ -2,12 +2,21 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Polyline, Marker, Popup, Circle, useMapEvents } from 'react-leaflet'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceDot } from 'recharts'
-import { downloadRouteSource, getRoute, getActiveParameters, getWaypoints, syncWaypoints } from '../services/api'
+import {
+  createWaypoint as createRouteWaypoint,
+  deleteWaypoint as deleteRouteWaypoint,
+  downloadRouteSource,
+  getRoute,
+  getActiveParameters,
+  getWaypoints,
+  updateWaypoint as updateRouteWaypoint
+} from '../services/api'
 import { detectClimbs, getClimbCategoryColor, getClimbCategoryLabel } from '../utils/climbAnalysis'
-import { reverseRoute, getDifficultyColor, predictSpeed, predictSegmentTime } from '../utils/routeUtils'
+import { reverseRoute, getDifficultyColor, predictSegmentTime } from '../utils/routeUtils'
 import {
   ArrowDownTrayIcon,
   CheckIcon,
+  MapPinIcon,
   PlayIcon,
   ShareIcon
 } from '@heroicons/react/24/outline'
@@ -33,11 +42,60 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
-// Component to handle map clicks
-function MapClickHandler({ onMapClick }) {
-  useMapEvents({
-    click: onMapClick,
+function waypointIdsMatch(left, right) {
+  return String(left) === String(right)
+}
+
+function sortWaypoints(waypointList) {
+  return [...waypointList].sort((left, right) => {
+    const leftDistance = toNumber(left.distance_from_start ?? left.distanceFromStart)
+    const rightDistance = toNumber(right.distance_from_start ?? right.distanceFromStart)
+
+    if (leftDistance === null && rightDistance === null) return 0
+    if (leftDistance === null) return 1
+    if (rightDistance === null) return -1
+    return leftDistance - rightDistance
   })
+}
+
+function stopEventPropagation(event) {
+  event.stopPropagation()
+}
+
+// Component to handle map clicks
+function MapClickHandler({ isAddWaypointMode, onMapClick }) {
+  const lastInteractionRef = useRef(0)
+
+  useMapEvents({
+    click: (event) => {
+      if (!isAddWaypointMode) return
+
+      const originalTarget = event.originalEvent?.target
+      if (
+        originalTarget?.closest?.('.leaflet-control')
+        || originalTarget?.closest?.('.leaflet-popup')
+        || originalTarget?.closest?.('.leaflet-marker-icon')
+      ) {
+        return
+      }
+
+      if (Date.now() - lastInteractionRef.current < 300) {
+        return
+      }
+
+      onMapClick(event)
+    },
+    dragstart: () => {
+      lastInteractionRef.current = Date.now()
+    },
+    movestart: () => {
+      lastInteractionRef.current = Date.now()
+    },
+    zoomstart: () => {
+      lastInteractionRef.current = Date.now()
+    }
+  })
+
   return null
 }
 
@@ -49,6 +107,123 @@ function normalizeWaypointForSync(waypoint, routePoints) {
     ...waypoint,
     distance_from_start: distanceFromStart
   }
+}
+
+function WaypointPopupEditor({ waypoint, onSave, onRemove }) {
+  const [draft, setDraft] = useState({
+    label: waypoint.label || '',
+    type: waypoint.type || 'alert',
+    notes: waypoint.notes || ''
+  })
+  const [saving, setSaving] = useState(false)
+  const [removing, setRemoving] = useState(false)
+
+  useEffect(() => {
+    setDraft({
+      label: waypoint.label || '',
+      type: waypoint.type || 'alert',
+      notes: waypoint.notes || ''
+    })
+  }, [waypoint.id, waypoint.label, waypoint.type, waypoint.notes])
+
+  const hasChanges = (
+    draft.label !== (waypoint.label || '')
+    || draft.type !== (waypoint.type || 'alert')
+    || draft.notes !== (waypoint.notes || '')
+  )
+
+  const handleSave = async (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (!hasChanges || saving) return
+
+    setSaving(true)
+    try {
+      await onSave(waypoint.id, draft)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemove = async (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (removing) return
+
+    setRemoving(true)
+    try {
+      await onRemove(waypoint.id)
+    } finally {
+      setRemoving(false)
+    }
+  }
+
+  return (
+    <form className="min-w-[220px] space-y-3" onSubmit={handleSave}>
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-gray-700">Label</label>
+        <input
+          type="text"
+          value={draft.label}
+          onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))}
+          onClick={stopEventPropagation}
+          onMouseDown={stopEventPropagation}
+          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-transparent focus:ring-2 focus:ring-velo-cyan-500"
+          placeholder="e.g., Aggressive dogs"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-gray-700">Type</label>
+        <select
+          value={draft.type}
+          onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value }))}
+          onClick={stopEventPropagation}
+          onMouseDown={stopEventPropagation}
+          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-transparent focus:ring-2 focus:ring-velo-cyan-500"
+        >
+          <option value="alert">⚠️ Alert</option>
+          <option value="danger">🚨 Danger</option>
+          <option value="water">💧 Water Stop</option>
+          <option value="food">🍎 Nutrition</option>
+          <option value="rest">🛑 Rest Stop</option>
+          <option value="photo">📷 Photo Spot</option>
+          <option value="turn">↪️ Turn</option>
+          <option value="steep">⛰️ Steep Section</option>
+        </select>
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-gray-700">Notes</label>
+        <textarea
+          value={draft.notes}
+          onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
+          onClick={stopEventPropagation}
+          onMouseDown={stopEventPropagation}
+          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-transparent focus:ring-2 focus:ring-velo-cyan-500"
+          rows="2"
+          placeholder="Details for iOS alert..."
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={!hasChanges || saving}
+          className="flex-1 rounded bg-velo-cyan px-3 py-2 text-xs font-semibold text-white hover:bg-velo-cyan-dark disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : 'Save Cue'}
+        </button>
+        <button
+          type="button"
+          onClick={handleRemove}
+          disabled={removing}
+          className="flex-1 rounded bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {removing ? 'Removing...' : 'Remove'}
+        </button>
+      </div>
+    </form>
+  )
 }
 
 export default function RouteDetail() {
@@ -64,11 +239,14 @@ export default function RouteDetail() {
   const [shareLink, setShareLink] = useState('')
   const [copied, setCopied] = useState(false)
   const [downloadingSource, setDownloadingSource] = useState(false)
+  const [isAddWaypointMode, setIsAddWaypointMode] = useState(false)
+  const [creatingWaypoint, setCreatingWaypoint] = useState(false)
   const mapRef = useRef(null)
   const routeCues = useMemo(
     () => buildRouteWaypoints(waypoints, route?.points || []),
     [waypoints, route]
   )
+  const savedCueCount = waypoints.length || route?.waypoint_count || routeCues.length
   
   useEffect(() => {
     loadRoute()
@@ -96,8 +274,10 @@ export default function RouteDetail() {
         const waypointsResponse = await getWaypoints(id)
         if (waypointsResponse.data.waypoints && waypointsResponse.data.waypoints.length > 0) {
           setWaypoints(
-            waypointsResponse.data.waypoints.map((waypoint) =>
-              normalizeWaypointForSync(waypoint, routeData.points || [])
+            sortWaypoints(
+              waypointsResponse.data.waypoints.map((waypoint) =>
+                normalizeWaypointForSync(waypoint, routeData.points || [])
+              )
             )
           )
         } else {
@@ -105,8 +285,10 @@ export default function RouteDetail() {
           const savedWaypoints = localStorage.getItem(`waypoints_${id}`)
           if (savedWaypoints) {
             setWaypoints(
-              JSON.parse(savedWaypoints).map((waypoint) =>
-                normalizeWaypointForSync(waypoint, routeData.points || [])
+              sortWaypoints(
+                JSON.parse(savedWaypoints).map((waypoint) =>
+                  normalizeWaypointForSync(waypoint, routeData.points || [])
+                )
               )
             )
           }
@@ -137,17 +319,28 @@ export default function RouteDetail() {
     }
   }
 
-  const syncWaypointsToBackend = (nextWaypoints) => {
-    const normalizedWaypoints = nextWaypoints.map((waypoint) =>
-      normalizeWaypointForSync(waypoint, route?.points || [])
-    )
+  useEffect(() => {
+    if (loading) return
 
-    setWaypoints(normalizedWaypoints)
-    localStorage.setItem(`waypoints_${id}`, JSON.stringify(normalizedWaypoints))
+    localStorage.setItem(`waypoints_${id}`, JSON.stringify(waypoints))
+  }, [id, loading, waypoints])
 
-    syncWaypoints(id, normalizedWaypoints).catch((err) =>
-      console.error('Failed to sync waypoints:', err)
-    )
+  const upsertWaypoint = (nextWaypoint) => {
+    const normalizedWaypoint = normalizeWaypointForSync(nextWaypoint, route?.points || [])
+
+    setWaypoints((currentWaypoints) => {
+      const existingIndex = currentWaypoints.findIndex((waypoint) =>
+        waypointIdsMatch(waypoint.id, normalizedWaypoint.id)
+      )
+
+      if (existingIndex === -1) {
+        return sortWaypoints([...currentWaypoints, normalizedWaypoint])
+      }
+
+      const nextWaypoints = [...currentWaypoints]
+      nextWaypoints[existingIndex] = normalizedWaypoint
+      return sortWaypoints(nextWaypoints)
+    })
   }
   
   const handleChartClick = (data) => {
@@ -166,29 +359,55 @@ export default function RouteDetail() {
     }
   }
   
-  const handleMapClick = (e) => {
-    const newWaypoint = {
-      id: Date.now(),
-      latitude: e.latlng.lat,
-      longitude: e.latlng.lng,
-      type: 'alert',
-      label: 'New Waypoint',
-      notes: '',
-      distance_from_start: resolveDistanceFromRoutePoints(route?.points || [], e.latlng.lat, e.latlng.lng)
+  const handleMapClick = async (e) => {
+    if (!isAddWaypointMode || creatingWaypoint) return
+
+    setCreatingWaypoint(true)
+    setIsAddWaypointMode(false)
+
+    try {
+      const response = await createRouteWaypoint(id, {
+        latitude: e.latlng.lat,
+        longitude: e.latlng.lng,
+        type: 'alert',
+        label: 'New Cue',
+        notes: '',
+        distance_from_start: resolveDistanceFromRoutePoints(route?.points || [], e.latlng.lat, e.latlng.lng)
+      })
+
+      if (response?.data?.waypoint) {
+        upsertWaypoint(response.data.waypoint)
+      }
+    } catch (error) {
+      console.error('Failed to create waypoint:', error)
+      alert(error?.response?.data?.error || 'Failed to create cue')
+    } finally {
+      setCreatingWaypoint(false)
     }
-    syncWaypointsToBackend([...waypoints, newWaypoint])
   }
   
-  const updateWaypoint = (waypointId, updates) => {
-    const updatedWaypoints = waypoints.map(w => 
-      w.id === waypointId ? { ...w, ...updates } : w
-    )
-    syncWaypointsToBackend(updatedWaypoints)
+  const saveWaypoint = async (waypointId, updates) => {
+    try {
+      const response = await updateRouteWaypoint(waypointId, updates)
+      if (response?.data?.waypoint) {
+        upsertWaypoint(response.data.waypoint)
+      }
+    } catch (error) {
+      console.error('Failed to update waypoint:', error)
+      alert(error?.response?.data?.error || 'Failed to save cue')
+    }
   }
   
-  const removeWaypoint = (waypointId) => {
-    const updatedWaypoints = waypoints.filter(w => w.id !== waypointId)
-    syncWaypointsToBackend(updatedWaypoints)
+  const removeWaypoint = async (waypointId) => {
+    try {
+      await deleteRouteWaypoint(waypointId)
+      setWaypoints((currentWaypoints) =>
+        currentWaypoints.filter((waypoint) => !waypointIdsMatch(waypoint.id, waypointId))
+      )
+    } catch (error) {
+      console.error('Failed to remove waypoint:', error)
+      alert(error?.response?.data?.error || 'Failed to remove cue')
+    }
   }
   
   const toggleRouteDirection = () => {
@@ -351,7 +570,7 @@ export default function RouteDetail() {
               {getRouteSourceLabel(route.source_format)}
             </span>
             <span className="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 font-medium text-sky-700">
-              {route.waypoint_count || routeCues.length} saved cues
+              {savedCueCount} saved cues
             </span>
             {route.original_file_name && (
               <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
@@ -605,9 +824,37 @@ export default function RouteDetail() {
       
       {/* Map */}
       <div className="bg-white rounded-lg shadow mb-8 overflow-hidden">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-900">Route Map</h2>
-          <p className="text-sm text-gray-500">Click on map to add waypoint markers</p>
+        <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Route Map</h2>
+            <p className="text-sm text-gray-500">
+              Pan and zoom normally. Turn on add mode only when you want to place a cue.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsAddWaypointMode((current) => !current)}
+              disabled={creatingWaypoint}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                isAddWaypointMode
+                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                  : 'bg-velo-cyan text-white hover:bg-velo-cyan-dark'
+              } disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              <MapPinIcon className="h-4 w-4" />
+              {creatingWaypoint
+                ? 'Placing Cue...'
+                : isAddWaypointMode
+                  ? 'Cancel Add Cue'
+                  : 'Add Cue'}
+            </button>
+            <span className={`text-sm ${isAddWaypointMode ? 'font-semibold text-amber-700' : 'text-gray-500'}`}>
+              {isAddWaypointMode
+                ? 'Tap the map once to place a cue, then tap the marker to edit it.'
+                : 'Map taps are safe while add mode is off.'}
+            </span>
+          </div>
         </div>
         <div className="h-96">
           {mapBounds && displayPoints && (
@@ -617,7 +864,10 @@ export default function RouteDetail() {
               className="h-full w-full"
               scrollWheelZoom={true}
             >
-              <MapClickHandler onMapClick={handleMapClick} />
+              <MapClickHandler
+                isAddWaypointMode={isAddWaypointMode}
+                onMapClick={handleMapClick}
+              />
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -681,66 +931,11 @@ export default function RouteDetail() {
                   position={[waypoint.latitude, waypoint.longitude]}
                 >
                   <Popup>
-                    <div className="min-w-[200px]">
-                      <div className="mb-2">
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Label</label>
-                        <input
-                          type="text"
-                          value={waypoint.label || ''}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            updateWaypoint(waypoint.id, { label: e.target.value })
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-velo-cyan-500 focus:border-transparent"
-                          placeholder="e.g., Aggressive dogs"
-                        />
-                      </div>
-                      <div className="mb-2">
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Type</label>
-                        <select
-                          value={waypoint.type || 'alert'}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            updateWaypoint(waypoint.id, { type: e.target.value })
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-velo-cyan-500 focus:border-transparent"
-                        >
-                          <option value="alert">⚠️ Alert</option>
-                          <option value="danger">🚨 Danger</option>
-                          <option value="water">💧 Water Stop</option>
-                          <option value="food">🍎 Nutrition</option>
-                          <option value="rest">🛑 Rest Stop</option>
-                          <option value="photo">📷 Photo Spot</option>
-                          <option value="turn">↪️ Turn</option>
-                          <option value="steep">⛰️ Steep Section</option>
-                        </select>
-                      </div>
-                      <div className="mb-3">
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Notes</label>
-                        <textarea
-                          value={waypoint.notes || ''}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            updateWaypoint(waypoint.id, { notes: e.target.value })
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-velo-cyan-500 focus:border-transparent"
-                          rows="2"
-                          placeholder="Details for iOS alert..."
-                        />
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeWaypoint(waypoint.id)
-                        }}
-                        className="w-full px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
-                      >
-                        Remove Waypoint
-                      </button>
-                    </div>
+                    <WaypointPopupEditor
+                      waypoint={waypoint}
+                      onSave={saveWaypoint}
+                      onRemove={removeWaypoint}
+                    />
                   </Popup>
                 </Marker>
               ))}
