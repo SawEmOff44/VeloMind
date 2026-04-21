@@ -63,6 +63,18 @@ function stopEventPropagation(event) {
   event.stopPropagation()
 }
 
+function formatCoordinateInput(value) {
+  const parsed = toNumber(value)
+  return parsed === null ? '' : parsed.toFixed(6)
+}
+
+function createEmptyCoordinateDraft(latitude = '', longitude = '') {
+  return {
+    latitude: formatCoordinateInput(latitude),
+    longitude: formatCoordinateInput(longitude)
+  }
+}
+
 // Component to handle map clicks
 function MapClickHandler({ isAddWaypointMode, onMapClick }) {
   const lastInteractionRef = useRef(0)
@@ -114,7 +126,9 @@ function WaypointPopupEditor({ waypoint, onSave, onRemove }) {
   const [draft, setDraft] = useState({
     label: waypoint.label || '',
     type: waypoint.type || 'alert',
-    notes: waypoint.notes || ''
+    notes: waypoint.notes || '',
+    latitude: formatCoordinateInput(waypoint.latitude),
+    longitude: formatCoordinateInput(waypoint.longitude)
   })
   const [saving, setSaving] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -123,25 +137,39 @@ function WaypointPopupEditor({ waypoint, onSave, onRemove }) {
     setDraft({
       label: waypoint.label || '',
       type: waypoint.type || 'alert',
-      notes: waypoint.notes || ''
+      notes: waypoint.notes || '',
+      latitude: formatCoordinateInput(waypoint.latitude),
+      longitude: formatCoordinateInput(waypoint.longitude)
     })
-  }, [waypoint.id, waypoint.label, waypoint.type, waypoint.notes])
+  }, [waypoint.id, waypoint.label, waypoint.type, waypoint.notes, waypoint.latitude, waypoint.longitude])
+
+  const latitude = toNumber(draft.latitude)
+  const longitude = toNumber(draft.longitude)
+  const coordinatesAreValid = latitude !== null && longitude !== null
 
   const hasChanges = (
     draft.label !== (waypoint.label || '')
     || draft.type !== (waypoint.type || 'alert')
     || draft.notes !== (waypoint.notes || '')
+    || draft.latitude !== formatCoordinateInput(waypoint.latitude)
+    || draft.longitude !== formatCoordinateInput(waypoint.longitude)
   )
 
   const handleSave = async (event) => {
     event.preventDefault()
     event.stopPropagation()
 
-    if (!hasChanges || saving) return
+    if (!hasChanges || saving || !coordinatesAreValid) return
 
     setSaving(true)
     try {
-      await onSave(waypoint.id, draft)
+      await onSave(waypoint.id, {
+        label: draft.label,
+        type: draft.type,
+        notes: draft.notes,
+        latitude,
+        longitude
+      })
     } finally {
       setSaving(false)
     }
@@ -206,10 +234,43 @@ function WaypointPopupEditor({ waypoint, onSave, onRemove }) {
           placeholder="Details for iOS alert..."
         />
       </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-gray-700">Latitude</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={draft.latitude}
+            onChange={(event) => setDraft((current) => ({ ...current, latitude: event.target.value }))}
+            onClick={stopEventPropagation}
+            onMouseDown={stopEventPropagation}
+            className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-transparent focus:ring-2 focus:ring-velo-cyan-500"
+            placeholder="30.197867"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-gray-700">Longitude</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={draft.longitude}
+            onChange={(event) => setDraft((current) => ({ ...current, longitude: event.target.value }))}
+            onClick={stopEventPropagation}
+            onMouseDown={stopEventPropagation}
+            className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-transparent focus:ring-2 focus:ring-velo-cyan-500"
+            placeholder="-97.429454"
+          />
+        </div>
+      </div>
+      {!coordinatesAreValid && (
+        <p className="text-xs font-medium text-red-600">
+          Enter valid latitude and longitude values to save this cue.
+        </p>
+      )}
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={!hasChanges || saving}
+          disabled={!hasChanges || saving || !coordinatesAreValid}
           className="flex-1 rounded bg-velo-cyan px-3 py-2 text-xs font-semibold text-white hover:bg-velo-cyan-dark disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save Cue'}
@@ -242,6 +303,7 @@ export default function RouteDetail() {
   const [downloadingSource, setDownloadingSource] = useState(false)
   const [isAddWaypointMode, setIsAddWaypointMode] = useState(false)
   const [creatingWaypoint, setCreatingWaypoint] = useState(false)
+  const [newWaypointDraft, setNewWaypointDraft] = useState(() => createEmptyCoordinateDraft())
   const mapRef = useRef(null)
   const routeCues = useMemo(
     () => buildRouteWaypoints(waypoints, route?.points || []),
@@ -363,12 +425,21 @@ export default function RouteDetail() {
   const handleMapClick = async (e) => {
     if (!isAddWaypointMode || creatingWaypoint) return
 
-    const latitude = e.latlng.lat
-    const longitude = e.latlng.lng
+    setNewWaypointDraft(createEmptyCoordinateDraft(e.latlng.lat, e.latlng.lng))
+  }
+
+  const createWaypointFromCoordinates = async () => {
+    const latitude = toNumber(newWaypointDraft.latitude)
+    const longitude = toNumber(newWaypointDraft.longitude)
+
+    if (latitude === null || longitude === null) {
+      alert('Enter valid latitude and longitude values before creating a cue')
+      return
+    }
+
     const existingWaypointIds = new Set(waypoints.map((waypoint) => String(waypoint.id)))
 
     setCreatingWaypoint(true)
-    setIsAddWaypointMode(false)
 
     try {
       const response = await createRouteWaypoint(id, {
@@ -382,6 +453,8 @@ export default function RouteDetail() {
 
       if (response?.data?.waypoint) {
         upsertWaypoint(response.data.waypoint)
+        setNewWaypointDraft(createEmptyCoordinateDraft())
+        setIsAddWaypointMode(false)
       }
     } catch (error) {
       try {
@@ -403,6 +476,8 @@ export default function RouteDetail() {
 
         if (recoveredWaypoint) {
           setWaypoints(refreshedWaypoints)
+          setNewWaypointDraft(createEmptyCoordinateDraft())
+          setIsAddWaypointMode(false)
           return
         }
       } catch (refreshError) {
@@ -469,6 +544,17 @@ export default function RouteDetail() {
   const toggleRouteDirection = () => {
     setShowReversed(!showReversed)
     setSelectedPoint(null) // Clear selection when reversing
+  }
+
+  const toggleAddWaypointMode = () => {
+    setIsAddWaypointMode((current) => {
+      if (current) {
+        setNewWaypointDraft(createEmptyCoordinateDraft())
+        return false
+      }
+
+      return true
+    })
   }
   
   const handleShareRoute = () => {
@@ -883,7 +969,7 @@ export default function RouteDetail() {
       
       {/* Map */}
       <div className="bg-white rounded-lg shadow mb-8 overflow-hidden">
-        <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-b p-4">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Route Map</h2>
             <p className="text-sm text-gray-500">
@@ -893,7 +979,7 @@ export default function RouteDetail() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsAddWaypointMode((current) => !current)}
+              onClick={toggleAddWaypointMode}
               disabled={creatingWaypoint}
               className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                 isAddWaypointMode
@@ -910,10 +996,60 @@ export default function RouteDetail() {
             </button>
             <span className={`text-sm ${isAddWaypointMode ? 'font-semibold text-amber-700' : 'text-gray-500'}`}>
               {isAddWaypointMode
-                ? 'Tap the map once to place a cue, then tap the marker to edit it.'
+                ? 'Tap the map or paste coordinates, then confirm the new cue.'
                 : 'Map taps are safe while add mode is off.'}
             </span>
           </div>
+          {isAddWaypointMode && (
+            <div className="grid gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-800">Latitude</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={newWaypointDraft.latitude}
+                  onChange={(event) => setNewWaypointDraft((current) => ({ ...current, latitude: event.target.value }))}
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-velo-cyan-500"
+                  placeholder="30.197867"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-amber-800">Longitude</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={newWaypointDraft.longitude}
+                  onChange={(event) => setNewWaypointDraft((current) => ({ ...current, longitude: event.target.value }))}
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-velo-cyan-500"
+                  placeholder="-97.429454"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                <button
+                  type="button"
+                  onClick={createWaypointFromCoordinates}
+                  disabled={creatingWaypoint}
+                  className="rounded-lg bg-velo-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-velo-cyan-dark disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {creatingWaypoint ? 'Creating...' : 'Create Cue'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewWaypointDraft(createEmptyCoordinateDraft())
+                    setIsAddWaypointMode(false)
+                  }}
+                  disabled={creatingWaypoint}
+                  className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="text-xs text-amber-800 md:col-span-3">
+                Tip: tap the map to fill these coordinates, or paste exact lat/lon from the original route map.
+              </p>
+            </div>
+          )}
         </div>
         <div className="h-96">
           {mapBounds && displayPoints && (

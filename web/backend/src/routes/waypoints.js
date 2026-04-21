@@ -32,6 +32,41 @@ function isMissingColumnError(error, columnName) {
   return error?.code === '42703' && String(error?.message || '').includes(columnName)
 }
 
+async function findLikelyDuplicateWaypoint(routeId, userId, waypoint) {
+  const latitude = toNumber(waypoint.latitude)
+  const longitude = toNumber(waypoint.longitude)
+
+  if (latitude === null || longitude === null) {
+    return null
+  }
+
+  const result = await pool.query(
+    `SELECT *
+     FROM route_waypoints
+     WHERE route_id = $1
+       AND user_id = $2
+       AND ABS(latitude::float8 - $3) <= 0.00015
+       AND ABS(longitude::float8 - $4) <= 0.00015
+       AND COALESCE(type, 'alert') = $5
+       AND COALESCE(label, '') = $6
+       AND COALESCE(notes, '') = $7
+       AND created_at >= NOW() - INTERVAL '15 minutes'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [
+      routeId,
+      userId,
+      latitude,
+      longitude,
+      waypoint.type || 'alert',
+      waypoint.label || '',
+      waypoint.notes || ''
+    ]
+  )
+
+  return result.rows[0] || null
+}
+
 function resolveWaypointDistance(waypoint, routePoints) {
   const explicitDistance = toNumber(waypoint.distance_from_start ?? waypoint.distanceFromStart)
   if (explicitDistance !== null) return explicitDistance
@@ -203,6 +238,18 @@ router.post('/route/:routeId', authenticateToken, async (req, res) => {
 
     if (!userIdsMatch(routeCheck.rows[0].user_id, userId)) {
       return res.status(403).json({ error: 'Not authorized' })
+    }
+
+    const duplicateWaypoint = await findLikelyDuplicateWaypoint(routeId, userId, {
+      latitude,
+      longitude,
+      type,
+      label,
+      notes
+    })
+
+    if (duplicateWaypoint) {
+      return res.status(200).json({ waypoint: duplicateWaypoint, deduped: true })
     }
 
     const routePoints = await loadRoutePoints(routeId, userId)
