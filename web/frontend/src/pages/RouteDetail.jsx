@@ -405,6 +405,13 @@ export default function RouteDetail() {
         currentWaypoints.filter((waypoint) => !waypointIdsMatch(waypoint.id, waypointId))
       )
     } catch (error) {
+      if (error?.response?.status === 404) {
+        setWaypoints((currentWaypoints) =>
+          currentWaypoints.filter((waypoint) => !waypointIdsMatch(waypoint.id, waypointId))
+        )
+        return
+      }
+
       console.error('Failed to remove waypoint:', error)
       alert(error?.response?.data?.error || 'Failed to remove cue')
     }

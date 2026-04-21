@@ -24,6 +24,10 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function userIdsMatch(left, right) {
+  return String(left) === String(right)
+}
+
 function resolveWaypointDistance(waypoint, routePoints) {
   const explicitDistance = toNumber(waypoint.distance_from_start ?? waypoint.distanceFromStart)
   if (explicitDistance !== null) return explicitDistance
@@ -38,16 +42,20 @@ function resolveWaypointDistance(waypoint, routePoints) {
 }
 
 async function refreshWaypointCount(routeId, userId) {
-  await pool.query(
-    `UPDATE routes
-     SET waypoint_count = (
-       SELECT COUNT(*)
-       FROM route_waypoints
-       WHERE route_id = $1 AND user_id = $2
-     )
-     WHERE id = $1 AND user_id = $2`,
-    [routeId, userId]
-  )
+  try {
+    await pool.query(
+      `UPDATE routes
+       SET waypoint_count = (
+         SELECT COUNT(*)::int
+         FROM route_waypoints
+         WHERE route_id = $1 AND user_id = $2
+       )
+       WHERE id = $1 AND user_id = $2`,
+      [routeId, userId]
+    )
+  } catch (error) {
+    console.warn('Failed to refresh waypoint count:', error?.message || error)
+  }
 }
 
 async function insertWaypointList(routeId, userId, waypointList, routePoints) {
@@ -170,7 +178,7 @@ router.post('/route/:routeId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Route not found' })
     }
 
-    if (routeCheck.rows[0].user_id !== userId) {
+    if (!userIdsMatch(routeCheck.rows[0].user_id, userId)) {
       return res.status(403).json({ error: 'Not authorized' })
     }
 
@@ -219,7 +227,7 @@ router.put('/:waypointId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Waypoint not found' })
     }
 
-    if (waypointCheck.rows[0].user_id !== userId) {
+    if (!userIdsMatch(waypointCheck.rows[0].user_id, userId)) {
       return res.status(403).json({ error: 'Not authorized' })
     }
 
@@ -271,7 +279,7 @@ router.delete('/:waypointId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Waypoint not found' })
     }
 
-    if (waypointCheck.rows[0].user_id !== userId) {
+    if (!userIdsMatch(waypointCheck.rows[0].user_id, userId)) {
       return res.status(403).json({ error: 'Not authorized' })
     }
 
@@ -302,7 +310,7 @@ router.post('/route/:routeId/sync', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Route not found' })
     }
 
-    if (routeCheck.rows[0].user_id !== userId) {
+    if (!userIdsMatch(routeCheck.rows[0].user_id, userId)) {
       return res.status(403).json({ error: 'Not authorized' })
     }
 
