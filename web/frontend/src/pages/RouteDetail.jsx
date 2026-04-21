@@ -65,6 +65,10 @@ export default function RouteDetail() {
   const [copied, setCopied] = useState(false)
   const [downloadingSource, setDownloadingSource] = useState(false)
   const mapRef = useRef(null)
+  const routeCues = useMemo(
+    () => buildRouteWaypoints(waypoints, route?.points || []),
+    [waypoints, route]
+  )
   
   useEffect(() => {
     loadRoute()
@@ -253,10 +257,6 @@ export default function RouteDetail() {
   
   // Detect climbs in the route
   const climbs = displayPoints ? detectClimbs(displayPoints) : []
-  const routeCues = useMemo(
-    () => buildRouteWaypoints(waypoints, route?.points || []),
-    [waypoints, route]
-  )
   
   // Prepare elevation chart data
   const elevationData = displayPoints

@@ -1,4 +1,4 @@
-import { detectClimbs, getClimbCategoryLabel } from './climbAnalysis'
+import { detectClimbs } from './climbAnalysis'
 
 const EARTH_RADIUS_METERS = 6371e3
 
@@ -155,25 +155,75 @@ function buildSyntheticClimbWaypoints(routePoints = []) {
 
   return detectClimbs(routePoints).map((climb, index) => {
     const distanceFromStart = toNumber(routePoints[climb.startIndex]?.distance ?? climb.start?.distance)
-    const label = `${getClimbCategoryLabel(climb.category)} climb`
-    const notes = [
-      `${metersToMiles(climb.distance).toFixed(2)} mi`,
-      `${Math.round(metersToFeet(climb.elevationGain))} ft gain`,
-      `${climb.avgGrade.toFixed(1)}% avg`
-    ].join(' • ')
+    const { title, detail } = describeClimbCue(climb)
 
     return {
       id: `synthetic-climb-${index}`,
       latitude: routePoints[climb.startIndex]?.latitude,
       longitude: routePoints[climb.startIndex]?.longitude,
       type: 'steep',
-      label,
-      notes,
+      label: title,
+      notes: detail,
       distance_from_start: distanceFromStart,
       distanceFromStart,
       isSynthetic: true
     }
   })
+}
+
+function describeClimbCue(climb) {
+  const distanceMiles = metersToMiles(climb.distance)
+  const elevationFeet = Math.round(metersToFeet(climb.elevationGain))
+  const avgGrade = climb.avgGrade
+  const isShort = distanceMiles < 0.25
+  const isLong = distanceMiles >= 0.8
+  const isSteep = avgGrade >= 6.5
+
+  let effort = 'easy'
+  if (
+    climb.category === 'HC' ||
+    climb.category === '1' ||
+    elevationFeet >= 900 ||
+    (isLong && avgGrade >= 6)
+  ) {
+    effort = 'major'
+  } else if (
+    climb.category === '2' ||
+    elevationFeet >= 350 ||
+    avgGrade >= 7
+  ) {
+    effort = 'hard'
+  } else if (
+    climb.category === '3' ||
+    elevationFeet >= 120 ||
+    avgGrade >= 5
+  ) {
+    effort = 'moderate'
+  }
+
+  let title = 'Easy climb ahead'
+  if (effort === 'major') {
+    title = 'Major climb ahead'
+  } else if (effort === 'hard') {
+    title = isSteep ? 'Steep climb ahead' : 'Hard climb ahead'
+  } else if (effort === 'moderate') {
+    title = isShort ? 'Punchy climb ahead' : 'Moderate climb ahead'
+  } else if (isShort) {
+    title = 'Short easy rise ahead'
+  }
+
+  let lead = 'Gentle rise'
+  if (effort === 'major') {
+    lead = 'Long effort'
+  } else if (effort === 'hard') {
+    lead = 'Steady climb'
+  } else if (effort === 'moderate') {
+    lead = isShort ? 'Short punchy effort' : 'Rolling climb'
+  }
+
+  const detail = `${lead}: ${distanceMiles.toFixed(2)} mi • ${elevationFeet} ft gain • ${avgGrade.toFixed(1)}% avg`
+
+  return { title, detail }
 }
 
 export function buildRouteWaypoints(waypoints = [], routePoints = [], options = {}) {

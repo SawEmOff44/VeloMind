@@ -195,6 +195,16 @@ export default function RouteLiveRide() {
     }).slice(0, 3),
     [rideWaypoints, progressDistance]
   )
+  const nextStopWaypoint = useMemo(
+    () => getNextWaypoint(
+      rideWaypoints.filter((waypoint) => waypoint.type === 'rest' || waypoint.type === 'water'),
+      progressDistance
+    ),
+    [rideWaypoints, progressDistance]
+  )
+  const distanceToNextStop = nextStopWaypoint
+    ? Math.max(0, (toNumber(nextStopWaypoint.distanceFromStart) ?? 0) - progressDistance)
+    : null
 
   if (loading) {
     return (
@@ -324,11 +334,12 @@ export default function RouteLiveRide() {
                   <CircleMarker
                     key={waypoint.id}
                     center={[waypoint.latitude, waypoint.longitude]}
-                    radius={waypoint.id === nextWaypoint?.id ? 8 : 5}
+                    radius={waypoint.id === nextWaypoint?.id ? 8 : waypoint.id === nextStopWaypoint?.id ? 7 : 5}
                     pathOptions={{
                       color: waypoint.presentation.color,
                       fillColor: waypoint.presentation.color,
-                      fillOpacity: waypoint.id === nextWaypoint?.id ? 0.95 : 0.65
+                      fillOpacity: waypoint.id === nextWaypoint?.id || waypoint.id === nextStopWaypoint?.id ? 0.95 : 0.65,
+                      weight: waypoint.id === nextStopWaypoint?.id ? 3 : 2
                     }}
                   >
                     <Popup>
@@ -418,6 +429,31 @@ export default function RouteLiveRide() {
               <p className="mt-3 text-2xl font-bold text-gray-900">{metersToMiles(remainingDistance).toFixed(1)} mi</p>
             </div>
           </div>
+
+          {nextStopWaypoint && (
+            <div className={`rounded-3xl border p-5 shadow-sm ${nextStopWaypoint.presentation.bgClass} ${nextStopWaypoint.presentation.borderClass}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className={`text-sm font-semibold ${nextStopWaypoint.presentation.textClass}`}>
+                    Next stop
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold text-gray-900">
+                    {nextStopWaypoint.presentation.emoji} {nextStopWaypoint.label || nextStopWaypoint.presentation.label}
+                  </h2>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">In</p>
+                  <p className="mt-2 text-2xl font-bold text-gray-900">
+                    {distanceToNextStop !== null ? formatDistanceImperial(distanceToNextStop) : '--'}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm text-gray-600">
+                {nextStopWaypoint.notes || 'Pinned so the next planned stop stays easy to glance at during the ride.'}
+              </p>
+            </div>
+          )}
 
           <div className={`rounded-3xl border p-5 shadow-sm ${nextWaypointPresentation?.bgClass || 'bg-white'} ${nextWaypointPresentation?.borderClass || 'border-gray-200'}`}>
             <div className="flex items-start justify-between gap-4">
