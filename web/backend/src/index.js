@@ -146,8 +146,45 @@ async function ensureOptionalRouteColumns() {
   }
 }
 
+async function ensureWaypointSchema() {
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS public.route_waypoints (
+       id SERIAL PRIMARY KEY,
+       route_id INTEGER REFERENCES public.routes(id) ON DELETE CASCADE,
+       user_id INTEGER REFERENCES public.users(id) ON DELETE CASCADE,
+       latitude DECIMAL(10,7) NOT NULL,
+       longitude DECIMAL(10,7) NOT NULL,
+       type VARCHAR(50) DEFAULT 'alert',
+       label VARCHAR(255),
+       notes TEXT,
+       distance_from_start DECIMAL(10,2),
+       alert_distance INTEGER DEFAULT 1000,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+     )`,
+    `ALTER TABLE public.route_waypoints ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'alert'`,
+    `ALTER TABLE public.route_waypoints ADD COLUMN IF NOT EXISTS label VARCHAR(255)`,
+    `ALTER TABLE public.route_waypoints ADD COLUMN IF NOT EXISTS notes TEXT`,
+    `ALTER TABLE public.route_waypoints ADD COLUMN IF NOT EXISTS distance_from_start DECIMAL(10,2)`,
+    `ALTER TABLE public.route_waypoints ADD COLUMN IF NOT EXISTS alert_distance INTEGER DEFAULT 1000`,
+    `ALTER TABLE public.route_waypoints ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+    `ALTER TABLE public.route_waypoints ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`,
+    `CREATE INDEX IF NOT EXISTS idx_route_waypoints_route_id ON public.route_waypoints(route_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_route_waypoints_user_id ON public.route_waypoints(user_id)`
+  ];
+
+  try {
+    for (const statement of statements) {
+      await query(statement);
+    }
+  } catch (err) {
+    console.warn('⚠️ Waypoint schema check failed (continuing anyway):', err?.message || err);
+  }
+}
+
 (async () => {
   await ensureOptionalRouteColumns();
+  await ensureWaypointSchema();
   await warnIfSchemaMismatch();
 
   app.listen(PORT, () => {

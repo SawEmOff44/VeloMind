@@ -28,6 +28,10 @@ function userIdsMatch(left, right) {
   return String(left) === String(right)
 }
 
+function isMissingColumnError(error, columnName) {
+  return error?.code === '42703' && String(error?.message || '').includes(columnName)
+}
+
 function resolveWaypointDistance(waypoint, routePoints) {
   const explicitDistance = toNumber(waypoint.distance_from_start ?? waypoint.distanceFromStart)
   if (explicitDistance !== null) return explicitDistance
@@ -62,23 +66,42 @@ async function insertWaypointList(routeId, userId, waypointList, routePoints) {
   const savedWaypoints = []
 
   for (const waypoint of waypointList.slice(0, 500)) {
-    const result = await pool.query(
-      `INSERT INTO route_waypoints
-       (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-      [
-        routeId,
-        userId,
-        waypoint.latitude,
-        waypoint.longitude,
-        waypoint.type || 'alert',
-        waypoint.label,
-        waypoint.notes,
-        resolveWaypointDistance(waypoint, routePoints),
-        waypoint.alert_distance || waypoint.alertDistance || 1000
-      ]
-    )
+    const values = [
+      routeId,
+      userId,
+      waypoint.latitude,
+      waypoint.longitude,
+      waypoint.type || 'alert',
+      waypoint.label,
+      waypoint.notes,
+      resolveWaypointDistance(waypoint, routePoints),
+      waypoint.alert_distance || waypoint.alertDistance || 1000
+    ]
+
+    let result
+
+    try {
+      result = await pool.query(
+        `INSERT INTO route_waypoints
+         (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING *`,
+        values
+      )
+    } catch (error) {
+      if (!isMissingColumnError(error, 'alert_distance')) {
+        throw error
+      }
+
+      console.warn('route_waypoints.alert_distance missing; retrying waypoint insert without it')
+      result = await pool.query(
+        `INSERT INTO route_waypoints
+         (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        values.slice(0, 8)
+      )
+    }
 
     savedWaypoints.push(result.rows[0])
   }

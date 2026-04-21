@@ -225,6 +225,10 @@ function getMimeTypeForSourceFormat(sourceFormat, fallback = 'application/octet-
   }
 }
 
+function isMissingColumnError(error, columnName) {
+  return error?.code === '42703' && String(error?.message || '').includes(columnName)
+}
+
 function getDownloadFileName(route, sourceFormat = 'gpx') {
   const extension = sourceFormat === 'fit'
     ? 'fit'
@@ -1013,22 +1017,39 @@ router.post('/upload', authenticateToken, upload.single('gpx'), async (req, res)
     if (waypointInsertions.length > 0) {
       try {
         for (const waypoint of waypointInsertions) {
-          await query(
-            `INSERT INTO route_waypoints
-             (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [
-              route.id,
-              req.user.id,
-              waypoint.latitude,
-              waypoint.longitude,
-              waypoint.type || 'alert',
-              waypoint.label || null,
-              waypoint.notes || null,
-              waypoint.distanceFromStart ?? null,
-              1000
-            ]
-          );
+          const values = [
+            route.id,
+            req.user.id,
+            waypoint.latitude,
+            waypoint.longitude,
+            waypoint.type || 'alert',
+            waypoint.label || null,
+            waypoint.notes || null,
+            waypoint.distanceFromStart ?? null,
+            1000
+          ];
+
+          try {
+            await query(
+              `INSERT INTO route_waypoints
+               (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+              values
+            );
+          } catch (waypointInsertError) {
+            if (!isMissingColumnError(waypointInsertError, 'alert_distance')) {
+              throw waypointInsertError;
+            }
+
+            console.warn('route_waypoints.alert_distance missing; retrying FIT waypoint insert without it');
+            await query(
+              `INSERT INTO route_waypoints
+               (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              values.slice(0, 8)
+            );
+          }
+
           insertedWaypointCount += 1;
         }
       } catch (waypointError) {
