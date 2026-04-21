@@ -24,6 +24,7 @@ import {
   buildRouteWaypoints,
   getRouteSourceLabel,
   getWaypointPresentation,
+  haversineDistanceMeters,
   resolveDistanceFromRoutePoints,
   toNumber
 } from '../utils/liveRide'
@@ -362,23 +363,52 @@ export default function RouteDetail() {
   const handleMapClick = async (e) => {
     if (!isAddWaypointMode || creatingWaypoint) return
 
+    const latitude = e.latlng.lat
+    const longitude = e.latlng.lng
+    const existingWaypointIds = new Set(waypoints.map((waypoint) => String(waypoint.id)))
+
     setCreatingWaypoint(true)
     setIsAddWaypointMode(false)
 
     try {
       const response = await createRouteWaypoint(id, {
-        latitude: e.latlng.lat,
-        longitude: e.latlng.lng,
+        latitude,
+        longitude,
         type: 'alert',
         label: 'New Cue',
         notes: '',
-        distance_from_start: resolveDistanceFromRoutePoints(route?.points || [], e.latlng.lat, e.latlng.lng)
+        distance_from_start: resolveDistanceFromRoutePoints(route?.points || [], latitude, longitude)
       })
 
       if (response?.data?.waypoint) {
         upsertWaypoint(response.data.waypoint)
       }
     } catch (error) {
+      try {
+        const response = await getWaypoints(id)
+        const refreshedWaypoints = sortWaypoints(
+          (response?.data?.waypoints || []).map((waypoint) =>
+            normalizeWaypointForSync(waypoint, route?.points || [])
+          )
+        )
+        const recoveredWaypoint = refreshedWaypoints.find((waypoint) => {
+          if (existingWaypointIds.has(String(waypoint.id))) return false
+
+          const waypointLatitude = toNumber(waypoint.latitude)
+          const waypointLongitude = toNumber(waypoint.longitude)
+          if (waypointLatitude === null || waypointLongitude === null) return false
+
+          return haversineDistanceMeters(latitude, longitude, waypointLatitude, waypointLongitude) <= 25
+        })
+
+        if (recoveredWaypoint) {
+          setWaypoints(refreshedWaypoints)
+          return
+        }
+      } catch (refreshError) {
+        console.error('Failed to confirm waypoint creation after error:', refreshError)
+      }
+
       console.error('Failed to create waypoint:', error)
       alert(error?.response?.data?.error || 'Failed to create cue')
     } finally {
