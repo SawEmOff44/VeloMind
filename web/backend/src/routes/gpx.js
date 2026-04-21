@@ -201,6 +201,15 @@ function inferSourceFormat(filename, mimetype = '') {
   return 'gpx';
 }
 
+function looksLikeFitFile(buffer) {
+  if (!buffer || buffer.length < 12) return false;
+
+  const headerSize = buffer.readUInt8(0);
+  if (headerSize < 12 || headerSize > buffer.length) return false;
+
+  return buffer.toString('ascii', 8, 12) === '.FIT';
+}
+
 function getMimeTypeForSourceFormat(sourceFormat, fallback = 'application/octet-stream') {
   switch (sourceFormat) {
     case 'fit':
@@ -762,7 +771,10 @@ function processFitMessage(globalMessageNumber, fields, routePointsRaw, coursePo
 }
 
 async function parseUploadedRouteFile(file, routeName) {
-  const sourceFormat = inferSourceFormat(file?.originalname, file?.mimetype);
+  const inferredSourceFormat = inferSourceFormat(file?.originalname, file?.mimetype);
+  const sourceFormat = inferredSourceFormat === 'gpx' && looksLikeFitFile(file?.buffer)
+    ? 'fit'
+    : inferredSourceFormat;
   const isFit = sourceFormat === 'fit';
   const originalFileBuffer = file?.buffer || null;
   const originalFileName = file?.originalname || `${routeName}.${sourceFormat}`;
@@ -787,7 +799,29 @@ async function parseUploadedRouteFile(file, routeName) {
   }
 
   const xmlData = file.buffer.toString('utf-8');
-  const parsed = await parseGPX(xmlData);
+  let parsed;
+  try {
+    parsed = await parseGPX(xmlData);
+  } catch (error) {
+    if (looksLikeFitFile(file?.buffer)) {
+      const fitParsed = parseFIT(file.buffer);
+      if (!fitParsed.points || fitParsed.points.length < 2) {
+        throw new Error('No route points found in FIT file');
+      }
+
+      return {
+        parsed: fitParsed,
+        gpxData: generateGPX(routeName, fitParsed.points),
+        sourceFormat: 'fit',
+        originalFileBuffer,
+        originalFileName,
+        originalMimeType: getMimeTypeForSourceFormat('fit', originalMimeType),
+        originalFileSize
+      };
+    }
+
+    throw error;
+  }
   if (!parsed.points || parsed.points.length < 2) {
     throw new Error('No route points found in uploaded file');
   }
@@ -1089,5 +1123,5 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-export { parseFIT, parseGPX, findNearestDistanceFromPoints, inferSourceFormat, isRouteParseError };
+export { parseFIT, parseGPX, findNearestDistanceFromPoints, inferSourceFormat, isRouteParseError, looksLikeFitFile };
 export default router;

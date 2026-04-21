@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { inferSourceFormat, isRouteParseError, parseFIT } from '../gpx.js';
+import { inferSourceFormat, isRouteParseError, looksLikeFitFile, parseFIT } from '../gpx.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +36,15 @@ describe('FIT route parsing', () => {
     expect(inferSourceFormat('route.fit', 'application/fit')).toBe('fit');
     expect(inferSourceFormat('route.fit', 'application/x-fit')).toBe('fit');
     expect(inferSourceFormat('route.fit', 'application/x-garmin-fit')).toBe('fit');
+  });
+
+  test('recognizes FIT files from binary signature even without extension metadata', () => {
+    const fixturePath = path.join(__dirname, '..', '__fixtures__', 'sample-course.fit');
+    const fitBuffer = fs.readFileSync(fixturePath);
+
+    expect(inferSourceFormat('route', '')).toBe('gpx');
+    expect(looksLikeFitFile(fitBuffer)).toBe(true);
+    expect(looksLikeFitFile(Buffer.from('<gpx></gpx>', 'utf8'))).toBe(false);
   });
 
   test('classifies internal FIT parser failures as upload parse errors', () => {
