@@ -511,6 +511,9 @@ export default function RouteDetail() {
         }
       })
     : []
+  const routeLinePositions = displayPoints
+    ? displayPoints.map((point) => [point.latitude, point.longitude])
+    : []
   
   // Calculate grade domain with 1% padding
   const gradeMin = gradeData.length > 0 ? Math.min(...gradeData.map(d => d.grade)) : 0
@@ -872,6 +875,32 @@ export default function RouteDetail() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+
+              {/* Route halo for visibility against the basemap */}
+              <Polyline
+                positions={routeLinePositions}
+                pathOptions={{
+                  color: '#0f172a',
+                  weight: 12,
+                  opacity: 0.28,
+                  lineCap: 'round',
+                  lineJoin: 'round'
+                }}
+                interactive={false}
+              />
+
+              {/* Bright route spine so the course stays easy to follow */}
+              <Polyline
+                positions={routeLinePositions}
+                pathOptions={{
+                  color: '#22d3ee',
+                  weight: 8,
+                  opacity: 0.9,
+                  lineCap: 'round',
+                  lineJoin: 'round'
+                }}
+                interactive={false}
+              />
               
               {/* Difficulty-colored route segments */}
               {gradeData.map((segment, idx) => {
@@ -883,9 +912,14 @@ export default function RouteDetail() {
                       [displayPoints[idx - 1].latitude, displayPoints[idx - 1].longitude],
                       [displayPoints[idx].latitude, displayPoints[idx].longitude]
                     ]}
-                    color={segment.color}
-                    weight={4}
-                    opacity={0.7}
+                    pathOptions={{
+                      color: segment.color,
+                      weight: 5,
+                      opacity: 0.95,
+                      lineCap: 'round',
+                      lineJoin: 'round'
+                    }}
+                    interactive={false}
                   />
                 )
               })}
