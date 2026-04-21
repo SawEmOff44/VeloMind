@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getRoutes, uploadGPX, deleteRoute } from '../services/api'
 import { format } from 'date-fns'
-import { MapIcon, ArrowUpTrayIcon, TrashIcon, ChartBarIcon, ArrowsPointingOutIcon, FunnelIcon, XMarkIcon, ScaleIcon } from '@heroicons/react/24/outline'
+import { MapIcon, ArrowUpTrayIcon, TrashIcon, ChartBarIcon, ArrowsPointingOutIcon, FunnelIcon, XMarkIcon, ScaleIcon, PlayIcon } from '@heroicons/react/24/outline'
+import { getRouteSourceLabel } from '../utils/liveRide'
 
 export default function Routes() {
   const navigate = useNavigate()
@@ -151,7 +152,7 @@ export default function Routes() {
       <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Routes</h1>
-          <p className="text-gray-600">Upload GPX files and sync them to your iPhone</p>
+          <p className="text-gray-600">Upload FIT or GPX routes and use them on your iPhone in live ride mode</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-4 py-2 bg-velo-cyan/10 border border-velo-cyan/30 rounded-lg">
@@ -340,7 +341,7 @@ export default function Routes() {
             />
           </label>
           <p className="text-sm text-gray-500 mt-2">GPX, FIT, TCX, or KML files supported</p>
-          <p className="text-xs text-gray-400 mt-1">Routes automatically sync to your iPhone app</p>
+          <p className="text-xs text-gray-400 mt-1">FIT routes keep source metadata and cues for live ride mode on your phone</p>
         </div>
       </div>
       
@@ -353,7 +354,7 @@ export default function Routes() {
         <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl shadow-inner">
           <MapIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
           <p className="text-lg text-gray-600 font-medium">No routes uploaded yet</p>
-          <p className="text-sm text-gray-500 mt-2">Upload a GPX file to get started with navigation</p>
+          <p className="text-sm text-gray-500 mt-2">Upload a FIT or GPX route to get started with navigation</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -417,6 +418,15 @@ export default function Routes() {
                     Score: {difficultyScore.toFixed(1)}
                   </span>
                 </div>
+
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    {getRouteSourceLabel(route.source_format)}
+                  </span>
+                  <span className="inline-flex rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                    {route.waypoint_count || 0} cues
+                  </span>
+                </div>
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
@@ -450,12 +460,21 @@ export default function Routes() {
                   </p>
                 </div>
                 
-                <Link
-                  to={`/routes/${route.id}`}
-                  className="mt-4 block w-full text-center py-2.5 px-4 bg-gradient-to-r from-velo-cyan to-velo-green text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
-                >
-                  View Details
-                </Link>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Link
+                    to={`/routes/${route.id}`}
+                    className="block w-full text-center py-2.5 px-4 bg-gradient-to-r from-velo-cyan to-velo-green text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
+                  >
+                    View Details
+                  </Link>
+                  <Link
+                    to={`/routes/${route.id}/live`}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-velo-cyan px-4 py-2.5 font-semibold text-velo-cyan hover:bg-velo-cyan/10 transition-colors"
+                  >
+                    <PlayIcon className="h-4 w-4" />
+                    Live Ride
+                  </Link>
+                </div>
               </div>
             </div>
             )

@@ -60,6 +60,9 @@ export const getRoutes = () =>
 export const getRoute = (id) => 
   api.get(`/gpx/${id}`)
 
+export const downloadRouteSource = (id) =>
+  api.get(`/gpx/${id}/source`, { responseType: 'blob' })
+
 export const deleteRoute = (id) => 
   api.delete(`/gpx/${id}`)
 

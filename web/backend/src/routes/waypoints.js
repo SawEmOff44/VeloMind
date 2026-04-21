@@ -1,8 +1,54 @@
 import express from 'express'
 import { authenticateToken } from '../middleware/auth.js'
 import pool from '../db.js'
+import { parseGPX, findNearestDistanceFromPoints } from './gpx.js'
 
 const router = express.Router()
+
+async function loadRoutePoints(routeId, userId) {
+  const result = await pool.query(
+    'SELECT gpx_data FROM routes WHERE id = $1 AND user_id = $2',
+    [routeId, userId]
+  )
+
+  if (result.rows.length === 0 || !result.rows[0].gpx_data) {
+    return []
+  }
+
+  const parsed = await parseGPX(result.rows[0].gpx_data)
+  return parsed.points || []
+}
+
+function toNumber(value) {
+  const parsed = typeof value === 'string' ? Number.parseFloat(value) : Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function resolveWaypointDistance(waypoint, routePoints) {
+  const explicitDistance = toNumber(waypoint.distance_from_start ?? waypoint.distanceFromStart)
+  if (explicitDistance !== null) return explicitDistance
+
+  const latitude = toNumber(waypoint.latitude)
+  const longitude = toNumber(waypoint.longitude)
+  if (latitude === null || longitude === null || routePoints.length === 0) {
+    return null
+  }
+
+  return findNearestDistanceFromPoints(routePoints, latitude, longitude)
+}
+
+async function refreshWaypointCount(routeId, userId) {
+  await pool.query(
+    `UPDATE routes
+     SET waypoint_count = (
+       SELECT COUNT(*)
+       FROM route_waypoints
+       WHERE route_id = $1 AND user_id = $2
+     )
+     WHERE id = $1 AND user_id = $2`,
+    [routeId, userId]
+  )
+}
 
 // Get all waypoints for a route
 router.get('/route/:routeId', authenticateToken, async (req, res) => {
@@ -60,13 +106,21 @@ router.post('/route/:routeId', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' })
     }
 
+    const routePoints = await loadRoutePoints(routeId, userId)
+    const resolvedDistanceFromStart = resolveWaypointDistance(
+      { latitude, longitude, distance_from_start },
+      routePoints
+    )
+
     const result = await pool.query(
       `INSERT INTO route_waypoints 
        (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [routeId, userId, latitude, longitude, type || 'alert', label, notes, distance_from_start, alert_distance || 1000]
+      [routeId, userId, latitude, longitude, type || 'alert', label, notes, resolvedDistanceFromStart, alert_distance || 1000]
     )
+
+    await refreshWaypointCount(routeId, userId)
 
     res.status(201).json({ waypoint: result.rows[0] })
   } catch (error) {
@@ -84,7 +138,7 @@ router.put('/:waypointId', authenticateToken, async (req, res) => {
 
     // Verify ownership
     const waypointCheck = await pool.query(
-      'SELECT user_id FROM route_waypoints WHERE id = $1',
+      'SELECT user_id, route_id, latitude, longitude FROM route_waypoints WHERE id = $1',
       [waypointId]
     )
 
@@ -95,6 +149,16 @@ router.put('/:waypointId', authenticateToken, async (req, res) => {
     if (waypointCheck.rows[0].user_id !== userId) {
       return res.status(403).json({ error: 'Not authorized' })
     }
+
+    const routePoints = await loadRoutePoints(waypointCheck.rows[0].route_id, userId)
+    const resolvedDistanceFromStart = resolveWaypointDistance(
+      {
+        latitude: latitude ?? waypointCheck.rows[0].latitude,
+        longitude: longitude ?? waypointCheck.rows[0].longitude,
+        distance_from_start
+      },
+      routePoints
+    )
 
     const result = await pool.query(
       `UPDATE route_waypoints 
@@ -108,7 +172,7 @@ router.put('/:waypointId', authenticateToken, async (req, res) => {
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $8
        RETURNING *`,
-      [latitude, longitude, type, label, notes, distance_from_start, alert_distance, waypointId]
+      [latitude, longitude, type, label, notes, resolvedDistanceFromStart, alert_distance, waypointId]
     )
 
     res.json({ waypoint: result.rows[0] })
@@ -126,7 +190,7 @@ router.delete('/:waypointId', authenticateToken, async (req, res) => {
 
     // Verify ownership
     const waypointCheck = await pool.query(
-      'SELECT user_id FROM route_waypoints WHERE id = $1',
+      'SELECT user_id, route_id FROM route_waypoints WHERE id = $1',
       [waypointId]
     )
 
@@ -139,6 +203,7 @@ router.delete('/:waypointId', authenticateToken, async (req, res) => {
     }
 
     await pool.query('DELETE FROM route_waypoints WHERE id = $1', [waypointId])
+    await refreshWaypointCount(waypointCheck.rows[0].route_id, userId)
 
     res.json({ message: 'Waypoint deleted successfully' })
   } catch (error) {
@@ -152,7 +217,7 @@ router.post('/route/:routeId/sync', authenticateToken, async (req, res) => {
   try {
     const { routeId } = req.params
     const userId = req.user.id
-    const { waypoints } = req.body
+    const waypointList = Array.isArray(req.body?.waypoints) ? req.body.waypoints : []
 
     // Verify route ownership
     const routeCheck = await pool.query(
@@ -171,19 +236,33 @@ router.post('/route/:routeId/sync', authenticateToken, async (req, res) => {
     // Delete existing waypoints for this route
     await pool.query('DELETE FROM route_waypoints WHERE route_id = $1 AND user_id = $2', [routeId, userId])
 
+    const routePoints = await loadRoutePoints(routeId, userId)
+
     // Insert new waypoints
-    const insertPromises = waypoints.map(wp => 
+    const insertPromises = waypointList.map(wp => 
       pool.query(
         `INSERT INTO route_waypoints 
          (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING *`,
-        [routeId, userId, wp.latitude, wp.longitude, wp.type || 'alert', wp.label, wp.notes, wp.distance_from_start, wp.alert_distance || 1000]
+        [
+          routeId,
+          userId,
+          wp.latitude,
+          wp.longitude,
+          wp.type || 'alert',
+          wp.label,
+          wp.notes,
+          resolveWaypointDistance(wp, routePoints),
+          wp.alert_distance || 1000
+        ]
       )
     )
 
     const results = await Promise.all(insertPromises)
     const savedWaypoints = results.map(r => r.rows[0])
+
+    await refreshWaypointCount(routeId, userId)
 
     res.json({ waypoints: savedWaypoints })
   } catch (error) {

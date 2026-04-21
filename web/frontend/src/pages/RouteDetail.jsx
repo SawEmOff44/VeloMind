@@ -1,11 +1,23 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Polyline, Marker, Popup, Circle, useMapEvents } from 'react-leaflet'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceDot } from 'recharts'
-import { getRoute, getActiveParameters, getWaypoints, syncWaypoints } from '../services/api'
+import { downloadRouteSource, getRoute, getActiveParameters, getWaypoints, syncWaypoints } from '../services/api'
 import { detectClimbs, getClimbCategoryColor, getClimbCategoryLabel } from '../utils/climbAnalysis'
 import { reverseRoute, getDifficultyColor, predictSpeed, predictSegmentTime } from '../utils/routeUtils'
-import { ShareIcon, CheckIcon } from '@heroicons/react/24/outline'
+import {
+  ArrowDownTrayIcon,
+  CheckIcon,
+  PlayIcon,
+  ShareIcon
+} from '@heroicons/react/24/outline'
+import {
+  buildRouteWaypoints,
+  getRouteSourceLabel,
+  getWaypointPresentation,
+  resolveDistanceFromRoutePoints,
+  toNumber
+} from '../utils/liveRide'
 import 'leaflet/dist/leaflet.css'
 
 // Fix Leaflet default marker icon issue with Vite
@@ -29,6 +41,16 @@ function MapClickHandler({ onMapClick }) {
   return null
 }
 
+function normalizeWaypointForSync(waypoint, routePoints) {
+  const distanceFromStart = toNumber(waypoint.distance_from_start)
+    ?? resolveDistanceFromRoutePoints(routePoints, waypoint.latitude, waypoint.longitude)
+
+  return {
+    ...waypoint,
+    distance_from_start: distanceFromStart
+  }
+}
+
 export default function RouteDetail() {
   const { id } = useParams()
   const [route, setRoute] = useState(null)
@@ -41,6 +63,7 @@ export default function RouteDetail() {
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [shareLink, setShareLink] = useState('')
   const [copied, setCopied] = useState(false)
+  const [downloadingSource, setDownloadingSource] = useState(false)
   const mapRef = useRef(null)
   
   useEffect(() => {
@@ -68,12 +91,20 @@ export default function RouteDetail() {
       try {
         const waypointsResponse = await getWaypoints(id)
         if (waypointsResponse.data.waypoints && waypointsResponse.data.waypoints.length > 0) {
-          setWaypoints(waypointsResponse.data.waypoints)
+          setWaypoints(
+            waypointsResponse.data.waypoints.map((waypoint) =>
+              normalizeWaypointForSync(waypoint, routeData.points || [])
+            )
+          )
         } else {
           // Fallback to localStorage for backward compatibility
           const savedWaypoints = localStorage.getItem(`waypoints_${id}`)
           if (savedWaypoints) {
-            setWaypoints(JSON.parse(savedWaypoints))
+            setWaypoints(
+              JSON.parse(savedWaypoints).map((waypoint) =>
+                normalizeWaypointForSync(waypoint, routeData.points || [])
+              )
+            )
           }
         }
       } catch (error) {
@@ -101,6 +132,19 @@ export default function RouteDetail() {
       console.error('Failed to load rider parameters:', error)
     }
   }
+
+  const syncWaypointsToBackend = (nextWaypoints) => {
+    const normalizedWaypoints = nextWaypoints.map((waypoint) =>
+      normalizeWaypointForSync(waypoint, route?.points || [])
+    )
+
+    setWaypoints(normalizedWaypoints)
+    localStorage.setItem(`waypoints_${id}`, JSON.stringify(normalizedWaypoints))
+
+    syncWaypoints(id, normalizedWaypoints).catch((err) =>
+      console.error('Failed to sync waypoints:', err)
+    )
+  }
   
   const handleChartClick = (data) => {
     if (data && data.activePayload && data.activePayload[0]) {
@@ -125,35 +169,22 @@ export default function RouteDetail() {
       longitude: e.latlng.lng,
       type: 'alert',
       label: 'New Waypoint',
-      notes: ''
+      notes: '',
+      distance_from_start: resolveDistanceFromRoutePoints(route?.points || [], e.latlng.lat, e.latlng.lng)
     }
-    const updatedWaypoints = [...waypoints, newWaypoint]
-    setWaypoints(updatedWaypoints)
-    localStorage.setItem(`waypoints_${id}`, JSON.stringify(updatedWaypoints))
+    syncWaypointsToBackend([...waypoints, newWaypoint])
   }
   
   const updateWaypoint = (waypointId, updates) => {
     const updatedWaypoints = waypoints.map(w => 
       w.id === waypointId ? { ...w, ...updates } : w
     )
-    setWaypoints(updatedWaypoints)
-    localStorage.setItem(`waypoints_${id}`, JSON.stringify(updatedWaypoints))
-    
-    // Sync to backend (debounced in real app)
-    syncWaypoints(id, updatedWaypoints).catch(err => 
-      console.error('Failed to sync waypoints:', err)
-    )
+    syncWaypointsToBackend(updatedWaypoints)
   }
   
   const removeWaypoint = (waypointId) => {
     const updatedWaypoints = waypoints.filter(w => w.id !== waypointId)
-    setWaypoints(updatedWaypoints)
-    localStorage.setItem(`waypoints_${id}`, JSON.stringify(updatedWaypoints))
-    
-    // Sync to backend
-    syncWaypoints(id, updatedWaypoints).catch(err => 
-      console.error('Failed to sync waypoints:', err)
-    )
+    syncWaypointsToBackend(updatedWaypoints)
   }
   
   const toggleRouteDirection = () => {
@@ -171,6 +202,29 @@ export default function RouteDetail() {
     navigator.clipboard.writeText(shareLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownloadSource = async () => {
+    try {
+      setDownloadingSource(true)
+      const response = await downloadRouteSource(id)
+      const contentType = response.headers['content-type'] || 'application/octet-stream'
+      const fileName = route.original_file_name || `${route.name}.${route.source_format || 'gpx'}`
+      const blob = new Blob([response.data], { type: contentType })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to download source route file:', error)
+      alert('Failed to download the original route file')
+    } finally {
+      setDownloadingSource(false)
+    }
   }
   
   if (loading) {
@@ -199,6 +253,10 @@ export default function RouteDetail() {
   
   // Detect climbs in the route
   const climbs = displayPoints ? detectClimbs(displayPoints) : []
+  const routeCues = useMemo(
+    () => buildRouteWaypoints(waypoints, route?.points || []),
+    [waypoints, route]
+  )
   
   // Prepare elevation chart data
   const elevationData = displayPoints
@@ -285,13 +343,43 @@ export default function RouteDetail() {
             ← Back to Routes
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">{route.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+              {getRouteSourceLabel(route.source_format)}
+            </span>
+            <span className="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 font-medium text-sky-700">
+              {route.waypoint_count || routeCues.length} saved cues
+            </span>
+            {route.original_file_name && (
+              <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700">
+                {route.original_file_name}
+              </span>
+            )}
+          </div>
           {showReversed && (
             <span className="inline-block mt-2 px-3 py-1 bg-velo-cyan-100 text-velo-cyan-700 rounded-full text-sm font-medium">
               Reversed Direction
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to={`/routes/${id}/live`}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-velo-cyan-500 to-velo-blue-500 text-white rounded-lg hover:from-velo-cyan-600 hover:to-velo-blue-600 transition-all font-semibold"
+          >
+            <PlayIcon className="w-5 h-5" />
+            Start Live Ride
+          </Link>
+          {route.has_original_file && (
+            <button
+              onClick={handleDownloadSource}
+              disabled={downloadingSource}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold disabled:opacity-50"
+            >
+              <ArrowDownTrayIcon className="w-5 h-5" />
+              {downloadingSource ? 'Downloading...' : 'Download Original'}
+            </button>
+          )}
           <button
             onClick={handleShareRoute}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white rounded-lg hover:from-green-600 hover:to-teal-600 transition-all font-semibold"
@@ -427,6 +515,53 @@ export default function RouteDetail() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {routeCues.length > 0 && (
+        <div className="bg-white rounded-lg shadow mb-8 p-6">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Route Cues</h2>
+              <p className="text-sm text-gray-500">Imported FIT cues and saved route alerts that can also power live ride guidance.</p>
+            </div>
+            <Link
+              to={`/routes/${id}/live`}
+              className="inline-flex items-center gap-2 rounded-lg bg-velo-cyan px-4 py-2 text-sm font-semibold text-white hover:bg-velo-cyan-dark"
+            >
+              <PlayIcon className="h-4 w-4" />
+              Open Live Ride
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {routeCues.slice(0, 12).map((cue) => {
+              const presentation = getWaypointPresentation(cue.type)
+
+              return (
+                <div
+                  key={cue.id}
+                  className={`rounded-xl border p-4 ${presentation.bgClass} ${presentation.borderClass}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={`text-sm font-semibold ${presentation.textClass}`}>
+                        {presentation.emoji} {cue.label || presentation.label}
+                      </p>
+                      {cue.notes && (
+                        <p className="mt-1 text-sm text-gray-600">{cue.notes}</p>
+                      )}
+                    </div>
+                    {Number.isFinite(toNumber(cue.distanceFromStart)) && (
+                      <p className="text-sm font-semibold text-gray-900">
+                        {(toNumber(cue.distanceFromStart) / 1609.34).toFixed(2)} mi
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

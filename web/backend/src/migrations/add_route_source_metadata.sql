@@ -1,0 +1,7 @@
+ALTER TABLE public.routes
+  ADD COLUMN IF NOT EXISTS source_format VARCHAR(20) DEFAULT 'gpx',
+  ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS original_mime_type VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS original_file_data BYTEA,
+  ADD COLUMN IF NOT EXISTS original_file_size INTEGER,
+  ADD COLUMN IF NOT EXISTS waypoint_count INTEGER DEFAULT 0;

@@ -127,7 +127,27 @@ async function warnIfSchemaMismatch() {
   }
 }
 
+async function ensureOptionalRouteColumns() {
+  const statements = [
+    `ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS source_format VARCHAR(20) DEFAULT 'gpx'`,
+    `ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255)`,
+    `ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS original_mime_type VARCHAR(100)`,
+    `ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS original_file_data BYTEA`,
+    `ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS original_file_size INTEGER`,
+    `ALTER TABLE public.routes ADD COLUMN IF NOT EXISTS waypoint_count INTEGER DEFAULT 0`
+  ];
+
+  try {
+    for (const statement of statements) {
+      await query(statement);
+    }
+  } catch (err) {
+    console.warn('⚠️ Route metadata schema check failed (continuing anyway):', err?.message || err);
+  }
+}
+
 (async () => {
+  await ensureOptionalRouteColumns();
   await warnIfSchemaMismatch();
 
   app.listen(PORT, () => {

@@ -46,6 +46,10 @@ router.get('/list', authenticateToken, async (req, res) => {
               total_distance::float8 AS total_distance,
               COALESCE(total_elevation_gain, 0)::float8 AS total_elevation_gain,
               point_count::int AS point_count,
+              COALESCE(waypoint_count, 0)::int AS waypoint_count,
+              COALESCE(source_format, 'gpx') AS source_format,
+              original_file_name,
+              COALESCE(original_file_size, 0)::int AS original_file_size,
               created_at
        FROM routes
        WHERE user_id = $1
@@ -88,6 +92,42 @@ router.get('/download/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error downloading route:', error);
     res.status(500).json({ error: 'Failed to download route' });
+  }
+});
+
+router.get('/:id/source', authenticateToken, async (req, res) => {
+  try {
+    const routeResult = await query(
+      `SELECT id, name, gpx_data,
+              COALESCE(source_format, 'gpx') AS source_format,
+              original_file_name,
+              original_mime_type,
+              original_file_data
+       FROM routes
+       WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.user.id]
+    );
+
+    if (routeResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Route not found' });
+    }
+
+    const route = routeResult.rows[0];
+    const sourceFormat = route.source_format || 'gpx';
+    const mimeType = route.original_mime_type || getMimeTypeForSourceFormat(sourceFormat);
+    const fileName = getDownloadFileName(route, sourceFormat);
+    const payload = route.original_file_data || Buffer.from(route.gpx_data || '', 'utf8');
+
+    if (!payload || payload.length === 0) {
+      return res.status(404).json({ error: 'Original route file not available' });
+    }
+
+    res.set('Content-Type', mimeType);
+    res.set('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(payload);
+  } catch (error) {
+    console.error('Error downloading original route file:', error);
+    res.status(500).json({ error: 'Failed to download original route file' });
   }
 });
 
@@ -138,6 +178,43 @@ function getLowercaseExtension(filename) {
   const dot = normalized.lastIndexOf('.');
   if (dot < 0) return '';
   return normalized.slice(dot);
+}
+
+function inferSourceFormat(filename, mimetype = '') {
+  const ext = getLowercaseExtension(filename);
+  const normalizedMime = String(mimetype || '').toLowerCase();
+
+  if (ext === '.fit' || normalizedMime === 'application/vnd.ant.fit') return 'fit';
+  if (ext === '.tcx' || normalizedMime === 'application/vnd.garmin.tcx+xml') return 'tcx';
+  if (ext === '.kml' || normalizedMime === 'application/vnd.google-earth.kml+xml') return 'kml';
+  return 'gpx';
+}
+
+function getMimeTypeForSourceFormat(sourceFormat, fallback = 'application/octet-stream') {
+  switch (sourceFormat) {
+    case 'fit':
+      return 'application/vnd.ant.fit';
+    case 'tcx':
+      return 'application/vnd.garmin.tcx+xml';
+    case 'kml':
+      return 'application/vnd.google-earth.kml+xml';
+    case 'gpx':
+      return 'application/gpx+xml';
+    default:
+      return fallback;
+  }
+}
+
+function getDownloadFileName(route, sourceFormat = 'gpx') {
+  const extension = sourceFormat === 'fit'
+    ? 'fit'
+    : sourceFormat === 'tcx'
+      ? 'tcx'
+      : sourceFormat === 'kml'
+        ? 'kml'
+        : 'gpx';
+
+  return route.original_file_name || `${route.name}.${extension}`;
 }
 
 // Parse GPX XML
@@ -674,8 +751,12 @@ function processFitMessage(globalMessageNumber, fields, routePointsRaw, coursePo
 }
 
 async function parseUploadedRouteFile(file, routeName) {
-  const ext = getLowercaseExtension(file?.originalname);
-  const isFit = ext === '.fit' || file?.mimetype === 'application/vnd.ant.fit';
+  const sourceFormat = inferSourceFormat(file?.originalname, file?.mimetype);
+  const isFit = sourceFormat === 'fit';
+  const originalFileBuffer = file?.buffer || null;
+  const originalFileName = file?.originalname || `${routeName}.${sourceFormat}`;
+  const originalMimeType = file?.mimetype || getMimeTypeForSourceFormat(sourceFormat);
+  const originalFileSize = file?.size || originalFileBuffer?.length || 0;
 
   if (isFit) {
     const parsed = parseFIT(file.buffer);
@@ -685,7 +766,12 @@ async function parseUploadedRouteFile(file, routeName) {
 
     return {
       parsed,
-      gpxData: generateGPX(routeName, parsed.points)
+      gpxData: generateGPX(routeName, parsed.points),
+      sourceFormat,
+      originalFileBuffer,
+      originalFileName,
+      originalMimeType,
+      originalFileSize
     };
   }
 
@@ -695,7 +781,15 @@ async function parseUploadedRouteFile(file, routeName) {
     throw new Error('No route points found in uploaded file');
   }
 
-  return { parsed, gpxData: xmlData };
+  return {
+    parsed,
+    gpxData: sourceFormat === 'gpx' ? xmlData : generateGPX(routeName, parsed.points),
+    sourceFormat,
+    originalFileBuffer,
+    originalFileName,
+    originalMimeType,
+    originalFileSize
+  };
 }
 
 // Upload route file
@@ -707,25 +801,60 @@ router.post('/upload', authenticateToken, upload.single('gpx'), async (req, res)
     
     const { name } = req.body;
     const routeName = name || req.file.originalname;
-    const { parsed, gpxData } = await parseUploadedRouteFile(req.file, routeName);
+    const {
+      parsed,
+      gpxData,
+      sourceFormat,
+      originalFileBuffer,
+      originalFileName,
+      originalMimeType,
+      originalFileSize
+    } = await parseUploadedRouteFile(req.file, routeName);
+    const waypointCandidates = Array.isArray(parsed.waypoints) ? parsed.waypoints : [];
     
     // Save to database
     const result = await query(
-      `INSERT INTO routes (user_id, name, gpx_data, total_distance, total_elevation_gain, point_count)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, name, total_distance, total_elevation_gain, point_count, created_at`,
+      `INSERT INTO routes (
+         user_id,
+         name,
+         gpx_data,
+         total_distance,
+         total_elevation_gain,
+         point_count,
+         source_format,
+         original_file_name,
+         original_mime_type,
+         original_file_data,
+         original_file_size,
+         waypoint_count
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING id, name,
+                 total_distance::float8 AS total_distance,
+                 COALESCE(total_elevation_gain, 0)::float8 AS total_elevation_gain,
+                 point_count::int AS point_count,
+                 COALESCE(source_format, 'gpx') AS source_format,
+                 original_file_name,
+                 COALESCE(original_file_size, 0)::int AS original_file_size,
+                 COALESCE(waypoint_count, 0)::int AS waypoint_count,
+                 created_at`,
       [
         req.user.id,
         routeName,
         gpxData,
         parsed.totalDistance,
         parsed.totalElevationGain,
-        parsed.pointCount
+        parsed.pointCount,
+        sourceFormat,
+        originalFileName,
+        originalMimeType,
+        originalFileBuffer,
+        originalFileSize,
+        waypointCandidates.length
       ]
     );
 
     const route = result.rows[0];
-    const waypointCandidates = Array.isArray(parsed.waypoints) ? parsed.waypoints : [];
     const waypointInsertions = waypointCandidates.slice(0, 500);
     let insertedWaypointCount = 0;
 
@@ -754,6 +883,12 @@ router.post('/upload', authenticateToken, upload.single('gpx'), async (req, res)
         console.warn('Skipping FIT waypoint persistence:', waypointError?.message || waypointError);
       }
     }
+
+    route.waypoint_count = insertedWaypointCount;
+    await query(
+      'UPDATE routes SET waypoint_count = $1 WHERE id = $2 AND user_id = $3',
+      [insertedWaypointCount, route.id, req.user.id]
+    );
     
     res.json({
       route,
@@ -761,7 +896,8 @@ router.post('/upload', authenticateToken, upload.single('gpx'), async (req, res)
         totalDistance: parsed.totalDistance,
         totalElevationGain: parsed.totalElevationGain,
         pointCount: parsed.pointCount,
-        waypointCount: insertedWaypointCount
+        waypointCount: insertedWaypointCount,
+        sourceFormat
       }
     });
   } catch (error) {
@@ -782,7 +918,19 @@ router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await query(
-      'SELECT * FROM routes WHERE id = $1 AND user_id = $2',
+      `SELECT id, user_id, name, gpx_data,
+              total_distance::float8 AS total_distance,
+              COALESCE(total_elevation_gain, 0)::float8 AS total_elevation_gain,
+              point_count::int AS point_count,
+              COALESCE(source_format, 'gpx') AS source_format,
+              original_file_name,
+              original_mime_type,
+              COALESCE(original_file_size, 0)::int AS original_file_size,
+              COALESCE(waypoint_count, 0)::int AS waypoint_count,
+              (original_file_data IS NOT NULL) AS has_original_file,
+              created_at
+       FROM routes
+       WHERE id = $1 AND user_id = $2`,
       [req.params.id, userId]
     );
     
@@ -813,6 +961,9 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
       `SELECT id, name, gpx_data,
               total_distance::float8 AS total_distance,
               COALESCE(total_elevation_gain, 0)::float8 AS total_elevation_gain,
+              COALESCE(source_format, 'gpx') AS source_format,
+              original_file_name,
+              COALESCE(waypoint_count, 0)::int AS waypoint_count,
               created_at
        FROM routes
        WHERE id = $1 AND user_id = $2`,
@@ -860,6 +1011,9 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
       name: route.name,
       total_distance: route.total_distance,
       total_elevation_gain: route.total_elevation_gain,
+      source_format: route.source_format,
+      original_file_name: route.original_file_name,
+      waypoint_count: route.waypoint_count,
       points: parsed.points,
       waypoints
     });
@@ -878,6 +1032,10 @@ router.get('/', authenticateToken, async (req, res) => {
               total_distance::float8 AS total_distance,
               COALESCE(total_elevation_gain, 0)::float8 AS total_elevation_gain,
               point_count::int AS point_count,
+              COALESCE(waypoint_count, 0)::int AS waypoint_count,
+              COALESCE(source_format, 'gpx') AS source_format,
+              original_file_name,
+              COALESCE(original_file_size, 0)::int AS original_file_size,
               created_at
        FROM routes
        WHERE user_id = $1
@@ -911,5 +1069,5 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-export { parseFIT };
+export { parseFIT, parseGPX, findNearestDistanceFromPoints };
 export default router;

@@ -31,7 +31,7 @@ PORT=3001
 NODE_ENV=development
 STRAVA_CLIENT_ID=your-strava-client-id-optional
 STRAVA_CLIENT_SECRET=your-strava-client-secret-optional
-STRAVA_REDIRECT_URI=http://localhost:5173/strava/callback
+STRAVA_REDIRECT_URI=http://localhost:3000/strava/callback
 EOL
 
 # Start backend
@@ -53,11 +53,16 @@ echo "VITE_API_URL=http://localhost:3001" > .env
 npm run dev
 ```
 
-Frontend will run on http://localhost:5173
+Frontend will run on http://localhost:3000
 
 ## 4. First Use
 
-1. Navigate to http://localhost:5173
+Do not open `web/frontend/dist/index.html` directly in the browser. Serve the app over HTTP:
+
+- During development: `npm run dev`
+- After building: `npm run preview`
+
+1. Navigate to http://localhost:3000
 2. Click "Register" to create an account
 3. Upload a GPX route from the Routes page
 4. Create rider parameters from the Parameters page

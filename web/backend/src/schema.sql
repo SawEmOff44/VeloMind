@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS routes (
     total_distance DECIMAL(10,2),
     total_elevation_gain DECIMAL(10,2),
     point_count INTEGER,
+    source_format VARCHAR(20) DEFAULT 'gpx',
+    original_file_name VARCHAR(255),
+    original_mime_type VARCHAR(100),
+    original_file_data BYTEA,
+    original_file_size INTEGER,
+    waypoint_count INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

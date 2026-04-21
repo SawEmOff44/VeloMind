@@ -11,6 +11,7 @@ const Sessions = lazy(() => import('./pages/Sessions'))
 const SessionDetail = lazy(() => import('./pages/SessionDetail'))
 const RoutesPage = lazy(() => import('./pages/Routes'))
 const RouteDetail = lazy(() => import('./pages/RouteDetail'))
+const RouteLiveRide = lazy(() => import('./pages/RouteLiveRide'))
 const RouteComparison = lazy(() => import('./pages/RouteComparison'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const Parameters = lazy(() => import('./pages/Parameters'))
@@ -116,6 +117,12 @@ function App() {
             <Route path="/routes/:id" element={
               <ProtectedRoute>
                 <RouteDetail />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/routes/:id/live" element={
+              <ProtectedRoute>
+                <RouteLiveRide />
               </ProtectedRoute>
             } />
             

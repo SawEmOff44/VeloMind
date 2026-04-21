@@ -36,7 +36,7 @@ PORT=3001
 NODE_ENV=development
 STRAVA_CLIENT_ID=your-strava-client-id
 STRAVA_CLIENT_SECRET=your-strava-client-secret
-STRAVA_REDIRECT_URI=http://localhost:5173/strava/callback
+STRAVA_REDIRECT_URI=http://localhost:3000/strava/callback
 ```
 
 4. Initialize database:
@@ -73,7 +73,13 @@ VITE_API_BASE=http://localhost:3001/api
 npm run dev
 ```
 
-Frontend runs on http://localhost:5173
+Frontend runs on http://localhost:3000
+
+Do not open `web/frontend/dist/index.html` directly in the browser. VeloMind is a
+single-page app and should be served over HTTP:
+
+- During development: `npm run dev`
+- After building: `npm run preview`
 
 ## Features
 

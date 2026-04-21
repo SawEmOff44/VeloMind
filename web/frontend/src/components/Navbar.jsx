@@ -13,7 +13,8 @@ export default function Navbar({ isAuthenticated }) {
     window.location.reload()
   }
   
-  const isActive = (path) => location.pathname === path
+  const isActive = (path) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
   
   return (
     <nav className="bg-white shadow-sm">
