@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseFIT } from '../gpx.js';
+import { inferSourceFormat, isRouteParseError, parseFIT } from '../gpx.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,5 +29,18 @@ describe('FIT route parsing', () => {
     expect(parsed.waypoints[0].type).toBe('turn');
     expect(parsed.waypoints[0].label).toBe('Left turn');
     expect(parsed.waypoints[0].distanceFromStart).toBeCloseTo(120, 2);
+  });
+
+  test('recognizes common FIT mime types during source format inference', () => {
+    expect(inferSourceFormat('route.fit', 'application/vnd.ant.fit')).toBe('fit');
+    expect(inferSourceFormat('route.fit', 'application/fit')).toBe('fit');
+    expect(inferSourceFormat('route.fit', 'application/x-fit')).toBe('fit');
+    expect(inferSourceFormat('route.fit', 'application/x-garmin-fit')).toBe('fit');
+  });
+
+  test('classifies internal FIT parser failures as upload parse errors', () => {
+    expect(isRouteParseError(new Error('FIT data references missing definition'))).toBe(true);
+    expect(isRouteParseError(new Error('Truncated FIT data message'))).toBe(true);
+    expect(isRouteParseError(new Error('Unexpected database failure'))).toBe(false);
   });
 });

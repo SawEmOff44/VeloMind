@@ -8,10 +8,11 @@ const router = express.Router();
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
+const DEFAULT_MAX_UPLOAD_SIZE = 25 * 1024 * 1024;
 const upload = multer({
   storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024 // 10MB
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || DEFAULT_MAX_UPLOAD_SIZE
   },
   fileFilter: (req, file, cb) => {
     const allowedExtensions = ['.gpx', '.fit', '.tcx', '.kml'];
@@ -20,7 +21,11 @@ const upload = multer({
       'text/xml',
       'application/xml',
       'application/vnd.ant.fit',
+      'application/fit',
+      'application/x-fit',
+      'application/x-garmin-fit',
       'application/octet-stream',
+      'binary/octet-stream',
       'application/vnd.garmin.tcx+xml',
       'application/vnd.google-earth.kml+xml'
     ];
@@ -184,7 +189,13 @@ function inferSourceFormat(filename, mimetype = '') {
   const ext = getLowercaseExtension(filename);
   const normalizedMime = String(mimetype || '').toLowerCase();
 
-  if (ext === '.fit' || normalizedMime === 'application/vnd.ant.fit') return 'fit';
+  if (
+    ext === '.fit' ||
+    normalizedMime === 'application/vnd.ant.fit' ||
+    normalizedMime === 'application/fit' ||
+    normalizedMime === 'application/x-fit' ||
+    normalizedMime === 'application/x-garmin-fit'
+  ) return 'fit';
   if (ext === '.tcx' || normalizedMime === 'application/vnd.garmin.tcx+xml') return 'tcx';
   if (ext === '.kml' || normalizedMime === 'application/vnd.google-earth.kml+xml') return 'kml';
   return 'gpx';
@@ -792,6 +803,21 @@ async function parseUploadedRouteFile(file, routeName) {
   };
 }
 
+function isRouteParseError(error) {
+  const message = typeof error?.message === 'string' ? error.message : '';
+
+  return [
+    'No route points',
+    'Invalid FIT',
+    'Invalid FIT header',
+    'Unrecognized FIT',
+    'Corrupt FIT',
+    'Truncated FIT',
+    'FIT data references missing',
+    'Only GPX, FIT, TCX, and KML files are allowed'
+  ].some((fragment) => message.includes(fragment));
+}
+
 // Upload route file
 router.post('/upload', authenticateToken, upload.single('gpx'), async (req, res) => {
   try {
@@ -902,13 +928,7 @@ router.post('/upload', authenticateToken, upload.single('gpx'), async (req, res)
     });
   } catch (error) {
     console.error('Route upload error:', error);
-    const parseError = typeof error?.message === 'string' && (
-      error.message.includes('No route points') ||
-      error.message.includes('Invalid FIT') ||
-      error.message.includes('Unrecognized FIT') ||
-      error.message.includes('Corrupt FIT') ||
-      error.message.includes('Truncated FIT')
-    );
+    const parseError = isRouteParseError(error);
     res.status(parseError ? 400 : 500).json({ error: error.message });
   }
 });
@@ -1069,5 +1089,5 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-export { parseFIT, parseGPX, findNearestDistanceFromPoints };
+export { parseFIT, parseGPX, findNearestDistanceFromPoints, inferSourceFormat, isRouteParseError };
 export default router;

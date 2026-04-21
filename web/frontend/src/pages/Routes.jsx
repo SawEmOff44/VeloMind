@@ -5,6 +5,14 @@ import { format } from 'date-fns'
 import { MapIcon, ArrowUpTrayIcon, TrashIcon, ChartBarIcon, ArrowsPointingOutIcon, FunnelIcon, XMarkIcon, ScaleIcon, PlayIcon } from '@heroicons/react/24/outline'
 import { getRouteSourceLabel } from '../utils/liveRide'
 
+function getErrorMessage(error, fallback) {
+  return error?.response?.data?.error?.message
+    || error?.response?.data?.error
+    || error?.response?.data?.message
+    || error?.message
+    || fallback
+}
+
 export default function Routes() {
   const navigate = useNavigate()
   const [routes, setRoutes] = useState([])
@@ -59,7 +67,7 @@ export default function Routes() {
       await loadRoutes()
     } catch (error) {
       console.error('Failed to upload route:', error)
-      alert('Failed to upload route file')
+      alert(getErrorMessage(error, 'Failed to upload route file'))
     } finally {
       setUploading(false)
     }
