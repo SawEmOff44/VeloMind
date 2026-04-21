@@ -412,6 +412,25 @@ export default function RouteDetail() {
         return
       }
 
+      try {
+        const response = await getWaypoints(id)
+        const refreshedWaypoints = sortWaypoints(
+          (response?.data?.waypoints || []).map((waypoint) =>
+            normalizeWaypointForSync(waypoint, route?.points || [])
+          )
+        )
+        const waypointStillExists = refreshedWaypoints.some((waypoint) =>
+          waypointIdsMatch(waypoint.id, waypointId)
+        )
+
+        if (!waypointStillExists) {
+          setWaypoints(refreshedWaypoints)
+          return
+        }
+      } catch (refreshError) {
+        console.error('Failed to confirm waypoint deletion after error:', refreshError)
+      }
+
       console.error('Failed to remove waypoint:', error)
       alert(error?.response?.data?.error || 'Failed to remove cue')
     }
