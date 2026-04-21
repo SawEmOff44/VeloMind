@@ -448,17 +448,68 @@ function findNearestDistanceFromPoints(points, lat, lon) {
   return bestDistance;
 }
 
+function normalizeFitCoursePointName(name) {
+  if (typeof name !== 'string') return null;
+
+  const cleaned = name.replace(/\s+/g, ' ').trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function inferFitCoursePointTypeFromName(name) {
+  const normalized = normalizeFitCoursePointName(name);
+  if (!normalized) return null;
+
+  const lower = normalized.toLowerCase();
+
+  if (/\b(u[\s-]?turn|turn|fork|straight|bear left|bear right|slight left|slight right|sharp left|sharp right)\b/.test(lower)) {
+    return { type: 'turn' };
+  }
+
+  if (/\b(water|hydration|refill|bottle|drink|sports drink)\b/.test(lower)) {
+    return { type: 'water' };
+  }
+
+  if (/\b(food|feed|nutrition|gel|snack)\b/.test(lower)) {
+    return { type: 'food' };
+  }
+
+  if (/\b(rest|aid station|rest area|checkpoint|toilet|shower|service|meeting spot|shelter|campsite|store)\b/.test(lower)) {
+    return { type: 'rest' };
+  }
+
+  if (/\b(danger|hazard|alert|obstacle|crossing|sharp curve|tunnel|bridge|traffic)\b/.test(lower)) {
+    return { type: 'danger' };
+  }
+
+  if (/\b(climb|summit|incline|ascent|hill|grade|hc|cat\.?\s*[1-4]|category\s*[1-4])\b/.test(lower)) {
+    return { type: 'steep' };
+  }
+
+  if (/\b(overlook|viewpoint|scenic|photo)\b/.test(lower)) {
+    return { type: 'photo' };
+  }
+
+  return null;
+}
+
 function mapFitCoursePoint(typeCode, customName) {
   const names = {
     0: 'Course Point',
     1: 'Summit',
     2: 'Valley',
-    3: 'Water',
-    4: 'Food',
+    3: 'Water Stop',
+    4: 'Food Stop',
     5: 'Danger',
     6: 'Turn Left',
     7: 'Turn Right',
     8: 'Go Straight',
+    9: 'Aid Station',
+    10: 'Easy Climb',
+    11: 'Moderate Climb',
+    12: 'Hard Climb',
+    13: 'Major Climb',
+    14: 'Epic Climb',
+    15: 'Sprint Point',
     16: 'Left Fork',
     17: 'Right Fork',
     18: 'Middle Fork',
@@ -466,23 +517,64 @@ function mapFitCoursePoint(typeCode, customName) {
     20: 'Sharp Left',
     21: 'Slight Right',
     22: 'Sharp Right',
-    23: 'U-Turn'
+    23: 'U-Turn',
+    24: 'Segment Start',
+    25: 'Segment End',
+    27: 'Campsite',
+    28: 'Aid Station',
+    29: 'Rest Area',
+    30: 'Distance Marker',
+    31: 'Service Stop',
+    32: 'Energy Gel',
+    33: 'Sports Drink',
+    34: 'Mile Marker',
+    35: 'Checkpoint',
+    36: 'Shelter',
+    37: 'Meeting Spot',
+    38: 'Overlook',
+    39: 'Toilet',
+    40: 'Shower',
+    41: 'Gear Check',
+    42: 'Sharp Curve',
+    43: 'Steep Incline',
+    44: 'Tunnel',
+    45: 'Bridge',
+    46: 'Obstacle',
+    47: 'Crossing',
+    48: 'Store',
+    49: 'Transition',
+    50: 'Navigation Aid',
+    51: 'Transport',
+    52: 'Alert',
+    53: 'Info'
   };
 
   const turnCodes = new Set([6, 7, 8, 16, 17, 18, 19, 20, 21, 22, 23]);
-  const type = turnCodes.has(typeCode)
-    ? 'turn'
-    : typeCode === 3
-      ? 'water'
-      : typeCode === 4
-        ? 'food'
-        : typeCode === 5
-          ? 'danger'
-          : typeCode === 1
-            ? 'steep'
-            : 'alert';
+  const normalizedName = normalizeFitCoursePointName(customName);
+  const inferred = inferFitCoursePointTypeFromName(normalizedName);
 
-  const label = customName || names[typeCode] || 'Course Point';
+  let type = 'alert';
+  if (turnCodes.has(typeCode)) {
+    type = 'turn';
+  } else if (typeCode === 3 || typeCode === 33) {
+    type = 'water';
+  } else if (typeCode === 4 || typeCode === 32) {
+    type = 'food';
+  } else if (typeCode === 5 || typeCode === 42 || typeCode === 44 || typeCode === 45 || typeCode === 46 || typeCode === 47) {
+    type = 'danger';
+  } else if (typeCode === 9 || typeCode === 27 || typeCode === 28 || typeCode === 29 || typeCode === 31 || typeCode === 35 || typeCode === 36 || typeCode === 37 || typeCode === 39 || typeCode === 40 || typeCode === 41 || typeCode === 48) {
+    type = 'rest';
+  } else if (typeCode === 1 || typeCode === 10 || typeCode === 11 || typeCode === 12 || typeCode === 13 || typeCode === 14 || typeCode === 43) {
+    type = 'steep';
+  } else if (typeCode === 38) {
+    type = 'photo';
+  }
+
+  if (type !== 'turn' && type !== 'danger' && type !== 'steep' && inferred?.type) {
+    type = inferred.type;
+  }
+
+  const label = normalizedName || names[typeCode] || 'Course Point';
   return { type, label };
 }
 
@@ -1123,5 +1215,13 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-export { parseFIT, parseGPX, findNearestDistanceFromPoints, inferSourceFormat, isRouteParseError, looksLikeFitFile };
+export {
+  parseFIT,
+  parseGPX,
+  findNearestDistanceFromPoints,
+  inferSourceFormat,
+  isRouteParseError,
+  looksLikeFitFile,
+  mapFitCoursePoint
+};
 export default router;

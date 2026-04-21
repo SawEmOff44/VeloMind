@@ -123,6 +123,28 @@ export function categorizeClimb(climb) {
   return 'Uncategorized'
 }
 
+function getFallbackClimbLabel(climb) {
+  if (!climb) return 'Easy climb'
+
+  const elevationFeet = (climb.elevationGain || 0) * 3.28084
+  const distanceMiles = (climb.distance || 0) / 1609.34
+  const avgGrade = climb.avgGrade || 0
+
+  if (elevationFeet >= 900 || (distanceMiles >= 0.8 && avgGrade >= 6)) {
+    return 'Major climb'
+  }
+
+  if (elevationFeet >= 350 || avgGrade >= 7 || (distanceMiles >= 0.5 && avgGrade >= 5.5)) {
+    return 'Hard climb'
+  }
+
+  if (elevationFeet >= 120 || avgGrade >= 5 || distanceMiles >= 0.3) {
+    return distanceMiles < 0.25 ? 'Punchy climb' : 'Moderate climb'
+  }
+
+  return distanceMiles < 0.2 ? 'Rolling rise' : 'Easy climb'
+}
+
 /**
  * Gets color for climb category
  */
@@ -140,13 +162,13 @@ export function getClimbCategoryColor(category) {
 /**
  * Gets label for climb category
  */
-export function getClimbCategoryLabel(category) {
+export function getClimbCategoryLabel(category, climb = null) {
   switch (category) {
-    case 'HC': return 'HC (Hors Catégorie)'
-    case '1': return 'Category 1'
-    case '2': return 'Category 2'
-    case '3': return 'Category 3'
-    case '4': return 'Category 4'
-    default: return 'Uncategorized Climb'
+    case 'HC': return 'Epic climb'
+    case '1': return 'Major climb'
+    case '2': return 'Hard climb'
+    case '3': return 'Moderate climb'
+    case '4': return 'Easy climb'
+    default: return getFallbackClimbLabel(climb)
   }
 }

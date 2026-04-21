@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { inferSourceFormat, isRouteParseError, looksLikeFitFile, parseFIT } from '../gpx.js';
+import { inferSourceFormat, isRouteParseError, looksLikeFitFile, mapFitCoursePoint, parseFIT } from '../gpx.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,6 +45,14 @@ describe('FIT route parsing', () => {
     expect(inferSourceFormat('route', '')).toBe('gpx');
     expect(looksLikeFitFile(fitBuffer)).toBe(true);
     expect(looksLikeFitFile(Buffer.from('<gpx></gpx>', 'utf8'))).toBe(false);
+  });
+
+  test('maps Garmin support and climb course points to intuitive waypoint types', () => {
+    expect(mapFitCoursePoint(29, null)).toEqual({ type: 'rest', label: 'Rest Area' });
+    expect(mapFitCoursePoint(28, 'Aid Station 1')).toEqual({ type: 'rest', label: 'Aid Station 1' });
+    expect(mapFitCoursePoint(10, null)).toEqual({ type: 'steep', label: 'Easy Climb' });
+    expect(mapFitCoursePoint(14, null)).toEqual({ type: 'steep', label: 'Epic Climb' });
+    expect(mapFitCoursePoint(0, 'Water stop at mile 42')).toEqual({ type: 'water', label: 'Water stop at mile 42' });
   });
 
   test('classifies internal FIT parser failures as upload parse errors', () => {

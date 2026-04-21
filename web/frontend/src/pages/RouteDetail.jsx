@@ -257,6 +257,9 @@ export default function RouteDetail() {
   
   // Detect climbs in the route
   const climbs = displayPoints ? detectClimbs(displayPoints) : []
+  const supportCues = routeCues.filter((cue) =>
+    cue.type === 'rest' || cue.type === 'water' || cue.type === 'food'
+  )
   
   // Prepare elevation chart data
   const elevationData = displayPoints
@@ -504,7 +507,7 @@ export default function RouteDetail() {
                     className="px-2 py-1 rounded text-white text-sm font-bold"
                     style={{ backgroundColor: getClimbCategoryColor(climb.category) }}
                   >
-                    {getClimbCategoryLabel(climb.category)}
+                    {getClimbCategoryLabel(climb.category, climb)}
                   </span>
                 </div>
                 <div className="space-y-1 text-sm text-gray-600">
@@ -534,6 +537,40 @@ export default function RouteDetail() {
               Open Live Ride
             </Link>
           </div>
+
+          {supportCues.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Support Stops</h3>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {supportCues.slice(0, 6).map((cue) => {
+                  const presentation = getWaypointPresentation(cue.type)
+
+                  return (
+                    <div
+                      key={`support-${cue.id}`}
+                      className={`rounded-xl border p-4 ${presentation.bgClass} ${presentation.borderClass}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className={`text-sm font-semibold ${presentation.textClass}`}>
+                            {presentation.emoji} {cue.label || presentation.label}
+                          </p>
+                          {cue.notes && (
+                            <p className="mt-1 text-sm text-gray-600">{cue.notes}</p>
+                          )}
+                        </div>
+                        {Number.isFinite(toNumber(cue.distanceFromStart)) && (
+                          <p className="text-sm font-semibold text-gray-900">
+                            {(toNumber(cue.distanceFromStart) / 1609.34).toFixed(2)} mi
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {routeCues.slice(0, 12).map((cue) => {
@@ -726,7 +763,7 @@ export default function RouteDetail() {
                     }}
                   >
                     <Popup>
-                      <strong>Climb {idx + 1} - {getClimbCategoryLabel(climb.category)}</strong>
+                      <strong>Climb {idx + 1} - {getClimbCategoryLabel(climb.category, climb)}</strong>
                       <br />Distance: {(climb.distance / 1609.34).toFixed(2)} mi
                       <br />Elevation: {Math.round(climb.elevationGain * 3.28084)} ft
                       <br />Avg Grade: {climb.avgGrade.toFixed(1)}%

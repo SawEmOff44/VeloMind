@@ -1,7 +1,7 @@
 import express from 'express'
 import { authenticateToken } from '../middleware/auth.js'
 import pool from '../db.js'
-import { parseGPX, findNearestDistanceFromPoints } from './gpx.js'
+import { parseFIT, parseGPX, findNearestDistanceFromPoints } from './gpx.js'
 
 const router = express.Router()
 
@@ -50,6 +50,65 @@ async function refreshWaypointCount(routeId, userId) {
   )
 }
 
+async function insertWaypointList(routeId, userId, waypointList, routePoints) {
+  const savedWaypoints = []
+
+  for (const waypoint of waypointList.slice(0, 500)) {
+    const result = await pool.query(
+      `INSERT INTO route_waypoints
+       (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
+        routeId,
+        userId,
+        waypoint.latitude,
+        waypoint.longitude,
+        waypoint.type || 'alert',
+        waypoint.label,
+        waypoint.notes,
+        resolveWaypointDistance(waypoint, routePoints),
+        waypoint.alert_distance || waypoint.alertDistance || 1000
+      ]
+    )
+
+    savedWaypoints.push(result.rows[0])
+  }
+
+  await refreshWaypointCount(routeId, userId)
+  return savedWaypoints
+}
+
+async function backfillFitWaypoints(routeId, userId, routePoints) {
+  const routeResult = await pool.query(
+    `SELECT COALESCE(source_format, 'gpx') AS source_format, original_file_data
+     FROM routes
+     WHERE id = $1 AND user_id = $2`,
+    [routeId, userId]
+  )
+
+  if (routeResult.rows.length === 0) {
+    return []
+  }
+
+  const route = routeResult.rows[0]
+  if (route.source_format !== 'fit' || !route.original_file_data) {
+    return []
+  }
+
+  try {
+    const parsed = parseFIT(route.original_file_data)
+    if (!Array.isArray(parsed.waypoints) || parsed.waypoints.length === 0) {
+      return []
+    }
+
+    return insertWaypointList(routeId, userId, parsed.waypoints, routePoints)
+  } catch (error) {
+    console.warn('Failed to backfill FIT waypoints:', error?.message || error)
+    return []
+  }
+}
+
 // Get all waypoints for a route
 router.get('/route/:routeId', authenticateToken, async (req, res) => {
   try {
@@ -66,13 +125,22 @@ router.get('/route/:routeId', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Route not found' })
     }
 
+    const routePoints = await loadRoutePoints(routeId, userId)
+
     // Get waypoints
-    const result = await pool.query(
+    let result = await pool.query(
       `SELECT * FROM route_waypoints 
        WHERE route_id = $1 AND user_id = $2
        ORDER BY distance_from_start ASC`,
       [routeId, userId]
     )
+
+    if (result.rows.length === 0) {
+      const backfilledWaypoints = await backfillFitWaypoints(routeId, userId, routePoints)
+      if (backfilledWaypoints.length > 0) {
+        result = { rows: backfilledWaypoints }
+      }
+    }
 
     res.json({ waypoints: result.rows })
   } catch (error) {
@@ -112,17 +180,22 @@ router.post('/route/:routeId', authenticateToken, async (req, res) => {
       routePoints
     )
 
-    const result = await pool.query(
-      `INSERT INTO route_waypoints 
-       (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-      [routeId, userId, latitude, longitude, type || 'alert', label, notes, resolvedDistanceFromStart, alert_distance || 1000]
+    const savedWaypoints = await insertWaypointList(
+      routeId,
+      userId,
+      [{
+        latitude,
+        longitude,
+        type,
+        label,
+        notes,
+        distance_from_start: resolvedDistanceFromStart,
+        alert_distance
+      }],
+      routePoints
     )
 
-    await refreshWaypointCount(routeId, userId)
-
-    res.status(201).json({ waypoint: result.rows[0] })
+    res.status(201).json({ waypoint: savedWaypoints[0] })
   } catch (error) {
     console.error('Error creating waypoint:', error)
     res.status(500).json({ error: 'Failed to create waypoint' })
@@ -239,30 +312,7 @@ router.post('/route/:routeId/sync', authenticateToken, async (req, res) => {
     const routePoints = await loadRoutePoints(routeId, userId)
 
     // Insert new waypoints
-    const insertPromises = waypointList.map(wp => 
-      pool.query(
-        `INSERT INTO route_waypoints 
-         (route_id, user_id, latitude, longitude, type, label, notes, distance_from_start, alert_distance)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING *`,
-        [
-          routeId,
-          userId,
-          wp.latitude,
-          wp.longitude,
-          wp.type || 'alert',
-          wp.label,
-          wp.notes,
-          resolveWaypointDistance(wp, routePoints),
-          wp.alert_distance || 1000
-        ]
-      )
-    )
-
-    const results = await Promise.all(insertPromises)
-    const savedWaypoints = results.map(r => r.rows[0])
-
-    await refreshWaypointCount(routeId, userId)
+    const savedWaypoints = await insertWaypointList(routeId, userId, waypointList, routePoints)
 
     res.json({ waypoints: savedWaypoints })
   } catch (error) {

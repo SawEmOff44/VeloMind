@@ -131,6 +131,29 @@ export function getWaypointPresentation(type = 'alert') {
   }
 }
 
+function inferWaypointTypeFromText(label = '', notes = '') {
+  const text = `${label || ''} ${notes || ''}`.trim().toLowerCase()
+  if (!text) return null
+
+  if (/\b(water|hydration|refill|bottle|drink|sports drink)\b/.test(text)) return 'water'
+  if (/\b(food|feed|nutrition|gel|snack)\b/.test(text)) return 'food'
+  if (/\b(rest|aid station|rest area|checkpoint|toilet|shower|service|meeting spot|shelter|campsite|store)\b/.test(text)) return 'rest'
+  if (/\b(danger|hazard|alert|obstacle|crossing|sharp curve|tunnel|bridge|traffic)\b/.test(text)) return 'danger'
+  if (/\b(climb|summit|incline|ascent|hill|grade|hc|cat\.?\s*[1-4]|category\s*[1-4])\b/.test(text)) return 'steep'
+  if (/\b(turn|fork|straight|u-turn|bear left|bear right|slight left|slight right|sharp left|sharp right)\b/.test(text)) return 'turn'
+  if (/\b(overlook|viewpoint|scenic|photo)\b/.test(text)) return 'photo'
+
+  return null
+}
+
+function resolveWaypointType(waypoint) {
+  if (waypoint?.type && waypoint.type !== 'alert') {
+    return waypoint.type
+  }
+
+  return inferWaypointTypeFromText(waypoint?.label, waypoint?.notes) || waypoint?.type || 'alert'
+}
+
 export function resolveDistanceFromRoutePoints(routePoints = [], latitude, longitude) {
   if (!routePoints.length || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return null
@@ -235,6 +258,7 @@ export function buildRouteWaypoints(waypoints = [], routePoints = [], options = 
       const longitude = toNumber(waypoint.longitude)
       const distanceFromStart = toNumber(waypoint.distance_from_start ?? waypoint.distanceFromStart)
         ?? resolveDistanceFromRoutePoints(routePoints, latitude, longitude)
+      const resolvedType = resolveWaypointType(waypoint)
 
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         return null
@@ -243,11 +267,12 @@ export function buildRouteWaypoints(waypoints = [], routePoints = [], options = 
       return {
         ...waypoint,
         id: waypoint.id ?? `waypoint-${index}`,
+        type: resolvedType,
         latitude,
         longitude,
         distance_from_start: distanceFromStart,
         distanceFromStart,
-        presentation: getWaypointPresentation(waypoint.type)
+        presentation: getWaypointPresentation(resolvedType)
       }
     })
     .filter(Boolean)
