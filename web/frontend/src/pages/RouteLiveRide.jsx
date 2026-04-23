@@ -167,7 +167,7 @@ export default function RouteLiveRide() {
   }, [routePoints])
 
   const rideWaypoints = useMemo(
-    () => buildRouteWaypoints(waypoints, routePoints, { includeClimbs: true }),
+    () => buildRouteWaypoints(waypoints, routePoints, { includeClimbs: true, includeTurns: true }),
     [waypoints, routePoints]
   )
 
@@ -245,12 +245,12 @@ export default function RouteLiveRide() {
               {getRouteSourceLabel(route.source_format)}
             </span>
             <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">
-              {rideWaypoints.length} cues on route
+              {rideWaypoints.length} guidance cues on route
             </span>
           </div>
           <h1 className="mt-3 text-3xl font-bold text-gray-900">{route.name}</h1>
           <p className="mt-2 max-w-2xl text-sm text-gray-600">
-            Keep this page open on your phone during the ride to track your position, speed, and the next route cue.
+            Keep this page open on your phone during the ride to track your position, speed, and the next turn or route cue.
           </p>
         </div>
 

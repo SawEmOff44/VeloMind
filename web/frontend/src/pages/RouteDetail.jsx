@@ -310,10 +310,10 @@ export default function RouteDetail() {
   const [newWaypointDraft, setNewWaypointDraft] = useState(() => createEmptyCoordinateDraft())
   const mapRef = useRef(null)
   const routeCues = useMemo(
-    () => buildRouteWaypoints(waypoints, route?.points || []),
+    () => buildRouteWaypoints(waypoints, route?.points || [], { includeTurns: true }),
     [waypoints, route]
   )
-  const savedCueCount = waypoints.length || route?.waypoint_count || routeCues.length
+  const savedCueCount = waypoints.length || route?.waypoint_count || 0
   
   useEffect(() => {
     loadRoute()
@@ -622,8 +622,10 @@ export default function RouteDetail() {
   
   // Detect climbs in the route
   const climbs = displayPoints ? detectClimbs(displayPoints) : []
-  const supportCues = routeCues.filter(isSupportCue)
-  const generalRouteCues = routeCues.filter((cue) => !isSupportCue(cue))
+  const directionCues = routeCues.filter((cue) => cue.type === 'turn')
+  const nonDirectionCues = routeCues.filter((cue) => cue.type !== 'turn')
+  const supportCues = nonDirectionCues.filter(isSupportCue)
+  const generalRouteCues = nonDirectionCues.filter((cue) => !isSupportCue(cue))
   
   // Prepare elevation chart data
   const elevationData = displayPoints
@@ -894,7 +896,7 @@ export default function RouteDetail() {
           <div className="flex items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Route Cues</h2>
-              <p className="text-sm text-gray-500">Imported FIT cues and saved route alerts that can also power live ride guidance.</p>
+              <p className="text-sm text-gray-500">Saved alerts, imported course cues, and turn guidance inferred from the route line for live ride callouts.</p>
             </div>
             <Link
               to={`/routes/${id}/live`}
@@ -904,6 +906,40 @@ export default function RouteDetail() {
               Open Live Ride
             </Link>
           </div>
+
+          {directionCues.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Directions</h3>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {directionCues.slice(0, 12).map((cue) => {
+                  const presentation = getWaypointPresentation(cue.type)
+
+                  return (
+                    <div
+                      key={`direction-${cue.id}`}
+                      className={`rounded-xl border p-4 ${presentation.bgClass} ${presentation.borderClass}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className={`text-sm font-semibold ${presentation.textClass}`}>
+                            {presentation.emoji} {cue.label || presentation.label}
+                          </p>
+                          {cue.notes && (
+                            <p className="mt-1 text-sm text-gray-600">{cue.notes}</p>
+                          )}
+                        </div>
+                        {Number.isFinite(toNumber(cue.distanceFromStart)) && (
+                          <p className="text-sm font-semibold text-gray-900">
+                            {(toNumber(cue.distanceFromStart) / 1609.34).toFixed(2)} mi
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {supportCues.length > 0 && (
             <div className="mb-6">

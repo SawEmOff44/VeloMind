@@ -1,6 +1,10 @@
 import { detectClimbs } from './climbAnalysis'
 
 const EARTH_RADIUS_METERS = 6371e3
+const TURN_LOOKAROUND_METERS = 60
+const MIN_TURN_ANGLE_DEGREES = 32
+const MIN_TURN_SPACING_METERS = 140
+const EXISTING_TURN_DEDUPE_METERS = 120
 
 export function toNumber(value) {
   const parsed = typeof value === 'string' ? Number.parseFloat(value) : Number(value)
@@ -173,6 +177,173 @@ export function resolveDistanceFromRoutePoints(routePoints = [], latitude, longi
   return nearestDistance
 }
 
+function calculateBearingDegrees(startLatitude, startLongitude, endLatitude, endLongitude) {
+  const startPhi = startLatitude * Math.PI / 180
+  const endPhi = endLatitude * Math.PI / 180
+  const deltaLambda = (endLongitude - startLongitude) * Math.PI / 180
+
+  const y = Math.sin(deltaLambda) * Math.cos(endPhi)
+  const x = (
+    Math.cos(startPhi) * Math.sin(endPhi)
+    - Math.sin(startPhi) * Math.cos(endPhi) * Math.cos(deltaLambda)
+  )
+
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360
+}
+
+function normalizeTurnAngleDegrees(angle) {
+  return ((angle + 540) % 360) - 180
+}
+
+function findSpacedPointIndex(routePoints, startIndex, direction, minSpacingMeters) {
+  let cursor = startIndex
+  let traveledMeters = 0
+  const startDistance = toNumber(routePoints[startIndex]?.distance)
+
+  while (cursor + direction >= 0 && cursor + direction < routePoints.length) {
+    const nextCursor = cursor + direction
+    const currentPoint = routePoints[cursor]
+    const nextPoint = routePoints[nextCursor]
+    const nextDistance = toNumber(nextPoint?.distance)
+
+    if (startDistance !== null && nextDistance !== null) {
+      if (Math.abs(nextDistance - startDistance) >= minSpacingMeters) {
+        return nextCursor
+      }
+    } else {
+      traveledMeters += haversineDistanceMeters(
+        currentPoint.latitude,
+        currentPoint.longitude,
+        nextPoint.latitude,
+        nextPoint.longitude
+      )
+
+      if (traveledMeters >= minSpacingMeters) {
+        return nextCursor
+      }
+    }
+
+    cursor = nextCursor
+  }
+
+  return cursor
+}
+
+function describeTurnCue(turnAngleDegrees) {
+  const absoluteAngle = Math.abs(turnAngleDegrees)
+
+  if (absoluteAngle >= 150) {
+    return {
+      title: 'U-turn',
+      detail: 'Follow the route and make a U-turn.'
+    }
+  }
+
+  const direction = turnAngleDegrees > 0 ? 'right' : 'left'
+
+  if (absoluteAngle >= 105) {
+    return {
+      title: `Sharp ${direction}`,
+      detail: `Follow the route and make a sharp ${direction}.`
+    }
+  }
+
+  if (absoluteAngle >= 60) {
+    return {
+      title: `Turn ${direction}`,
+      detail: `Follow the route and turn ${direction}.`
+    }
+  }
+
+  return {
+    title: `Bear ${direction}`,
+    detail: `Follow the route and bear ${direction}.`
+  }
+}
+
+function hasNearbyExistingTurn(existingTurnWaypoints, distanceFromStart) {
+  if (distanceFromStart === null) return false
+
+  return existingTurnWaypoints.some((waypoint) => {
+    const waypointDistance = toNumber(waypoint.distanceFromStart ?? waypoint.distance_from_start)
+    return waypointDistance !== null
+      && Math.abs(waypointDistance - distanceFromStart) <= EXISTING_TURN_DEDUPE_METERS
+  })
+}
+
+function buildSyntheticTurnWaypoints(routePoints = [], waypoints = []) {
+  if (routePoints.length < 3) return []
+
+  const existingTurnWaypoints = waypoints.filter((waypoint) => waypoint.type === 'turn')
+  const syntheticTurns = []
+  let lastTurnDistance = null
+
+  for (let index = 1; index < routePoints.length - 1; index += 1) {
+    const prevIndex = findSpacedPointIndex(routePoints, index, -1, TURN_LOOKAROUND_METERS)
+    const nextIndex = findSpacedPointIndex(routePoints, index, 1, TURN_LOOKAROUND_METERS)
+
+    if (prevIndex === index || nextIndex === index || prevIndex === nextIndex) {
+      continue
+    }
+
+    const previousPoint = routePoints[prevIndex]
+    const currentPoint = routePoints[index]
+    const nextPoint = routePoints[nextIndex]
+
+    const incomingBearing = calculateBearingDegrees(
+      previousPoint.latitude,
+      previousPoint.longitude,
+      currentPoint.latitude,
+      currentPoint.longitude
+    )
+    const outgoingBearing = calculateBearingDegrees(
+      currentPoint.latitude,
+      currentPoint.longitude,
+      nextPoint.latitude,
+      nextPoint.longitude
+    )
+    const turnAngle = normalizeTurnAngleDegrees(outgoingBearing - incomingBearing)
+    const absoluteAngle = Math.abs(turnAngle)
+
+    if (absoluteAngle < MIN_TURN_ANGLE_DEGREES) {
+      continue
+    }
+
+    const distanceFromStart = toNumber(currentPoint.distance)
+    if (distanceFromStart === null) {
+      continue
+    }
+
+    if (
+      lastTurnDistance !== null
+      && distanceFromStart - lastTurnDistance < MIN_TURN_SPACING_METERS
+    ) {
+      continue
+    }
+
+    if (hasNearbyExistingTurn(existingTurnWaypoints, distanceFromStart)) {
+      continue
+    }
+
+    const { title, detail } = describeTurnCue(turnAngle)
+    syntheticTurns.push({
+      id: `synthetic-turn-${index}`,
+      latitude: currentPoint.latitude,
+      longitude: currentPoint.longitude,
+      type: 'turn',
+      label: title,
+      notes: detail,
+      distance_from_start: distanceFromStart,
+      distanceFromStart,
+      turnAngle,
+      isSynthetic: true
+    })
+    lastTurnDistance = distanceFromStart
+  }
+
+  return syntheticTurns
+}
+
 function buildSyntheticClimbWaypoints(routePoints = []) {
   if (!routePoints.length) return []
 
@@ -251,6 +422,7 @@ function describeClimbCue(climb) {
 
 export function buildRouteWaypoints(waypoints = [], routePoints = [], options = {}) {
   const includeClimbs = options.includeClimbs ?? false
+  const includeTurns = options.includeTurns ?? false
 
   const normalizedWaypoints = waypoints
     .map((waypoint, index) => {
@@ -277,14 +449,21 @@ export function buildRouteWaypoints(waypoints = [], routePoints = [], options = 
     })
     .filter(Boolean)
 
-  const syntheticWaypoints = includeClimbs
+  const syntheticTurnWaypoints = includeTurns
+    ? buildSyntheticTurnWaypoints(routePoints, normalizedWaypoints).map((waypoint) => ({
+        ...waypoint,
+        presentation: getWaypointPresentation(waypoint.type)
+      }))
+    : []
+
+  const syntheticClimbWaypoints = includeClimbs
     ? buildSyntheticClimbWaypoints(routePoints).map((waypoint) => ({
         ...waypoint,
         presentation: getWaypointPresentation(waypoint.type)
       }))
     : []
 
-  return [...normalizedWaypoints, ...syntheticWaypoints].sort((a, b) => {
+  return [...normalizedWaypoints, ...syntheticTurnWaypoints, ...syntheticClimbWaypoints].sort((a, b) => {
     const left = toNumber(a.distanceFromStart)
     const right = toNumber(b.distanceFromStart)
 
