@@ -75,6 +75,10 @@ function createEmptyCoordinateDraft(latitude = '', longitude = '') {
   }
 }
 
+function isSupportCue(cue) {
+  return cue.type === 'rest' || cue.type === 'water' || cue.type === 'food'
+}
+
 // Component to handle map clicks
 function MapClickHandler({ isAddWaypointMode, onMapClick }) {
   const lastInteractionRef = useRef(0)
@@ -618,9 +622,8 @@ export default function RouteDetail() {
   
   // Detect climbs in the route
   const climbs = displayPoints ? detectClimbs(displayPoints) : []
-  const supportCues = routeCues.filter((cue) =>
-    cue.type === 'rest' || cue.type === 'water' || cue.type === 'food'
-  )
+  const supportCues = routeCues.filter(isSupportCue)
+  const generalRouteCues = routeCues.filter((cue) => !isSupportCue(cue))
   
   // Prepare elevation chart data
   const elevationData = displayPoints
@@ -936,34 +939,36 @@ export default function RouteDetail() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {routeCues.slice(0, 12).map((cue) => {
-              const presentation = getWaypointPresentation(cue.type)
+          {generalRouteCues.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {generalRouteCues.slice(0, 12).map((cue) => {
+                const presentation = getWaypointPresentation(cue.type)
 
-              return (
-                <div
-                  key={cue.id}
-                  className={`rounded-xl border p-4 ${presentation.bgClass} ${presentation.borderClass}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className={`text-sm font-semibold ${presentation.textClass}`}>
-                        {presentation.emoji} {cue.label || presentation.label}
-                      </p>
-                      {cue.notes && (
-                        <p className="mt-1 text-sm text-gray-600">{cue.notes}</p>
+                return (
+                  <div
+                    key={cue.id}
+                    className={`rounded-xl border p-4 ${presentation.bgClass} ${presentation.borderClass}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className={`text-sm font-semibold ${presentation.textClass}`}>
+                          {presentation.emoji} {cue.label || presentation.label}
+                        </p>
+                        {cue.notes && (
+                          <p className="mt-1 text-sm text-gray-600">{cue.notes}</p>
+                        )}
+                      </div>
+                      {Number.isFinite(toNumber(cue.distanceFromStart)) && (
+                        <p className="text-sm font-semibold text-gray-900">
+                          {(toNumber(cue.distanceFromStart) / 1609.34).toFixed(2)} mi
+                        </p>
                       )}
                     </div>
-                    {Number.isFinite(toNumber(cue.distanceFromStart)) && (
-                      <p className="text-sm font-semibold text-gray-900">
-                        {(toNumber(cue.distanceFromStart) / 1609.34).toFixed(2)} mi
-                      </p>
-                    )}
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
       
